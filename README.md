@@ -1,6 +1,6 @@
-# Freilancer Desktop
+# Zebu Desktop
 
-A tiny cross-platform **menubar/tray app** for [Freilancer](../freelancer): see today's timers at a glance, start/stop/resume them, add entries, and check your time summary — built with **Tauri 2** (Rust) + Vue 3, so the binary is a few megabytes and idles at ~0% CPU.
+A tiny cross-platform **menubar/tray app** for [Zebu](../freelancer): see today's timers at a glance, start/stop/resume them, add entries, and check your time summary — built with **Tauri 2** (Rust) + Vue 3, so the binary is a few megabytes and idles at ~0% CPU.
 
 ## Features
 
@@ -14,7 +14,7 @@ A tiny cross-platform **menubar/tray app** for [Freilancer](../freelancer): see 
 
 ## Authentication
 
-No passwords in the app. On first launch you enter your server URL; the app opens your **browser** to a one-time approval page on your Freilancer site (you must be logged in there), you click **Approve**, and the app receives a personal access token. Revoke it anytime by deleting the token in the database or "Disconnect this device" in the app's settings.
+No passwords in the app. On first launch you enter your server URL; the app opens your **browser** to a one-time approval page on your Zebu site (you must be logged in there), you click **Approve**, and the app receives a personal access token. Revoke it anytime by deleting the token in the database or "Disconnect this device" in the app's settings.
 
 ## Development
 
@@ -25,7 +25,7 @@ npm install
 npm run tauri dev
 ```
 
-The dev server expects your Freilancer instance to be reachable (e.g. `http://127.0.0.1:8000` via `composer dev` in the server repo).
+The dev server expects your Zebu instance to be reachable (e.g. `http://127.0.0.1:8000` via `composer dev` in the server repo).
 
 ## Building & distribution
 
@@ -40,4 +40,4 @@ This produces native installers per platform (`.dmg`/`.app` on macOS, `.msi`/`.e
 
 ## Server requirements
 
-The companion API ships with the Freilancer server (`routes/api.php`): device-flow endpoints (`/api/device/*`), and Sanctum-authenticated `/api/timesheet`, `/api/timer/*`, `/api/time`, `/api/summary`.
+The companion API ships with the Zebu server (`routes/api.php`): device-flow endpoints (`/api/device/*`), and Sanctum-authenticated `/api/timesheet`, `/api/timer/*`, `/api/time`, `/api/summary`.

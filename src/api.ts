@@ -1,4 +1,4 @@
-// Thin client for the Freilancer server API, token stored in localStorage.
+// Thin client for the Zebu server API, token stored in localStorage.
 
 export interface Entry {
     id: string;
@@ -41,16 +41,16 @@ export interface Summary {
 
 const store = {
     get server(): string {
-        return localStorage.getItem('freilancer.server') ?? '';
+        return localStorage.getItem('zebu.server') ?? '';
     },
     set server(v: string) {
-        localStorage.setItem('freilancer.server', v);
+        localStorage.setItem('zebu.server', v);
     },
     get token(): string {
-        return localStorage.getItem('freilancer.token') ?? '';
+        return localStorage.getItem('zebu.token') ?? '';
     },
     set token(v: string) {
-        localStorage.setItem('freilancer.token', v);
+        localStorage.setItem('zebu.token', v);
     },
 };
 
@@ -84,7 +84,7 @@ export const api = {
         fetch(`${server}/api/device/start`, {
             method: 'POST',
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_name: 'Freilancer Desktop' }),
+            body: JSON.stringify({ device_name: 'Zebu Desktop' }),
         }).then((r) => {
             if (!r.ok) throw new Error(`Could not reach the server (${r.status})`);
             return r.json() as Promise<{ device_code: string; verification_url: string; interval: number }>;

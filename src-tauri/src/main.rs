@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    freilancer_desktop_lib::run()
+    zebu_desktop_lib::run()
 }

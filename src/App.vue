@@ -215,11 +215,11 @@ const toggleSummary = () => {
 <template>
     <!-- ======== connect ======== -->
     <div v-if="view === 'connect'" class="connect">
-        <div class="connect-logo">Freilancer</div>
+        <div class="connect-logo">Zebu</div>
 
         <template v-if="connectState !== 'waiting'">
-            <p class="muted">Connect to your Freilancer server. You'll approve this device in your browser.</p>
-            <input v-model="serverInput" placeholder="https://freilancer.example.com" @keyup.enter="connect" />
+            <p class="muted">Connect to your Zebu server. You'll approve this device in your browser.</p>
+            <input v-model="serverInput" placeholder="https://zebu.example.com" @keyup.enter="connect" />
             <button class="btn-primary" @click="connect">Connect</button>
             <p v-if="connectError" class="error">{{ connectError }}</p>
         </template>
@@ -348,7 +348,7 @@ const toggleSummary = () => {
 
         <div v-if="settingsOpen" class="settings">
             <p class="muted">{{ auth.server }}</p>
-            <button class="link" @click="openUrl(auth.server)">Open Freilancer in the browser</button>
+            <button class="link" @click="openUrl(auth.server)">Open Zebu in the browser</button>
             <button class="link" @click="disconnect">Disconnect this device</button>
         </div>
     </div>

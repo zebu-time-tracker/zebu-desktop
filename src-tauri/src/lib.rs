@@ -18,9 +18,9 @@ fn set_tray_title(app: tauri::AppHandle, title: String) {
             });
         }
         let _ = tray.set_tooltip(if title.is_empty() {
-            Some("Freilancer".to_string())
+            Some("Zebu".to_string())
         } else {
-            Some(format!("Freilancer — {title}"))
+            Some(format!("Zebu — {title}"))
         });
     }
 }
@@ -45,7 +45,7 @@ pub fn run() {
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
                 .icon_as_template(true)
-                .tooltip("Freilancer")
+                .tooltip("Zebu")
                 .on_tray_icon_event(|tray, event| {
                     tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
 
