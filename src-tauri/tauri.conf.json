@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "Freilancer",
+    "version": "0.1.0",
+    "identifier": "ca.alanwoo.freilancer",
+    "build": {
+        "beforeDevCommand": "npm run dev",
+        "devUrl": "http://localhost:1420",
+        "beforeBuildCommand": "npm run build",
+        "frontendDist": "../dist"
+    },
+    "app": {
+        "windows": [
+            {
+                "label": "main",
+                "title": "Freilancer",
+                "width": 380,
+                "height": 540,
+                "visible": false,
+                "decorations": false,
+                "resizable": false,
+                "alwaysOnTop": true,
+                "skipTaskbar": true,
+                "shadow": true
+            }
+        ],
+        "security": {
+            "csp": null
+        }
+    },
+    "bundle": {
+        "active": true,
+        "targets": "all",
+        "icon": ["icons/icon.png"]
+    }
+}
