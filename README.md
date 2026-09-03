@@ -1,6 +1,6 @@
 # Zebu Desktop
 
-A tiny cross-platform **menubar/tray app** for [Zebu](../freelancer): see today's timers at a glance, start/stop/resume them, add entries, and check your time summary — built with **Tauri 2** (Rust) + Vue 3, so the binary is a few megabytes and idles at ~0% CPU.
+A tiny cross-platform **menubar/tray app** for [Zebu](../zebu): see today's timers at a glance, start/stop/resume them, add entries, and check your time summary — built with **Tauri 2** (Rust) + Vue 3, so the binary is a few megabytes and idles at ~0% CPU.
 
 ## Features
 
@@ -11,10 +11,11 @@ A tiny cross-platform **menubar/tray app** for [Zebu](../freelancer): see today'
 - **New Time Entry** sheet: project + task + notes; leave duration empty to start a live timer, or enter `1:30` to log it directly
 - ⓘ **Time Summary** popover: hours today / yesterday / this week / last week / this month + billable % (served by your own server's widgets)
 - Respects invoiced-entry locks and approved-week locks from the server
+- Localized into 11 languages (see [docs/i18n.md](docs/i18n.md)); follows the system language, overridable in Settings
 
 ## Authentication
 
-No passwords in the app. On first launch you enter your server URL; the app opens your **browser** to a one-time approval page on your Zebu site (you must be logged in there), you click **Approve**, and the app receives a personal access token. Revoke it anytime by deleting the token in the database or "Disconnect this device" in the app's settings.
+No passwords in the app. The connect screen has a single **Log in** button for the hosted Zebu service (the server URL is a build-time setting: `VITE_ZEBU_SERVER` in a `.env` file, see `.env.example`; the baked-in default is `https://zebu.work`; dev builds override it in `.env`). The app opens your **browser** to a one-time approval page on that Zebu site (you must be logged in there), you click **Approve**, and the app receives a personal access token. Revoke it anytime by deleting the token in the database or "Disconnect this device" in the app's settings.
 
 ## Development
 
