@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Cancel",
+        "loading": "Loading…",
+        "system": "System"
+    },
+    "connect": {
+        "login": "Log in",
+        "waiting": "Waiting for approval in your browser…",
+        "reopen": "Re-open the approval page",
+        "denied": "Access was denied in the browser.",
+        "expired": "The request expired — try again.",
+        "workspace": "Workspace",
+        "workspaceHint": "Your workspace name (e.g. “studio”), its address (studio.app.zebu.work), or a full URL.",
+        "invalidWorkspace": "That isn’t a valid workspace address."
+    },
+    "errors": {
+        "unreachable": "Could not reach the server.",
+        "unreachableStatus": "Could not reach the server ({status})",
+        "requestFailed": "Request failed ({status})"
+    },
+    "header": {
+        "todayWithDate": "Today, {date}",
+        "jumpToToday": "Jump to Today",
+        "today": "Today",
+        "insights": "Insights"
+    },
+    "summary": {
+        "hoursToday": "Hours today",
+        "hoursYesterday": "Hours yesterday",
+        "hoursThisWeek": "Hours this week",
+        "hoursLastWeek": "Hours last week",
+        "hoursThisMonth": "Hours this month",
+        "billableThisMonth": "Billable this month",
+        "uninvoicedThisMonth": "Uninvoiced This Month",
+        "time": "Time",
+        "approxTotal": "≈ Total ({currency})",
+        "hoursPerDay": "Hours per day · {month}",
+        "hoursPerMonth": "Hours per month · {year}"
+    },
+    "timer": {
+        "resume": "Resume",
+        "runningSince": "Timer running since {date}",
+        "stop": "Stop",
+        "startHint": "Start (stops any other timer)",
+        "startTimer": "Start Timer",
+        "addEntry": "Add New Entry",
+        "waiting": "{time} waiting on agent",
+        "waitingNow": "waiting for agent…"
+    },
+    "entry": {
+        "edit": "Edit entry",
+        "invoiced": "Invoiced",
+        "total": "Total",
+        "uninvoiced": "Uninvoiced",
+        "budget": "Budget",
+        "budgetNone": "Unspecified",
+        "weekLocked": "This week is approved and locked."
+    },
+    "newDay": {
+        "title": "Start a new timer for today?",
+        "body": "That entry is from {date}. A fresh timer starts today with the same project, task and notes — the original stays as it is.",
+        "confirm": "Start today's timer"
+    },
+    "idle": {
+        "title": "You were idle for {n} minute | You were idle for {n} minutes",
+        "whileTiming": "while timing {project}",
+        "removeKeep": "Remove idle time",
+        "removeStop": "Remove & stop timer",
+        "keep": "Keep the idle time"
+    },
+    "form": {
+        "editTitle": "Edit Time Entry",
+        "newTitle": "New Time Entry",
+        "addProject": "Add Project",
+        "addTask": "Add Task",
+        "notes": "Notes (optional)",
+        "timerRunning": "Timer running",
+        "delete": "Delete",
+        "save": "Save",
+        "log": "Log",
+        "start": "Start"
+    },
+    "footer": {
+        "newEntry": "New time entry",
+        "settings": "Settings"
+    },
+    "settings": {
+        "appearance": "Appearance",
+        "dark": "Dark",
+        "light": "Light",
+        "dock": "Show in Dock",
+        "hideOnBlur": "Hide when changing focus",
+        "idleAfter": "Detect idle after",
+        "min": "min",
+        "language": "Language",
+        "openInBrowser": "Open Zebu in the browser",
+        "disconnect": "Disconnect this device",
+        "quit": "Quit Zebu"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (stopped)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "w",
+        "day": "d",
+        "hour": "h"
+    }
+}

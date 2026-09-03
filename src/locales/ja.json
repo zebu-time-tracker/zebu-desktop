@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "キャンセル",
+        "loading": "読み込み中…",
+        "system": "システム"
+    },
+    "connect": {
+        "login": "ログイン",
+        "waiting": "ブラウザでの承認を待っています…",
+        "reopen": "承認ページを再度開く",
+        "denied": "ブラウザでアクセスが拒否されました。",
+        "expired": "リクエストの期限が切れました。もう一度お試しください。",
+        "workspace": "ワークスペース",
+        "workspaceHint": "ワークスペース名 (例: studio)、そのアドレス (studio.app.zebu.work)、または完全な URL を入力します。",
+        "invalidWorkspace": "有効なワークスペースのアドレスではありません。"
+    },
+    "errors": {
+        "unreachable": "サーバーに接続できません。",
+        "unreachableStatus": "サーバーに接続できません ({status})",
+        "requestFailed": "リクエストに失敗しました ({status})"
+    },
+    "header": {
+        "todayWithDate": "今日・{date}",
+        "jumpToToday": "今日へ移動",
+        "today": "今日",
+        "insights": "統計"
+    },
+    "summary": {
+        "hoursToday": "今日の時間",
+        "hoursYesterday": "昨日の時間",
+        "hoursThisWeek": "今週",
+        "hoursLastWeek": "先週",
+        "hoursThisMonth": "今月",
+        "billableThisMonth": "請求対象 (今月)",
+        "uninvoicedThisMonth": "未請求 (今月)",
+        "time": "時間",
+        "approxTotal": "≈ 合計 ({currency})",
+        "hoursPerDay": "1日あたりの時間 · {month}",
+        "hoursPerMonth": "月別の時間 · {year}"
+    },
+    "timer": {
+        "resume": "再開",
+        "runningSince": "{date} からタイマー実行中",
+        "stop": "停止",
+        "startHint": "開始 (他のタイマーは停止)",
+        "startTimer": "タイマー開始",
+        "addEntry": "新規エントリ",
+        "waiting": "エージェント待ち {time}",
+        "waitingNow": "エージェント待ち…"
+    },
+    "entry": {
+        "edit": "エントリを編集",
+        "invoiced": "請求済み",
+        "total": "合計",
+        "uninvoiced": "未請求",
+        "budget": "予算",
+        "budgetNone": "未設定",
+        "weekLocked": "この週は承認済みでロックされています。"
+    },
+    "newDay": {
+        "title": "今日の新しいタイマーを開始しますか？",
+        "body": "そのエントリは {date} のものです。同じプロジェクト・タスク・メモで今日から新しいタイマーを開始します。元のエントリはそのまま残ります。",
+        "confirm": "今日から開始"
+    },
+    "idle": {
+        "title": "{n} 分間操作がありませんでした",
+        "whileTiming": "{project} を計測中",
+        "removeKeep": "離席時間を削除",
+        "removeStop": "削除して停止",
+        "keep": "そのまま残す"
+    },
+    "form": {
+        "editTitle": "エントリを編集",
+        "newTitle": "新規エントリ",
+        "addProject": "プロジェクトを選択",
+        "addTask": "タスクを選択",
+        "notes": "メモ (任意)",
+        "timerRunning": "タイマー実行中",
+        "delete": "削除",
+        "save": "保存",
+        "log": "記録",
+        "start": "開始"
+    },
+    "footer": {
+        "newEntry": "新規エントリ",
+        "settings": "設定"
+    },
+    "settings": {
+        "appearance": "外観",
+        "dark": "ダーク",
+        "light": "ライト",
+        "dock": "Dock に表示",
+        "hideOnBlur": "フォーカスが外れたら隠す",
+        "idleAfter": "無操作を検出:",
+        "min": "分",
+        "language": "言語",
+        "openInBrowser": "ブラウザで Zebu を開く",
+        "disconnect": "この端末の接続を解除",
+        "quit": "Zebu を終了"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (停止中)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "週",
+        "day": "日",
+        "hour": "時間"
+    }
+}

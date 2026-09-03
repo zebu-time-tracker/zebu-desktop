@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Cancelar",
+        "loading": "Cargando…",
+        "system": "Sistema"
+    },
+    "connect": {
+        "login": "Iniciar sesión",
+        "waiting": "Esperando aprobación en el navegador…",
+        "reopen": "Reabrir la página de aprobación",
+        "denied": "El acceso fue denegado en el navegador.",
+        "expired": "La solicitud caducó; inténtalo de nuevo.",
+        "workspace": "Espacio de trabajo",
+        "workspaceHint": "El nombre de tu espacio de trabajo (p. ej. «studio»), su dirección (studio.app.zebu.work) o una URL completa.",
+        "invalidWorkspace": "Esa no es una dirección de espacio de trabajo válida."
+    },
+    "errors": {
+        "unreachable": "No se pudo conectar con el servidor.",
+        "unreachableStatus": "No se pudo conectar con el servidor ({status})",
+        "requestFailed": "Error en la solicitud ({status})"
+    },
+    "header": {
+        "todayWithDate": "Hoy, {date}",
+        "jumpToToday": "Ir a hoy",
+        "today": "Hoy",
+        "insights": "Estadísticas"
+    },
+    "summary": {
+        "hoursToday": "Horas hoy",
+        "hoursYesterday": "Horas ayer",
+        "hoursThisWeek": "Esta semana",
+        "hoursLastWeek": "Semana pasada",
+        "hoursThisMonth": "Este mes",
+        "billableThisMonth": "Facturable (mes)",
+        "uninvoicedThisMonth": "Sin facturar (mes)",
+        "time": "Tiempo",
+        "approxTotal": "≈ Total ({currency})",
+        "hoursPerDay": "Horas por día · {month}",
+        "hoursPerMonth": "Horas por mes · {year}"
+    },
+    "timer": {
+        "resume": "Reanudar",
+        "runningSince": "Temporizador activo desde el {date}",
+        "stop": "Detener",
+        "startHint": "Iniciar (detiene otros temporizadores)",
+        "startTimer": "Iniciar temporizador",
+        "addEntry": "Nueva entrada",
+        "waiting": "{time} esperando al agente",
+        "waitingNow": "esperando al agente…"
+    },
+    "entry": {
+        "edit": "Editar entrada",
+        "invoiced": "Facturado",
+        "total": "Total",
+        "uninvoiced": "Sin facturar",
+        "budget": "Presupuesto",
+        "budgetNone": "Sin definir",
+        "weekLocked": "Esta semana está aprobada y bloqueada."
+    },
+    "newDay": {
+        "title": "¿Iniciar un temporizador nuevo hoy?",
+        "body": "Esa entrada es del {date}. Hoy se inicia un temporizador nuevo con el mismo proyecto, tarea y notas; la original no cambia.",
+        "confirm": "Iniciar hoy"
+    },
+    "idle": {
+        "title": "Estuviste inactivo {n} minuto | Estuviste inactivo {n} minutos",
+        "whileTiming": "mientras se registraba {project}",
+        "removeKeep": "Quitar tiempo inactivo",
+        "removeStop": "Quitar y detener",
+        "keep": "Conservar el tiempo"
+    },
+    "form": {
+        "editTitle": "Editar entrada",
+        "newTitle": "Nueva entrada",
+        "addProject": "Elegir proyecto",
+        "addTask": "Elegir tarea",
+        "notes": "Notas (opcional)",
+        "timerRunning": "Temporizador activo",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "log": "Registrar",
+        "start": "Iniciar"
+    },
+    "footer": {
+        "newEntry": "Nueva entrada",
+        "settings": "Ajustes"
+    },
+    "settings": {
+        "appearance": "Apariencia",
+        "dark": "Oscuro",
+        "light": "Claro",
+        "dock": "Mostrar en el Dock",
+        "hideOnBlur": "Ocultar al cambiar de app",
+        "idleAfter": "Detectar inactividad tras",
+        "min": "min",
+        "language": "Idioma",
+        "openInBrowser": "Abrir Zebu en el navegador",
+        "disconnect": "Desconectar este dispositivo",
+        "quit": "Salir de Zebu"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (detenido)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "sem",
+        "day": "d",
+        "hour": "h"
+    }
+}

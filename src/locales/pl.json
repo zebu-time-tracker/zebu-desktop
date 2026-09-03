@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Anuluj",
+        "loading": "Wczytywanie…",
+        "system": "Systemowy"
+    },
+    "connect": {
+        "login": "Zaloguj się",
+        "waiting": "Oczekiwanie na zatwierdzenie w przeglądarce…",
+        "reopen": "Otwórz ponownie stronę zatwierdzania",
+        "denied": "Odmówiono dostępu w przeglądarce.",
+        "expired": "Żądanie wygasło — spróbuj ponownie.",
+        "workspace": "Przestrzeń robocza",
+        "workspaceHint": "Nazwa Twojej przestrzeni roboczej (np. „studio”), jej adres (studio.app.zebu.work) lub pełny URL.",
+        "invalidWorkspace": "To nie jest prawidłowy adres przestrzeni roboczej."
+    },
+    "errors": {
+        "unreachable": "Brak połączenia z serwerem.",
+        "unreachableStatus": "Brak połączenia z serwerem ({status})",
+        "requestFailed": "Żądanie nie powiodło się ({status})"
+    },
+    "header": {
+        "todayWithDate": "Dziś, {date}",
+        "jumpToToday": "Przejdź do dziś",
+        "today": "Dziś",
+        "insights": "Statystyki"
+    },
+    "summary": {
+        "hoursToday": "Godziny dziś",
+        "hoursYesterday": "Godziny wczoraj",
+        "hoursThisWeek": "Ten tydzień",
+        "hoursLastWeek": "Poprzedni tydzień",
+        "hoursThisMonth": "Ten miesiąc",
+        "billableThisMonth": "Fakturowalne (miesiąc)",
+        "uninvoicedThisMonth": "Niezafakturowane (miesiąc)",
+        "time": "Czas",
+        "approxTotal": "≈ Razem ({currency})",
+        "hoursPerDay": "Godziny dziennie · {month}",
+        "hoursPerMonth": "Godziny miesięcznie · {year}"
+    },
+    "timer": {
+        "resume": "Wznów",
+        "runningSince": "Stoper działa od {date}",
+        "stop": "Zatrzymaj",
+        "startHint": "Start (zatrzymuje inne stopery)",
+        "startTimer": "Uruchom stoper",
+        "addEntry": "Nowy wpis",
+        "waiting": "{time} oczekiwania na agenta",
+        "waitingNow": "oczekiwanie na agenta…"
+    },
+    "entry": {
+        "edit": "Edytuj wpis",
+        "invoiced": "Zafakturowane",
+        "total": "Łącznie",
+        "uninvoiced": "Niezafakturowane",
+        "budget": "Budżet",
+        "budgetNone": "Nieokreślony",
+        "weekLocked": "Ten tydzień jest zatwierdzony i zablokowany."
+    },
+    "newDay": {
+        "title": "Uruchomić nowy stoper na dziś?",
+        "body": "Ten wpis pochodzi z {date}. Nowy stoper wystartuje dziś z tym samym projektem, zadaniem i notatkami — oryginał pozostanie bez zmian.",
+        "confirm": "Uruchom dziś"
+    },
+    "idle": {
+        "title": "Brak aktywności przez {n} minutę | Brak aktywności przez {n} minuty | Brak aktywności przez {n} minut",
+        "whileTiming": "podczas mierzenia {project}",
+        "removeKeep": "Usuń czas bezczynności",
+        "removeStop": "Usuń i zatrzymaj",
+        "keep": "Zachowaj czas"
+    },
+    "form": {
+        "editTitle": "Edytuj wpis",
+        "newTitle": "Nowy wpis",
+        "addProject": "Wybierz projekt",
+        "addTask": "Wybierz zadanie",
+        "notes": "Notatki (opcjonalne)",
+        "timerRunning": "Stoper działa",
+        "delete": "Usuń",
+        "save": "Zapisz",
+        "log": "Dodaj",
+        "start": "Start"
+    },
+    "footer": {
+        "newEntry": "Nowy wpis",
+        "settings": "Ustawienia"
+    },
+    "settings": {
+        "appearance": "Wygląd",
+        "dark": "Ciemny",
+        "light": "Jasny",
+        "dock": "Pokaż w Docku",
+        "hideOnBlur": "Ukryj przy zmianie okna",
+        "idleAfter": "Wykryj bezczynność po",
+        "min": "min",
+        "language": "Język",
+        "openInBrowser": "Otwórz Zebu w przeglądarce",
+        "disconnect": "Odłącz to urządzenie",
+        "quit": "Zakończ Zebu"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (zatrzymany)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "t",
+        "day": "d",
+        "hour": "g"
+    }
+}

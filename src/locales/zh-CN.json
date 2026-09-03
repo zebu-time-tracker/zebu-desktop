@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "取消",
+        "loading": "加载中…",
+        "system": "系统"
+    },
+    "connect": {
+        "login": "登录",
+        "waiting": "正在等待浏览器中的批准…",
+        "reopen": "重新打开批准页面",
+        "denied": "浏览器中拒绝了访问。",
+        "expired": "请求已过期，请重试。",
+        "workspace": "工作区",
+        "workspaceHint": "输入你的工作区名称（如 studio）、其地址（studio.app.zebu.work）或完整 URL。",
+        "invalidWorkspace": "这不是有效的工作区地址。"
+    },
+    "errors": {
+        "unreachable": "无法连接服务器。",
+        "unreachableStatus": "无法连接服务器 ({status})",
+        "requestFailed": "请求失败 ({status})"
+    },
+    "header": {
+        "todayWithDate": "今天，{date}",
+        "jumpToToday": "回到今天",
+        "today": "今天",
+        "insights": "统计"
+    },
+    "summary": {
+        "hoursToday": "今日时长",
+        "hoursYesterday": "昨日时长",
+        "hoursThisWeek": "本周",
+        "hoursLastWeek": "上周",
+        "hoursThisMonth": "本月",
+        "billableThisMonth": "可开票 (本月)",
+        "uninvoicedThisMonth": "未开票 (本月)",
+        "time": "时间",
+        "approxTotal": "≈ 合计 ({currency})",
+        "hoursPerDay": "每日时长 · {month}",
+        "hoursPerMonth": "每月时长 · {year}"
+    },
+    "timer": {
+        "resume": "继续",
+        "runningSince": "计时器自 {date} 运行中",
+        "stop": "停止",
+        "startHint": "开始 (将停止其他计时器)",
+        "startTimer": "开始计时",
+        "addEntry": "新建条目",
+        "waiting": "等待智能体 {time}",
+        "waitingNow": "等待智能体…"
+    },
+    "entry": {
+        "edit": "编辑条目",
+        "invoiced": "已开票",
+        "total": "合计",
+        "uninvoiced": "未开票",
+        "budget": "预算",
+        "budgetNone": "未设定",
+        "weekLocked": "本周已批准并锁定。"
+    },
+    "newDay": {
+        "title": "今天开始新的计时吗？",
+        "body": "该条目属于 {date}。今天将以相同的项目、任务和备注开始新的计时，原条目保持不变。",
+        "confirm": "今天开始"
+    },
+    "idle": {
+        "title": "您已闲置 {n} 分钟",
+        "whileTiming": "正在为 {project} 计时",
+        "removeKeep": "移除闲置时间",
+        "removeStop": "移除并停止",
+        "keep": "保留闲置时间"
+    },
+    "form": {
+        "editTitle": "编辑时间条目",
+        "newTitle": "新建时间条目",
+        "addProject": "选择项目",
+        "addTask": "选择任务",
+        "notes": "备注 (可选)",
+        "timerRunning": "计时进行中",
+        "delete": "删除",
+        "save": "保存",
+        "log": "记录",
+        "start": "开始"
+    },
+    "footer": {
+        "newEntry": "新建时间条目",
+        "settings": "设置"
+    },
+    "settings": {
+        "appearance": "外观",
+        "dark": "深色",
+        "light": "浅色",
+        "dock": "在 Dock 中显示",
+        "hideOnBlur": "失去焦点时隐藏",
+        "idleAfter": "闲置检测时间",
+        "min": "分钟",
+        "language": "语言",
+        "openInBrowser": "在浏览器中打开 Zebu",
+        "disconnect": "断开此设备",
+        "quit": "退出 Zebu"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (已停止)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "周",
+        "day": "天",
+        "hour": "小时"
+    }
+}

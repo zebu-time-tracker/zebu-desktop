@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Abbrechen",
+        "loading": "Lädt…",
+        "system": "System"
+    },
+    "connect": {
+        "login": "Anmelden",
+        "waiting": "Warten auf Freigabe im Browser…",
+        "reopen": "Freigabeseite erneut öffnen",
+        "denied": "Zugriff wurde im Browser verweigert.",
+        "expired": "Anfrage abgelaufen — bitte erneut versuchen.",
+        "workspace": "Arbeitsbereich",
+        "workspaceHint": "Name deines Arbeitsbereichs (z. B. „studio“), seine Adresse (studio.app.zebu.work) oder eine vollständige URL.",
+        "invalidWorkspace": "Das ist keine gültige Adresse eines Arbeitsbereichs."
+    },
+    "errors": {
+        "unreachable": "Server nicht erreichbar.",
+        "unreachableStatus": "Server nicht erreichbar ({status})",
+        "requestFailed": "Anfrage fehlgeschlagen ({status})"
+    },
+    "header": {
+        "todayWithDate": "Heute, {date}",
+        "jumpToToday": "Zu heute springen",
+        "today": "Heute",
+        "insights": "Einblicke"
+    },
+    "summary": {
+        "hoursToday": "Stunden heute",
+        "hoursYesterday": "Stunden gestern",
+        "hoursThisWeek": "Diese Woche",
+        "hoursLastWeek": "Letzte Woche",
+        "hoursThisMonth": "Dieser Monat",
+        "billableThisMonth": "Abrechenbar (Monat)",
+        "uninvoicedThisMonth": "Nicht abgerechnet (Monat)",
+        "time": "Zeit",
+        "approxTotal": "≈ Summe ({currency})",
+        "hoursPerDay": "Stunden pro Tag · {month}",
+        "hoursPerMonth": "Stunden pro Monat · {year}"
+    },
+    "timer": {
+        "resume": "Fortsetzen",
+        "runningSince": "Timer läuft seit {date}",
+        "stop": "Stopp",
+        "startHint": "Starten (stoppt andere Timer)",
+        "startTimer": "Timer starten",
+        "addEntry": "Neuer Eintrag",
+        "waiting": "{time} Wartezeit auf Agenten",
+        "waitingNow": "wartet auf Agenten…"
+    },
+    "entry": {
+        "edit": "Eintrag bearbeiten",
+        "invoiced": "Abgerechnet",
+        "total": "Gesamt",
+        "uninvoiced": "Offen",
+        "budget": "Budget",
+        "budgetNone": "Ohne",
+        "weekLocked": "Diese Woche ist freigegeben und gesperrt."
+    },
+    "newDay": {
+        "title": "Neuen Timer für heute starten?",
+        "body": "Dieser Eintrag ist vom {date}. Ein neuer Timer startet heute mit demselben Projekt, derselben Aufgabe und den Notizen — das Original bleibt unverändert.",
+        "confirm": "Heute starten"
+    },
+    "idle": {
+        "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
+        "whileTiming": "während {project} lief",
+        "removeKeep": "Inaktive Zeit entfernen",
+        "removeStop": "Entfernen & Timer stoppen",
+        "keep": "Zeit behalten"
+    },
+    "form": {
+        "editTitle": "Eintrag bearbeiten",
+        "newTitle": "Neuer Zeiteintrag",
+        "addProject": "Projekt wählen",
+        "addTask": "Aufgabe wählen",
+        "notes": "Notizen (optional)",
+        "timerRunning": "Timer läuft",
+        "delete": "Löschen",
+        "save": "Speichern",
+        "log": "Erfassen",
+        "start": "Starten"
+    },
+    "footer": {
+        "newEntry": "Neuer Zeiteintrag",
+        "settings": "Einstellungen"
+    },
+    "settings": {
+        "appearance": "Darstellung",
+        "dark": "Dunkel",
+        "light": "Hell",
+        "dock": "Im Dock anzeigen",
+        "hideOnBlur": "Bei Fokuswechsel ausblenden",
+        "idleAfter": "Inaktivität erkennen nach",
+        "min": "Min.",
+        "language": "Sprache",
+        "openInBrowser": "Zebu im Browser öffnen",
+        "disconnect": "Gerät trennen",
+        "quit": "Zebu beenden"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (gestoppt)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "W",
+        "day": "T",
+        "hour": "h"
+    }
+}

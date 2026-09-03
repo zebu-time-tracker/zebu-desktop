@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "취소",
+        "loading": "불러오는 중…",
+        "system": "시스템"
+    },
+    "connect": {
+        "login": "로그인",
+        "waiting": "브라우저에서 승인을 기다리는 중…",
+        "reopen": "승인 페이지 다시 열기",
+        "denied": "브라우저에서 접근이 거부되었습니다.",
+        "expired": "요청이 만료되었습니다. 다시 시도하세요.",
+        "workspace": "워크스페이스",
+        "workspaceHint": "워크스페이스 이름(예: studio), 주소(studio.app.zebu.work) 또는 전체 URL을 입력하세요.",
+        "invalidWorkspace": "올바른 워크스페이스 주소가 아닙니다."
+    },
+    "errors": {
+        "unreachable": "서버에 연결할 수 없습니다.",
+        "unreachableStatus": "서버에 연결할 수 없습니다 ({status})",
+        "requestFailed": "요청 실패 ({status})"
+    },
+    "header": {
+        "todayWithDate": "오늘, {date}",
+        "jumpToToday": "오늘로 이동",
+        "today": "오늘",
+        "insights": "통계"
+    },
+    "summary": {
+        "hoursToday": "오늘 시간",
+        "hoursYesterday": "어제 시간",
+        "hoursThisWeek": "이번 주",
+        "hoursLastWeek": "지난주",
+        "hoursThisMonth": "이번 달",
+        "billableThisMonth": "청구 가능 (이번 달)",
+        "uninvoicedThisMonth": "미청구 (이번 달)",
+        "time": "시간",
+        "approxTotal": "≈ 합계 ({currency})",
+        "hoursPerDay": "일별 시간 · {month}",
+        "hoursPerMonth": "월별 시간 · {year}"
+    },
+    "timer": {
+        "resume": "다시 시작",
+        "runningSince": "{date}부터 타이머 실행 중",
+        "stop": "정지",
+        "startHint": "시작 (다른 타이머는 정지)",
+        "startTimer": "타이머 시작",
+        "addEntry": "새 항목",
+        "waiting": "에이전트 대기 {time}",
+        "waitingNow": "에이전트 대기 중…"
+    },
+    "entry": {
+        "edit": "항목 편집",
+        "invoiced": "청구됨",
+        "total": "합계",
+        "uninvoiced": "미청구",
+        "budget": "예산",
+        "budgetNone": "미지정",
+        "weekLocked": "이번 주는 승인되어 잠겨 있습니다."
+    },
+    "newDay": {
+        "title": "오늘 새 타이머를 시작할까요?",
+        "body": "해당 항목은 {date}의 기록입니다. 같은 프로젝트·작업·메모로 오늘 새 타이머를 시작하며, 원본은 그대로 유지됩니다.",
+        "confirm": "오늘 시작"
+    },
+    "idle": {
+        "title": "{n}분 동안 자리를 비웠습니다",
+        "whileTiming": "{project} 기록 중",
+        "removeKeep": "자리 비움 시간 제거",
+        "removeStop": "제거하고 정지",
+        "keep": "시간 유지"
+    },
+    "form": {
+        "editTitle": "항목 편집",
+        "newTitle": "새 시간 항목",
+        "addProject": "프로젝트 선택",
+        "addTask": "작업 선택",
+        "notes": "메모 (선택)",
+        "timerRunning": "타이머 실행 중",
+        "delete": "삭제",
+        "save": "저장",
+        "log": "기록",
+        "start": "시작"
+    },
+    "footer": {
+        "newEntry": "새 시간 항목",
+        "settings": "설정"
+    },
+    "settings": {
+        "appearance": "화면 모드",
+        "dark": "다크",
+        "light": "라이트",
+        "dock": "Dock에 표시",
+        "hideOnBlur": "포커스 이동 시 숨기기",
+        "idleAfter": "유휴 감지 시간",
+        "min": "분",
+        "language": "언어",
+        "openInBrowser": "브라우저에서 Zebu 열기",
+        "disconnect": "이 기기 연결 해제",
+        "quit": "Zebu 종료"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (정지됨)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "주",
+        "day": "일",
+        "hour": "시간"
+    }
+}

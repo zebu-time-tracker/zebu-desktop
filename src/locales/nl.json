@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Annuleren",
+        "loading": "Laden…",
+        "system": "Systeem"
+    },
+    "connect": {
+        "login": "Inloggen",
+        "waiting": "Wachten op goedkeuring in de browser…",
+        "reopen": "Goedkeuringspagina opnieuw openen",
+        "denied": "Toegang geweigerd in de browser.",
+        "expired": "Verzoek verlopen — probeer opnieuw.",
+        "workspace": "Werkruimte",
+        "workspaceHint": "De naam van je werkruimte (bijv. “studio”), het adres (studio.app.zebu.work) of een volledige URL.",
+        "invalidWorkspace": "Dat is geen geldig werkruimte-adres."
+    },
+    "errors": {
+        "unreachable": "Server niet bereikbaar.",
+        "unreachableStatus": "Server niet bereikbaar ({status})",
+        "requestFailed": "Verzoek mislukt ({status})"
+    },
+    "header": {
+        "todayWithDate": "Vandaag, {date}",
+        "jumpToToday": "Naar vandaag",
+        "today": "Vandaag",
+        "insights": "Inzichten"
+    },
+    "summary": {
+        "hoursToday": "Uren vandaag",
+        "hoursYesterday": "Uren gisteren",
+        "hoursThisWeek": "Deze week",
+        "hoursLastWeek": "Vorige week",
+        "hoursThisMonth": "Deze maand",
+        "billableThisMonth": "Factureerbaar (maand)",
+        "uninvoicedThisMonth": "Ongefactureerd (maand)",
+        "time": "Tijd",
+        "approxTotal": "≈ Totaal ({currency})",
+        "hoursPerDay": "Uren per dag · {month}",
+        "hoursPerMonth": "Uren per maand · {year}"
+    },
+    "timer": {
+        "resume": "Hervatten",
+        "runningSince": "Timer loopt sinds {date}",
+        "stop": "Stoppen",
+        "startHint": "Starten (stopt andere timers)",
+        "startTimer": "Timer starten",
+        "addEntry": "Nieuwe registratie",
+        "waiting": "{time} wachten op agent",
+        "waitingNow": "wacht op agent…"
+    },
+    "entry": {
+        "edit": "Registratie bewerken",
+        "invoiced": "Gefactureerd",
+        "total": "Totaal",
+        "uninvoiced": "Ongefactureerd",
+        "budget": "Budget",
+        "budgetNone": "Onbepaald",
+        "weekLocked": "Deze week is goedgekeurd en vergrendeld."
+    },
+    "newDay": {
+        "title": "Nieuwe timer voor vandaag starten?",
+        "body": "Die registratie is van {date}. Er start vandaag een nieuwe timer met hetzelfde project, dezelfde taak en notities — het origineel blijft staan.",
+        "confirm": "Vandaag starten"
+    },
+    "idle": {
+        "title": "Je was {n} minuut inactief | Je was {n} minuten inactief",
+        "whileTiming": "tijdens het timen van {project}",
+        "removeKeep": "Inactieve tijd verwijderen",
+        "removeStop": "Verwijderen en stoppen",
+        "keep": "Tijd behouden"
+    },
+    "form": {
+        "editTitle": "Registratie bewerken",
+        "newTitle": "Nieuwe registratie",
+        "addProject": "Kies project",
+        "addTask": "Kies taak",
+        "notes": "Notities (optioneel)",
+        "timerRunning": "Timer loopt",
+        "delete": "Verwijderen",
+        "save": "Opslaan",
+        "log": "Vastleggen",
+        "start": "Starten"
+    },
+    "footer": {
+        "newEntry": "Nieuwe registratie",
+        "settings": "Instellingen"
+    },
+    "settings": {
+        "appearance": "Weergave",
+        "dark": "Donker",
+        "light": "Licht",
+        "dock": "Toon in Dock",
+        "hideOnBlur": "Verbergen bij focuswissel",
+        "idleAfter": "Detecteer inactiviteit na",
+        "min": "min",
+        "language": "Taal",
+        "openInBrowser": "Open Zebu in de browser",
+        "disconnect": "Dit apparaat loskoppelen",
+        "quit": "Zebu afsluiten"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (gestopt)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "w",
+        "day": "d",
+        "hour": "u"
+    }
+}

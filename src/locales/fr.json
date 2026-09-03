@@ -1,0 +1,111 @@
+{
+    "common": {
+        "cancel": "Annuler",
+        "loading": "Chargement…",
+        "system": "Système"
+    },
+    "connect": {
+        "login": "Se connecter",
+        "waiting": "En attente d'approbation dans le navigateur…",
+        "reopen": "Rouvrir la page d'approbation",
+        "denied": "Accès refusé dans le navigateur.",
+        "expired": "Demande expirée — réessayez.",
+        "workspace": "Espace de travail",
+        "workspaceHint": "Le nom de votre espace de travail (ex. « studio »), son adresse (studio.app.zebu.work) ou une URL complète.",
+        "invalidWorkspace": "Ce n’est pas une adresse d’espace de travail valide."
+    },
+    "errors": {
+        "unreachable": "Serveur injoignable.",
+        "unreachableStatus": "Serveur injoignable ({status})",
+        "requestFailed": "Échec de la requête ({status})"
+    },
+    "header": {
+        "todayWithDate": "Aujourd'hui, {date}",
+        "jumpToToday": "Aller à aujourd'hui",
+        "today": "Aujourd'hui",
+        "insights": "Aperçus"
+    },
+    "summary": {
+        "hoursToday": "Heures aujourd'hui",
+        "hoursYesterday": "Heures hier",
+        "hoursThisWeek": "Cette semaine",
+        "hoursLastWeek": "Semaine dernière",
+        "hoursThisMonth": "Ce mois-ci",
+        "billableThisMonth": "Facturable (mois)",
+        "uninvoicedThisMonth": "Non facturé (mois)",
+        "time": "Temps",
+        "approxTotal": "≈ Total ({currency})",
+        "hoursPerDay": "Heures par jour · {month}",
+        "hoursPerMonth": "Heures par mois · {year}"
+    },
+    "timer": {
+        "resume": "Reprendre",
+        "runningSince": "Minuteur en cours depuis le {date}",
+        "stop": "Arrêter",
+        "startHint": "Démarrer (arrête tout autre minuteur)",
+        "startTimer": "Démarrer le minuteur",
+        "addEntry": "Nouvelle entrée",
+        "waiting": "{time} d’attente de l’agent",
+        "waitingNow": "en attente de l’agent…"
+    },
+    "entry": {
+        "edit": "Modifier l'entrée",
+        "invoiced": "Facturé",
+        "total": "Total",
+        "uninvoiced": "Non facturé",
+        "budget": "Budget",
+        "budgetNone": "Non défini",
+        "weekLocked": "Cette semaine est approuvée et verrouillée."
+    },
+    "newDay": {
+        "title": "Démarrer un nouveau minuteur aujourd'hui ?",
+        "body": "Cette entrée date du {date}. Un nouveau minuteur démarre aujourd'hui avec le même projet, la même tâche et les mêmes notes — l'original reste intact.",
+        "confirm": "Démarrer aujourd'hui"
+    },
+    "idle": {
+        "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
+        "whileTiming": "pendant le suivi de {project}",
+        "removeKeep": "Retirer le temps inactif",
+        "removeStop": "Retirer et arrêter",
+        "keep": "Conserver le temps"
+    },
+    "form": {
+        "editTitle": "Modifier l'entrée",
+        "newTitle": "Nouvelle entrée",
+        "addProject": "Choisir un projet",
+        "addTask": "Choisir une tâche",
+        "notes": "Notes (facultatif)",
+        "timerRunning": "Minuteur en cours",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "log": "Consigner",
+        "start": "Démarrer"
+    },
+    "footer": {
+        "newEntry": "Nouvelle entrée",
+        "settings": "Réglages"
+    },
+    "settings": {
+        "appearance": "Apparence",
+        "dark": "Sombre",
+        "light": "Clair",
+        "dock": "Afficher dans le Dock",
+        "hideOnBlur": "Masquer au changement d'app",
+        "idleAfter": "Détecter l'inactivité après",
+        "min": "min",
+        "language": "Langue",
+        "openInBrowser": "Ouvrir Zebu dans le navigateur",
+        "disconnect": "Déconnecter cet appareil",
+        "quit": "Quitter Zebu"
+    },
+    "tray": {
+        "tooltipRunning": "{detail} · {time}",
+        "tooltipStopped": "{detail} · {time} (arrêté)",
+        "tooltipIdle": "Zebu — {time}"
+    },
+    "units": {
+        "week": "sem",
+        "day": "j",
+        "hour": "h"
+    }
+}
