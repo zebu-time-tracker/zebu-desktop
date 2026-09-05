@@ -22,7 +22,8 @@
         "unreachableStatus": "서버에 연결할 수 없습니다 ({status})",
         "requestFailed": "요청 실패 ({status})",
         "workspaceNotFound": "{host}에 워크스페이스가 없습니다. 이름을 확인하고 다시 시도하세요.",
-        "notAWorkspaceHost": "{host}은(는) Zebu 워크스페이스가 아닙니다."
+        "notAWorkspaceHost": "{host}은(는) Zebu 워크스페이스가 아닙니다.",
+        "workspacePaused": "{host}은(는) 일시 중지되었습니다. 브라우저에서 결제 페이지를 열어 계속하세요."
     },
     "header": {
         "todayWithDate": "오늘, {date}",

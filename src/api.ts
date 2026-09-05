@@ -189,6 +189,8 @@ async function deviceRequest<T>(path: string, body: unknown): Promise<T> {
 
     const host = new URL(base()).host;
     if (response.status === 404) throw new Error(t('errors.workspaceNotFound', { host }));
+    // gated workspace (trial without a card, lapsed billing, operator suspension)
+    if (response.status === 402) throw new Error(t('errors.workspacePaused', { host }));
     if (response.redirected || !(response.headers.get('content-type') ?? '').includes('json')) throw new Error(t('errors.notAWorkspaceHost', { host }));
     if (!response.ok) {
         const data = await response.json().catch(() => null);

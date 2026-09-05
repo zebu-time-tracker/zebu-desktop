@@ -22,7 +22,8 @@
         "unreachableStatus": "サーバーに接続できません ({status})",
         "requestFailed": "リクエストに失敗しました ({status})",
         "workspaceNotFound": "{host} にワークスペースはありません。名前を確認してもう一度お試しください。",
-        "notAWorkspaceHost": "{host} は Zebu のワークスペースではありません。"
+        "notAWorkspaceHost": "{host} は Zebu のワークスペースではありません。",
+        "workspacePaused": "{host} は一時停止中です。ブラウザーで請求ページを開いて続行してください。"
     },
     "header": {
         "todayWithDate": "今日・{date}",

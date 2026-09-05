@@ -22,7 +22,8 @@
         "unreachableStatus": "Brak połączenia z serwerem ({status})",
         "requestFailed": "Żądanie nie powiodło się ({status})",
         "workspaceNotFound": "Brak przestrzeni roboczej pod adresem {host}. Sprawdź nazwę i spróbuj ponownie.",
-        "notAWorkspaceHost": "{host} nie jest przestrzenią roboczą Zebu."
+        "notAWorkspaceHost": "{host} nie jest przestrzenią roboczą Zebu.",
+        "workspacePaused": "{host} jest wstrzymany. Otwórz stronę rozliczeń w przeglądarce, aby kontynuować."
     },
     "header": {
         "todayWithDate": "Dziś, {date}",

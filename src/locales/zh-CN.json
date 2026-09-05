@@ -22,7 +22,8 @@
         "unreachableStatus": "无法连接服务器 ({status})",
         "requestFailed": "请求失败 ({status})",
         "workspaceNotFound": "{host} 上没有工作区。请检查名称后重试。",
-        "notAWorkspaceHost": "{host} 不是 Zebu 工作区。"
+        "notAWorkspaceHost": "{host} 不是 Zebu 工作区。",
+        "workspacePaused": "{host} 已暂停。请在浏览器中打开其账单页面以继续。"
     },
     "header": {
         "todayWithDate": "今天，{date}",

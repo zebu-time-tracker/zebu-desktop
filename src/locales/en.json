@@ -22,7 +22,8 @@
         "unreachableStatus": "Could not reach the server ({status})",
         "requestFailed": "Request failed ({status})",
         "workspaceNotFound": "No workspace at {host}. Check the name and try again.",
-        "notAWorkspaceHost": "{host} isn’t a Zebu workspace."
+        "notAWorkspaceHost": "{host} isn’t a Zebu workspace.",
+        "workspacePaused": "{host} is paused. Open its billing page in a browser to continue."
     },
     "header": {
         "todayWithDate": "Today, {date}",

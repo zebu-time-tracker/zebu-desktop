@@ -22,7 +22,8 @@
         "unreachableStatus": "No se pudo conectar con el servidor ({status})",
         "requestFailed": "Error en la solicitud ({status})",
         "workspaceNotFound": "No hay ningún espacio de trabajo en {host}. Comprueba el nombre e inténtalo de nuevo.",
-        "notAWorkspaceHost": "{host} no es un espacio de trabajo de Zebu."
+        "notAWorkspaceHost": "{host} no es un espacio de trabajo de Zebu.",
+        "workspacePaused": "{host} está en pausa. Abre su página de facturación en el navegador para continuar."
     },
     "header": {
         "todayWithDate": "Hoy, {date}",

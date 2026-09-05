@@ -22,7 +22,8 @@
         "unreachableStatus": "Server nicht erreichbar ({status})",
         "requestFailed": "Anfrage fehlgeschlagen ({status})",
         "workspaceNotFound": "Kein Arbeitsbereich unter {host}. Prüfe den Namen und versuche es erneut.",
-        "notAWorkspaceHost": "{host} ist kein Zebu-Arbeitsbereich."
+        "notAWorkspaceHost": "{host} ist kein Zebu-Arbeitsbereich.",
+        "workspacePaused": "{host} ist pausiert. Öffne die Abrechnungsseite im Browser, um weiterzumachen."
     },
     "header": {
         "todayWithDate": "Heute, {date}",

@@ -22,7 +22,8 @@
         "unreachableStatus": "Server niet bereikbaar ({status})",
         "requestFailed": "Verzoek mislukt ({status})",
         "workspaceNotFound": "Geen werkruimte op {host}. Controleer de naam en probeer opnieuw.",
-        "notAWorkspaceHost": "{host} is geen Zebu-werkruimte."
+        "notAWorkspaceHost": "{host} is geen Zebu-werkruimte.",
+        "workspacePaused": "{host} is gepauzeerd. Open de facturatiepagina in je browser om verder te gaan."
     },
     "header": {
         "todayWithDate": "Vandaag, {date}",

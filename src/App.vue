@@ -5,7 +5,7 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { api, auth, CENTRAL_URL, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
@@ -86,7 +86,9 @@ const connect = async () => {
     // a failed device flow can't leave a stale pairing behind
     if (auth.workspace !== resolved.origin) auth.token = '';
     auth.workspace = resolved.origin;
-    workspaceInput.value = resolved.origin.replace(/^https:\/\//, '');
+    // show just the name when it lives under the default domain, otherwise the full host
+    const host = resolved.origin.replace(/^https?:\/\//, '');
+    workspaceInput.value = host.endsWith(`.${DEFAULT_DOMAIN}`) ? host.slice(0, -(DEFAULT_DOMAIN.length + 1)) : host;
     connecting.value = true;
     connectError.value = '';
     try {
@@ -571,16 +573,20 @@ const toggleSummary = () => {
         <template v-if="connectState !== 'waiting'">
             <label class="field">
                 <span class="field-label">{{ t('connect.workspace') }}</span>
-                <input
-                    v-model="workspaceInput"
-                    type="text"
-                    autocapitalize="none"
-                    autocorrect="off"
-                    autocomplete="off"
-                    spellcheck="false"
-                    placeholder="studio"
-                    @keyup.enter="connect"
-                />
+                <span class="field-row">
+                    <input
+                        v-model="workspaceInput"
+                        type="text"
+                        autocapitalize="none"
+                        autocorrect="off"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="studio"
+                        @keyup.enter="connect"
+                    />
+                    <!-- the fixed part of the address; hidden once someone pastes a full one -->
+                    <span v-if="!workspaceInput.includes('.')" class="field-suffix">.{{ DEFAULT_DOMAIN }}</span>
+                </span>
                 <span class="hint">{{ t('connect.workspaceHint') }}</span>
             </label>
             <button class="btn-primary" :disabled="connecting || !workspaceInput.trim()" @click="connect">{{ t('connect.login') }}</button>
