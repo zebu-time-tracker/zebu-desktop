@@ -85,7 +85,9 @@
         "delete": "Verwijderen",
         "save": "Opslaan",
         "log": "Vastleggen",
-        "start": "Starten"
+        "start": "Starten",
+        "searchProject": "Projecten zoeken…",
+        "noProjects": "Geen passend project."
     },
     "footer": {
         "newEntry": "Nieuwe registratie",

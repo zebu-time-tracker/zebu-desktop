@@ -85,7 +85,9 @@
         "delete": "Elimina",
         "save": "Salva",
         "log": "Registra",
-        "start": "Avvia"
+        "start": "Avvia",
+        "searchProject": "Cerca progetti…",
+        "noProjects": "Nessun progetto corrispondente."
     },
     "footer": {
         "newEntry": "Nuova voce",

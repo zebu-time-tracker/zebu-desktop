@@ -85,7 +85,9 @@
         "delete": "Löschen",
         "save": "Speichern",
         "log": "Erfassen",
-        "start": "Starten"
+        "start": "Starten",
+        "searchProject": "Projekte suchen…",
+        "noProjects": "Kein passendes Projekt."
     },
     "footer": {
         "newEntry": "Neuer Zeiteintrag",

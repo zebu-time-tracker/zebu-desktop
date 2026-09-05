@@ -57,6 +57,7 @@ export interface Entry {
 export interface ProjectOption {
     id: string;
     name: string;
+    code: string | null;
     client: string | null;
     tasks: { id: string; name: string }[];
 }

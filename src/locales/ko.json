@@ -85,7 +85,9 @@
         "delete": "삭제",
         "save": "저장",
         "log": "기록",
-        "start": "시작"
+        "start": "시작",
+        "searchProject": "프로젝트 검색…",
+        "noProjects": "일치하는 프로젝트가 없습니다."
     },
     "footer": {
         "newEntry": "새 시간 항목",

@@ -85,7 +85,9 @@
         "delete": "削除",
         "save": "保存",
         "log": "記録",
-        "start": "開始"
+        "start": "開始",
+        "searchProject": "プロジェクトを検索…",
+        "noProjects": "一致するプロジェクトがありません。"
     },
     "footer": {
         "newEntry": "新規エントリ",

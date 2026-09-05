@@ -85,7 +85,9 @@
         "delete": "Delete",
         "save": "Save",
         "log": "Log",
-        "start": "Start"
+        "start": "Start",
+        "searchProject": "Search projects…",
+        "noProjects": "No matching project."
     },
     "footer": {
         "newEntry": "New time entry",

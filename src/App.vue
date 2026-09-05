@@ -5,6 +5,7 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ProjectPicker from './ProjectPicker.vue';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
@@ -818,10 +819,12 @@ const toggleSummary = () => {
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
             <div class="sheet">
                 <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
-                <select v-model="form.project_id">
-                    <option value="" disabled>{{ t('form.addProject') }}</option>
-                    <option v-for="p in sheet?.projects ?? []" :key="p.id" :value="p.id">{{ p.client ? `${p.client} — ` : '' }}{{ p.name }}</option>
-                </select>
+                <ProjectPicker
+                    v-model="form.project_id"
+                    :projects="sheet?.projects ?? []"
+                    :placeholder="t('form.searchProject')"
+                    :empty="t('form.noProjects')"
+                />
                 <select v-model="form.task_id">
                     <option value="">{{ t('form.addTask') }}</option>
                     <option v-for="task in formProject?.tasks ?? []" :key="task.id" :value="task.id">{{ task.name }}</option>

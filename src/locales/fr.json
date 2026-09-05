@@ -85,7 +85,9 @@
         "delete": "Supprimer",
         "save": "Enregistrer",
         "log": "Consigner",
-        "start": "Démarrer"
+        "start": "Démarrer",
+        "searchProject": "Rechercher un projet…",
+        "noProjects": "Aucun projet correspondant."
     },
     "footer": {
         "newEntry": "Nouvelle entrée",

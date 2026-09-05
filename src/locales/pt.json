@@ -85,7 +85,9 @@
         "delete": "Excluir",
         "save": "Salvar",
         "log": "Registrar",
-        "start": "Iniciar"
+        "start": "Iniciar",
+        "searchProject": "Procurar projetos…",
+        "noProjects": "Nenhum projeto correspondente."
     },
     "footer": {
         "newEntry": "Nova entrada",
