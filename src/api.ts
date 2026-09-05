@@ -1,39 +1,39 @@
-// Thin client for the Zebu server API, token stored in localStorage.
+// Thin client for the per-workspace Zebu API, token stored in localStorage.
+//
+// Hosted Zebu serves every workspace from its own host ({sub}.zebu.work) and
+// the API — device flow included — lives there, never on the central
+// app.zebu.work site. So there is no fixed server: every request goes to the
+// workspace the user connected on the connect screen.
 
 import { i18n } from './i18n';
+import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
+
+export { CENTRAL_URL, DEFAULT_DOMAIN };
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {});
 
-// The hosted Zebu server — a build-time concern, set via VITE_ZEBU_SERVER in
-// a .env file (release builds point at the hosted service; dev at a local
-// instance). Not user-configurable.
-export const SERVER: string = ((import.meta.env.VITE_ZEBU_SERVER as string | undefined) ?? 'https://app.zebu.work').replace(/\/+$/, '');
-
-/** Hosted-service domain a bare workspace name is completed with. */
-export const DEFAULT_DOMAIN = 'app.zebu.work';
+/**
+ * Optional prefill for the workspace field in dev builds, set via
+ * VITE_ZEBU_WORKSPACE (or the older VITE_ZEBU_SERVER) in .env — typically a
+ * local instance such as http://127.0.0.1:8003. Ignored in release builds:
+ * users always name their own workspace.
+ */
+export const DEV_WORKSPACE: string = import.meta.env.DEV
+    ? ((import.meta.env.VITE_ZEBU_WORKSPACE as string | undefined) ?? (import.meta.env.VITE_ZEBU_SERVER as string | undefined) ?? '').replace(/\/+$/, '')
+    : '';
 
 /**
- * Hosted Zebu serves each workspace from its own subdomain — and the device
- * flow lives there, not on the bare app domain — so the user names their
- * workspace on the connect screen. Normalise what they typed into an origin,
- * or '' when it can't be one (same rules as the mobile app and the browser
- * extension):
- *   "studio"                 → https://studio.app.zebu.work
- *   "studio.app.zebu.work"   → https://studio.app.zebu.work
- *   "http://127.0.0.1:8003/" → http://127.0.0.1:8003   (local dev)
+ * Normalise what the user typed into a workspace origin ('' when it isn't
+ * one). Plain http is accepted for loopback hosts in every build (local
+ * dev) and for any host only in dev builds; release builds insist on TLS.
  */
-export function workspaceUrl(input: string, defaultDomain = DEFAULT_DOMAIN): string {
-    let value = input.trim().replace(/\/+$/, '');
-    if (value === '') return '';
-    if (!/^https?:\/\//i.test(value)) {
-        value = value.includes('.') ? `https://${value}` : `https://${value}.${defaultDomain}`;
-    }
-    try {
-        const url = new URL(value);
-        return `${url.protocol}//${url.host}`;
-    } catch {
-        return '';
-    }
+export function workspaceUrl(input: string): string {
+    const r = resolveWorkspaceInput(input);
+    return r.ok ? r.origin : '';
+}
+
+export function resolveWorkspaceInput(input: string): WorkspaceResolution {
+    return resolveWorkspace(input, { allowInsecure: import.meta.env.DEV });
 }
 
 export interface Entry {
@@ -92,15 +92,21 @@ export interface Summary {
     base_currency: string;
 }
 
-// One-time migration: older builds offered a "Custom Server…" option and
-// persisted its URL under zebu.server. The app is hosted-only now — a token
-// issued by another server is useless against the standard one, so drop both
-// and let the user land on the connect screen.
+// One-time migrations of what older builds persisted.
 try {
-    const legacy = localStorage.getItem('zebu.server');
-    if (legacy !== null) {
-        if (legacy.replace(/\/+$/, '') !== SERVER) localStorage.removeItem('zebu.token');
+    // Builds before the workspace field offered a "Custom Server…" option and
+    // persisted its URL under zebu.server. A token issued by some other server
+    // is useless against a hosted workspace, so drop both.
+    if (localStorage.getItem('zebu.server') !== null) {
         localStorage.removeItem('zebu.server');
+        localStorage.removeItem('zebu.token');
+    }
+    // Workspaces moved from {sub}.app.zebu.work to {sub}.zebu.work; the token
+    // is per workspace, so only the stored origin needs rewriting.
+    const ws = localStorage.getItem('zebu.workspace');
+    if (ws) {
+        const migrated = migrateWorkspaceOrigin(ws);
+        if (migrated !== ws) localStorage.setItem('zebu.workspace', migrated);
     }
 } catch {
     /* storage unavailable — nothing to migrate */
@@ -113,7 +119,7 @@ const store = {
     set token(v: string) {
         localStorage.setItem('zebu.token', v);
     },
-    /** Normalised workspace origin, e.g. https://studio.app.zebu.work */
+    /** Normalised workspace origin, e.g. https://studio.zebu.work */
     get workspace(): string {
         return localStorage.getItem('zebu.workspace') ?? '';
     },
@@ -122,26 +128,40 @@ const store = {
     },
 };
 
-/** Every request goes to the connected workspace; the build-time server is only a fallback. */
-export const base = (): string => store.workspace || SERVER;
+/** Origin every request goes to: the connected workspace. '' until one is connected. */
+export const base = (): string => store.workspace;
 
 export const auth = store;
 
+/**
+ * Called when the workspace rejects the token (401): it was revoked in the
+ * browser, or the workspace is gone. The token is already cleared by then;
+ * the app uses this to fall back to the connect screen with an explanation.
+ */
+export const session: { onExpired: (() => void) | null } = { onExpired: null };
+
+/** Bearer-token requests time out rather than hanging on a stalled host. */
+const REQUEST_TIMEOUT_MS = 20_000;
+const timeoutSignal = (): AbortSignal | undefined =>
+    typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(REQUEST_TIMEOUT_MS) : undefined;
+
+const jsonHeaders = { Accept: 'application/json', 'Content-Type': 'application/json' };
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    if (!store.workspace || !store.token) throw new Error('unauthenticated');
+
     const response = await fetch(`${base()}/api${path}`, {
         method,
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${store.token}`,
-        },
+        headers: { ...jsonHeaders, Authorization: `Bearer ${store.token}` },
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: timeoutSignal(),
     }).catch(() => {
         throw new Error(t('errors.unreachable'));
     });
 
     if (response.status === 401) {
         store.token = '';
+        session.onExpired?.();
         throw new Error('unauthenticated');
     }
     if (!response.ok) {
@@ -152,27 +172,56 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     return response.json();
 }
 
-export const api = {
-    deviceStart: () =>
-        fetch(`${base()}/api/device/start`, {
-            method: 'POST',
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_name: 'Zebu Desktop' }),
-        })
-            .catch(() => {
-                throw new Error(t('errors.unreachable'));
-            })
-            .then((r) => {
-                if (!r.ok) throw new Error(t('errors.unreachableStatus', { status: r.status }));
-                return r.json() as Promise<{ device_code: string; verification_url: string; interval: number }>;
-            }),
+/**
+ * The device flow's unauthenticated calls. An unknown subdomain answers 404
+ * ("This workspace does not exist"), and the central site redirects to its
+ * signup page — neither is a JSON API, so both become a clear message.
+ */
+async function deviceRequest<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetch(`${base()}/api/device/${path}`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+        signal: timeoutSignal(),
+    }).catch(() => {
+        throw new Error(t('errors.unreachable'));
+    });
 
-    devicePoll: (deviceCode: string) =>
-        fetch(`${base()}/api/device/poll`, {
+    const host = new URL(base()).host;
+    if (response.status === 404) throw new Error(t('errors.workspaceNotFound', { host }));
+    if (response.redirected || !(response.headers.get('content-type') ?? '').includes('json')) throw new Error(t('errors.notAWorkspaceHost', { host }));
+    if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? t('errors.unreachableStatus', { status: response.status }));
+    }
+    return response.json();
+}
+
+export interface DeviceStart {
+    device_code: string;
+    verification_url: string;
+    expires_in: number;
+    interval: number;
+}
+
+export type DevicePoll = { status: 'pending' } | { status: 'approved'; token: string } | { status: 'denied' | 'expired' };
+
+export const api = {
+    deviceStart: () => deviceRequest<DeviceStart>('start', { device_name: 'Zebu Desktop' }),
+
+    /** Polls the code. denied/expired arrive with 403/410 but carry a status body, so only the body matters. */
+    devicePoll: async (deviceCode: string): Promise<DevicePoll> => {
+        const response = await fetch(`${base()}/api/device/poll`, {
             method: 'POST',
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            headers: jsonHeaders,
             body: JSON.stringify({ device_code: deviceCode }),
-        }).then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) })),
+            signal: timeoutSignal(),
+        });
+        const data = (await response.json().catch(() => ({}))) as Partial<DevicePoll & { token: string }>;
+        if (data.status === 'approved' && typeof data.token === 'string') return { status: 'approved', token: data.token };
+        if (data.status === 'denied' || data.status === 'expired') return { status: data.status };
+        return { status: 'pending' };
+    },
 
     me: () => request<{ name: string; email: string }>('GET', '/me'),
     timesheet: (date: string) => request<Timesheet>('GET', `/timesheet?date=${date}`),

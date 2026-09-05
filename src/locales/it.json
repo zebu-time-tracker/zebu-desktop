@@ -11,13 +11,18 @@
         "denied": "Accesso negato nel browser.",
         "expired": "Richiesta scaduta — riprova.",
         "workspace": "Spazio di lavoro",
-        "workspaceHint": "Il nome del tuo spazio di lavoro (es. “studio”), il suo indirizzo (studio.app.zebu.work) o un URL completo.",
-        "invalidWorkspace": "Non è un indirizzo di spazio di lavoro valido."
+        "workspaceHint": "Il nome del tuo spazio di lavoro (es. “studio”), il suo indirizzo (studio.zebu.work) o un URL completo.",
+        "invalidWorkspace": "Non è un indirizzo di spazio di lavoro valido.",
+        "notAWorkspace": "Quello è il sito principale di Zebu — inserisci invece il nome del tuo spazio di lavoro.",
+        "insecureWorkspace": "Gli indirizzi degli spazi di lavoro devono usare https.",
+        "sessionExpired": "L’accesso di questo dispositivo è stato revocato. Accedi di nuovo per riconnetterti."
     },
     "errors": {
         "unreachable": "Server non raggiungibile.",
         "unreachableStatus": "Server non raggiungibile ({status})",
-        "requestFailed": "Richiesta non riuscita ({status})"
+        "requestFailed": "Richiesta non riuscita ({status})",
+        "workspaceNotFound": "Nessuno spazio di lavoro su {host}. Controlla il nome e riprova.",
+        "notAWorkspaceHost": "{host} non è uno spazio di lavoro Zebu."
     },
     "header": {
         "todayWithDate": "Oggi, {date}",

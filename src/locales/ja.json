@@ -11,13 +11,18 @@
         "denied": "ブラウザでアクセスが拒否されました。",
         "expired": "リクエストの期限が切れました。もう一度お試しください。",
         "workspace": "ワークスペース",
-        "workspaceHint": "ワークスペース名 (例: studio)、そのアドレス (studio.app.zebu.work)、または完全な URL を入力します。",
-        "invalidWorkspace": "有効なワークスペースのアドレスではありません。"
+        "workspaceHint": "ワークスペース名 (例: studio)、そのアドレス (studio.zebu.work)、または完全な URL を入力します。",
+        "invalidWorkspace": "有効なワークスペースのアドレスではありません。",
+        "notAWorkspace": "それは Zebu のメインサイトです。ご自身のワークスペース名を入力してください。",
+        "insecureWorkspace": "ワークスペースのアドレスは https を使用する必要があります。",
+        "sessionExpired": "このデバイスのアクセスは取り消されました。再度ログインしてください。"
     },
     "errors": {
         "unreachable": "サーバーに接続できません。",
         "unreachableStatus": "サーバーに接続できません ({status})",
-        "requestFailed": "リクエストに失敗しました ({status})"
+        "requestFailed": "リクエストに失敗しました ({status})",
+        "workspaceNotFound": "{host} にワークスペースはありません。名前を確認してもう一度お試しください。",
+        "notAWorkspaceHost": "{host} は Zebu のワークスペースではありません。"
     },
     "header": {
         "todayWithDate": "今日・{date}",

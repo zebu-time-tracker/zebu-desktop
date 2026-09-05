@@ -11,13 +11,18 @@
         "denied": "Odmówiono dostępu w przeglądarce.",
         "expired": "Żądanie wygasło — spróbuj ponownie.",
         "workspace": "Przestrzeń robocza",
-        "workspaceHint": "Nazwa Twojej przestrzeni roboczej (np. „studio”), jej adres (studio.app.zebu.work) lub pełny URL.",
-        "invalidWorkspace": "To nie jest prawidłowy adres przestrzeni roboczej."
+        "workspaceHint": "Nazwa Twojej przestrzeni roboczej (np. „studio”), jej adres (studio.zebu.work) lub pełny URL.",
+        "invalidWorkspace": "To nie jest prawidłowy adres przestrzeni roboczej.",
+        "notAWorkspace": "To główna strona Zebu — wpisz zamiast tego nazwę swojej przestrzeni roboczej.",
+        "insecureWorkspace": "Adresy przestrzeni roboczych muszą używać https.",
+        "sessionExpired": "Dostęp tego urządzenia został cofnięty. Zaloguj się ponownie."
     },
     "errors": {
         "unreachable": "Brak połączenia z serwerem.",
         "unreachableStatus": "Brak połączenia z serwerem ({status})",
-        "requestFailed": "Żądanie nie powiodło się ({status})"
+        "requestFailed": "Żądanie nie powiodło się ({status})",
+        "workspaceNotFound": "Brak przestrzeni roboczej pod adresem {host}. Sprawdź nazwę i spróbuj ponownie.",
+        "notAWorkspaceHost": "{host} nie jest przestrzenią roboczą Zebu."
     },
     "header": {
         "todayWithDate": "Dziś, {date}",

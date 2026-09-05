@@ -11,13 +11,18 @@
         "denied": "Zugriff wurde im Browser verweigert.",
         "expired": "Anfrage abgelaufen — bitte erneut versuchen.",
         "workspace": "Arbeitsbereich",
-        "workspaceHint": "Name deines Arbeitsbereichs (z. B. „studio“), seine Adresse (studio.app.zebu.work) oder eine vollständige URL.",
-        "invalidWorkspace": "Das ist keine gültige Adresse eines Arbeitsbereichs."
+        "workspaceHint": "Name deines Arbeitsbereichs (z. B. „studio“), seine Adresse (studio.zebu.work) oder eine vollständige URL.",
+        "invalidWorkspace": "Das ist keine gültige Adresse eines Arbeitsbereichs.",
+        "notAWorkspace": "Das ist die zentrale Zebu-Seite — gib stattdessen den Namen deines Arbeitsbereichs ein.",
+        "insecureWorkspace": "Adressen von Arbeitsbereichen müssen https verwenden.",
+        "sessionExpired": "Der Zugriff dieses Geräts wurde widerrufen. Melde dich erneut an."
     },
     "errors": {
         "unreachable": "Server nicht erreichbar.",
         "unreachableStatus": "Server nicht erreichbar ({status})",
-        "requestFailed": "Anfrage fehlgeschlagen ({status})"
+        "requestFailed": "Anfrage fehlgeschlagen ({status})",
+        "workspaceNotFound": "Kein Arbeitsbereich unter {host}. Prüfe den Namen und versuche es erneut.",
+        "notAWorkspaceHost": "{host} ist kein Zebu-Arbeitsbereich."
     },
     "header": {
         "todayWithDate": "Heute, {date}",

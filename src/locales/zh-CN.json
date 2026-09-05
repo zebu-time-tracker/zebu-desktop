@@ -11,13 +11,18 @@
         "denied": "浏览器中拒绝了访问。",
         "expired": "请求已过期，请重试。",
         "workspace": "工作区",
-        "workspaceHint": "输入你的工作区名称（如 studio）、其地址（studio.app.zebu.work）或完整 URL。",
-        "invalidWorkspace": "这不是有效的工作区地址。"
+        "workspaceHint": "输入你的工作区名称（如 studio）、其地址（studio.zebu.work）或完整 URL。",
+        "invalidWorkspace": "这不是有效的工作区地址。",
+        "notAWorkspace": "那是 Zebu 主站，请改为输入你自己的工作区名称。",
+        "insecureWorkspace": "工作区地址必须使用 https。",
+        "sessionExpired": "此设备的访问权限已被撤销。请重新登录以重新连接。"
     },
     "errors": {
         "unreachable": "无法连接服务器。",
         "unreachableStatus": "无法连接服务器 ({status})",
-        "requestFailed": "请求失败 ({status})"
+        "requestFailed": "请求失败 ({status})",
+        "workspaceNotFound": "{host} 上没有工作区。请检查名称后重试。",
+        "notAWorkspaceHost": "{host} 不是 Zebu 工作区。"
     },
     "header": {
         "todayWithDate": "今天，{date}",

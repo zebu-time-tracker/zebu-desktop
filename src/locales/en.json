@@ -11,13 +11,18 @@
         "denied": "Access was denied in the browser.",
         "expired": "The request expired — try again.",
         "workspace": "Workspace",
-        "workspaceHint": "Your workspace name (e.g. “studio”), its address (studio.app.zebu.work), or a full URL.",
-        "invalidWorkspace": "That isn’t a valid workspace address."
+        "workspaceHint": "Your workspace name (e.g. “studio”), its address (studio.zebu.work), or a full URL.",
+        "invalidWorkspace": "That isn’t a valid workspace address.",
+        "notAWorkspace": "That’s the main Zebu site — enter your own workspace’s name instead.",
+        "insecureWorkspace": "Workspace addresses must use https.",
+        "sessionExpired": "This device’s access was revoked. Log in again to reconnect."
     },
     "errors": {
         "unreachable": "Could not reach the server.",
         "unreachableStatus": "Could not reach the server ({status})",
-        "requestFailed": "Request failed ({status})"
+        "requestFailed": "Request failed ({status})",
+        "workspaceNotFound": "No workspace at {host}. Check the name and try again.",
+        "notAWorkspaceHost": "{host} isn’t a Zebu workspace."
     },
     "header": {
         "todayWithDate": "Today, {date}",

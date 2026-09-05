@@ -5,7 +5,7 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { api, auth, formatDurationHuman, formatMinutes, parseDuration, SERVER, toDateString, workspaceUrl, type Entry, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 
 const { t } = useI18n();
@@ -51,21 +51,41 @@ watch(
 
 const connectState = ref<'idle' | 'waiting' | 'error'>('idle');
 const connectError = ref('');
-// Which workspace to talk to — remembered from the last connection so a re-login is one click.
-const workspaceInput = ref(auth.workspace);
+// Which workspace to talk to — remembered from the last connection so a
+// re-login is one click; dev builds may prefill a local instance from .env.
+const workspaceInput = ref(auth.workspace || DEV_WORKSPACE);
 const connecting = ref(false);
 const verificationUrl = ref('');
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollDeadline: ReturnType<typeof setTimeout> | null = null;
+
+const stopPolling = () => {
+    if (pollTimer) clearInterval(pollTimer);
+    if (pollDeadline) clearTimeout(pollDeadline);
+    pollTimer = pollDeadline = null;
+};
+
+const failConnect = (message: string) => {
+    stopPolling();
+    connectState.value = 'error';
+    connectError.value = message;
+};
+
+const workspaceProblem = (reason: 'empty' | 'invalid' | 'central' | 'insecure') =>
+    reason === 'central' ? t('connect.notAWorkspace') : reason === 'insecure' ? t('connect.insecureWorkspace') : t('connect.invalidWorkspace');
 
 const connect = async () => {
     if (connecting.value) return;
-    const ws = workspaceUrl(workspaceInput.value);
-    if (!ws) {
-        connectState.value = 'error';
-        connectError.value = t('connect.invalidWorkspace');
+    const resolved = resolveWorkspaceInput(workspaceInput.value);
+    if (!resolved.ok) {
+        failConnect(workspaceProblem(resolved.reason));
         return;
     }
-    auth.workspace = ws;
+    // a different workspace means a different token: drop the old one now so
+    // a failed device flow can't leave a stale pairing behind
+    if (auth.workspace !== resolved.origin) auth.token = '';
+    auth.workspace = resolved.origin;
+    workspaceInput.value = resolved.origin.replace(/^https:\/\//, '');
     connecting.value = true;
     connectError.value = '';
     try {
@@ -74,36 +94,62 @@ const connect = async () => {
         connectState.value = 'waiting';
         await openUrl(started.verification_url);
 
+        let polling = false;
         pollTimer = setInterval(async () => {
-            const result = await api.devicePoll(started.device_code);
-            if (result.data.status === 'approved') {
-                clearInterval(pollTimer!);
-                auth.token = result.data.token;
-                connectState.value = 'idle';
-                view.value = 'main';
-                refresh();
-            } else if (['denied', 'expired'].includes(result.data.status)) {
-                clearInterval(pollTimer!);
-                connectState.value = 'error';
-                connectError.value = result.data.status === 'denied' ? t('connect.denied') : t('connect.expired');
+            if (polling) return; // never overlap polls on a slow connection
+            polling = true;
+            try {
+                const result = await api.devicePoll(started.device_code);
+                if (result.status === 'approved') {
+                    stopPolling();
+                    auth.token = result.token;
+                    connectState.value = 'idle';
+                    view.value = 'main';
+                    refresh();
+                } else if (result.status === 'denied' || result.status === 'expired') {
+                    failConnect(result.status === 'denied' ? t('connect.denied') : t('connect.expired'));
+                }
+            } catch {
+                // transient network hiccup — the next tick tries again
+            } finally {
+                polling = false;
             }
-        }, (started.interval || 3) * 1000);
+        }, Math.max(2, started.interval || 3) * 1000);
+        // the server forgets the code after expires_in; stop asking then
+        pollDeadline = setTimeout(() => failConnect(t('connect.expired')), Math.max(30, started.expires_in || 600) * 1000);
     } catch (e: any) {
-        connectState.value = 'error';
-        connectError.value = e.message ?? t('errors.unreachable');
+        failConnect(e.message ?? t('errors.unreachable'));
     } finally {
         connecting.value = false;
     }
 };
 
-const disconnect = () => {
+const cancelConnect = () => {
+    stopPolling();
+    connectState.value = 'idle';
+};
+
+/** Back to the connect screen; `message` explains why when the app didn't choose to. */
+const disconnect = (message = '') => {
+    stopPolling();
     auth.token = '';
     view.value = 'connect';
-    connectState.value = 'idle';
+    connectState.value = message ? 'error' : 'idle';
+    connectError.value = message;
     settingsOpen.value = false;
+    summaryOpen.value = false;
+    formOpen.value = false;
     me.value = null;
+    sheet.value = null;
+    summary.value = null;
     lastTray = '';
-    invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null });
+    invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null }).catch(() => {});
+};
+
+// the workspace answered 401: the device was revoked in the browser (or the
+// token is otherwise dead) — explain, rather than silently showing the login
+session.onExpired = () => {
+    if (view.value === 'main') disconnect(t('connect.sessionExpired'));
 };
 
 // ---- timesheet -------------------------------------------------------------
@@ -124,10 +170,7 @@ const refresh = async () => {
         sheet.value = await api.timesheet(selectedDate.value);
         errorMessage.value = '';
     } catch (e: any) {
-        if (e.message === 'unauthenticated') {
-            view.value = 'connect';
-            return;
-        }
+        if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
         errorMessage.value = e.message;
     } finally {
         loading.value = false;
@@ -391,7 +434,6 @@ const act = async (fn: () => Promise<unknown>) => {
         updateTray();
     } catch (e: any) {
         errorMessage.value = e.message === 'unauthenticated' ? '' : e.message;
-        if (e.message === 'unauthenticated') view.value = 'connect';
     }
 };
 
@@ -547,15 +589,7 @@ const toggleSummary = () => {
             <div class="spinner"></div>
             <p class="muted">{{ t('connect.waiting') }}</p>
             <button class="link" @click="openUrl(verificationUrl)">{{ t('connect.reopen') }}</button>
-            <button
-                class="link"
-                @click="
-                    connectState = 'idle';
-                    pollTimer && clearInterval(pollTimer);
-                "
-            >
-                {{ t('common.cancel') }}
-            </button>
+            <button class="link" @click="cancelConnect">{{ t('common.cancel') }}</button>
         </template>
     </div>
 
@@ -825,8 +859,8 @@ const toggleSummary = () => {
                 </span>
             </label>
             <hr class="sep" />
-            <button class="link" @click="openUrl(auth.workspace || SERVER)">{{ t('settings.openInBrowser') }}</button>
-            <button class="link" @click="disconnect">{{ t('settings.disconnect') }}</button>
+            <button class="link" @click="openUrl(auth.workspace || CENTRAL_URL)">{{ t('settings.openInBrowser') }}</button>
+            <button class="link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
             <button class="link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
             <hr class="sep" />
             <p class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}</p>

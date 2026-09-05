@@ -15,7 +15,9 @@ A tiny cross-platform **menubar/tray app** for [Zebu](../zebu): see today's time
 
 ## Authentication
 
-No passwords in the app. The connect screen has a single **Log in** button for the hosted Zebu service (the server URL is a build-time setting: `VITE_ZEBU_SERVER` in a `.env` file, see `.env.example`; the baked-in default is `https://zebu.work`; dev builds override it in `.env`). The app opens your **browser** to a one-time approval page on that Zebu site (you must be logged in there), you click **Approve**, and the app receives a personal access token. Revoke it anytime by deleting the token in the database or "Disconnect this device" in the app's settings.
+No passwords in the app. On the connect screen you name your **workspace** — `studio`, `studio.zebu.work` or a full URL all work — and click **Log in**. Every hosted workspace lives at `https://{workspace}.zebu.work`, and the device flow and API live on that host (never on the central `app.zebu.work` site). The app opens your **browser** to a one-time approval page on your workspace (you must be logged in there), you click **Approve**, and the app receives a per-device token. Revoke it anytime from the workspace, or via "Disconnect this device" in the app's settings; a revoked token drops the app back to the connect screen with an explanation.
+
+Release builds only talk TLS; plain `http://` is accepted for loopback hosts (`localhost`, `127.0.0.1`, `*.localhost`, `*.test`) so a local server works in development. Dev builds can prefill the field via `VITE_ZEBU_WORKSPACE` in `.env` (see `.env.example`).
 
 ## Development
 
@@ -26,7 +28,7 @@ npm install
 npm run tauri dev
 ```
 
-The dev server expects your Zebu instance to be reachable (e.g. `http://127.0.0.1:8000` via `composer dev` in the server repo).
+The dev server expects a Zebu instance to be reachable (e.g. `http://127.0.0.1:8003` via `composer dev` in the server repo); type its URL into the workspace field, or prefill it with `VITE_ZEBU_WORKSPACE` in `.env`.
 
 ## Building & distribution
 

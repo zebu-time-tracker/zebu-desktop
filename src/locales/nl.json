@@ -11,13 +11,18 @@
         "denied": "Toegang geweigerd in de browser.",
         "expired": "Verzoek verlopen — probeer opnieuw.",
         "workspace": "Werkruimte",
-        "workspaceHint": "De naam van je werkruimte (bijv. “studio”), het adres (studio.app.zebu.work) of een volledige URL.",
-        "invalidWorkspace": "Dat is geen geldig werkruimte-adres."
+        "workspaceHint": "De naam van je werkruimte (bijv. “studio”), het adres (studio.zebu.work) of een volledige URL.",
+        "invalidWorkspace": "Dat is geen geldig werkruimte-adres.",
+        "notAWorkspace": "Dat is de hoofdsite van Zebu — voer in plaats daarvan de naam van je eigen werkruimte in.",
+        "insecureWorkspace": "Werkruimte-adressen moeten https gebruiken.",
+        "sessionExpired": "De toegang van dit apparaat is ingetrokken. Log opnieuw in om te verbinden."
     },
     "errors": {
         "unreachable": "Server niet bereikbaar.",
         "unreachableStatus": "Server niet bereikbaar ({status})",
-        "requestFailed": "Verzoek mislukt ({status})"
+        "requestFailed": "Verzoek mislukt ({status})",
+        "workspaceNotFound": "Geen werkruimte op {host}. Controleer de naam en probeer opnieuw.",
+        "notAWorkspaceHost": "{host} is geen Zebu-werkruimte."
     },
     "header": {
         "todayWithDate": "Vandaag, {date}",

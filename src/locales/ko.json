@@ -11,13 +11,18 @@
         "denied": "브라우저에서 접근이 거부되었습니다.",
         "expired": "요청이 만료되었습니다. 다시 시도하세요.",
         "workspace": "워크스페이스",
-        "workspaceHint": "워크스페이스 이름(예: studio), 주소(studio.app.zebu.work) 또는 전체 URL을 입력하세요.",
-        "invalidWorkspace": "올바른 워크스페이스 주소가 아닙니다."
+        "workspaceHint": "워크스페이스 이름(예: studio), 주소(studio.zebu.work) 또는 전체 URL을 입력하세요.",
+        "invalidWorkspace": "올바른 워크스페이스 주소가 아닙니다.",
+        "notAWorkspace": "그것은 Zebu 메인 사이트입니다. 대신 내 워크스페이스 이름을 입력하세요.",
+        "insecureWorkspace": "워크스페이스 주소는 https를 사용해야 합니다.",
+        "sessionExpired": "이 기기의 접근 권한이 취소되었습니다. 다시 로그인하세요."
     },
     "errors": {
         "unreachable": "서버에 연결할 수 없습니다.",
         "unreachableStatus": "서버에 연결할 수 없습니다 ({status})",
-        "requestFailed": "요청 실패 ({status})"
+        "requestFailed": "요청 실패 ({status})",
+        "workspaceNotFound": "{host}에 워크스페이스가 없습니다. 이름을 확인하고 다시 시도하세요.",
+        "notAWorkspaceHost": "{host}은(는) Zebu 워크스페이스가 아닙니다."
     },
     "header": {
         "todayWithDate": "오늘, {date}",
