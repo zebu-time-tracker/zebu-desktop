@@ -11,6 +11,9 @@ use ab_glyph::{Font, FontVec, PxScale, PxScaleFont, ScaleFont};
 use std::sync::OnceLock;
 use tiny_skia::{Color, ColorU8, FillRule, Paint, PathBuilder, Pixmap, Transform};
 
+/// Backing-store scale: the menubar shows the widget at 18pt, so drawing every
+/// pixel twice over keeps text and edges crisp on Retina displays.
+const SCALE: f32 = 2.0;
 const HEIGHT: u32 = 18;
 const MIN_WIDTH: f32 = 52.0;
 const RADIUS: f32 = 2.0;
@@ -81,6 +84,7 @@ fn render_custom(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
 fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Option<Pixmap> {
     let scaled = font().as_scaled(PxScale::from(TEXT_SIZE));
     let cell = digit_cell(&scaled);
+    let raster = font().as_scaled(PxScale::from(TEXT_SIZE * SCALE));
     let text_width = cell * text.chars().count() as f32;
 
     // idle text is centered in a fixed-width pill; the running time grows
@@ -91,7 +95,8 @@ fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
         MIN_WIDTH.max(22.0 + text_width + 6.0).ceil()
     };
 
-    let mut pixmap = Pixmap::new(width as u32, HEIGHT)?;
+    let mut pixmap = Pixmap::new((width * SCALE) as u32, (HEIGHT as f32 * SCALE) as u32)?;
+    let scale = Transform::from_scale(SCALE, SCALE);
 
     // the pill: as a template, 15% black — which the menubar renders as
     // #d9d9d9 on light, and a faint white in dark mode
@@ -103,7 +108,7 @@ fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
     });
     paint.anti_alias = true;
     let pill = rounded_rect(0.0, 0.0, width, HEIGHT as f32, RADIUS)?;
-    pixmap.fill_path(&pill, &paint, FillRule::Winding, Transform::identity(), None);
+    pixmap.fill_path(&pill, &paint, FillRule::Winding, scale, None);
 
     let mut ink = Paint::default();
     ink.set_color(Color::BLACK);
@@ -114,7 +119,7 @@ fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
             ink.set_color(Color::from_rgba8(0x16, 0xa3, 0x4a, 0xff));
             for x in [5.0f32, 9.0] {
                 let bar = rounded_rect(x, 5.0, 3.0, 8.0, 1.0)?;
-                pixmap.fill_path(&bar, &ink, FillRule::Winding, Transform::identity(), None);
+                pixmap.fill_path(&bar, &ink, FillRule::Winding, scale, None);
             }
         }
         Glyph::Play => {
@@ -123,7 +128,7 @@ fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
             pb.line_to(13.5, 9.0);
             pb.line_to(5.5, 13.5);
             pb.close();
-            pixmap.fill_path(&pb.finish()?, &ink, FillRule::Winding, Transform::identity(), None);
+            pixmap.fill_path(&pb.finish()?, &ink, FillRule::Winding, scale, None);
         }
     }
 
@@ -132,7 +137,7 @@ fn render_pixmap(glyph: Glyph, text: &str, centered: bool, template: bool) -> Op
     } else {
         22.0
     };
-    draw_text(&mut pixmap, &scaled, text, text_x, cell);
+    draw_text(&mut pixmap, &raster, text, text_x * SCALE, cell * SCALE);
 
     Some(pixmap)
 }
@@ -177,7 +182,7 @@ fn draw_text(pixmap: &mut Pixmap, scaled: &PxScaleFont<&'static FontVec>, text: 
     if min_y > max_y {
         return; // nothing to draw
     }
-    let baseline = (HEIGHT as f32 - (max_y - min_y)) / 2.0 - min_y;
+    let baseline = (HEIGHT as f32 * SCALE - (max_y - min_y)) / 2.0 - min_y;
     let width = pixmap.width() as i32;
     let height = pixmap.height() as i32;
     let pixels = pixmap.pixels_mut();
