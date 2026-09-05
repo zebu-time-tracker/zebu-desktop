@@ -33,13 +33,14 @@ The dev server expects a Zebu instance to be reachable (e.g. `http://127.0.0.1:8
 ## Building & distribution
 
 ```bash
-# one-time: generate the full icon set from the source PNG
-npm run tauri icon src-tauri/icons/icon.png
-
+npm test          # workspace-address tests + locale parity
+npm run lint      # vue-tsc type check
 npm run tauri build
 ```
 
-This produces native installers per platform (`.dmg`/`.app` on macOS, `.msi`/`.exe` on Windows, `.deb`/`.rpm`/AppImage on Linux) under `src-tauri/target/release/bundle/`. For signed/notarized macOS builds and auto-updates, see Tauri's distribution docs; a GitHub Actions matrix with `tauri-apps/tauri-action` is the usual way to release all three platforms from one tag.
+`npm run tauri build` produces native installers per platform (`.dmg`/`.app` on macOS, `.msi`/`.exe` on Windows, `.deb`/`.rpm`/AppImage on Linux) under `src-tauri/target/release/bundle/`. Because updater artifacts are signed, a local build needs `TAURI_SIGNING_PRIVATE_KEY` in the environment.
+
+Releases are cut by tagging: `git tag v0.2.0 && git push origin v0.2.0` runs `.github/workflows/release.yml`, which builds all three platforms with `tauri-apps/tauri-action`, signs and notarizes (given the secrets), and publishes a draft GitHub Release with the installers and the auto-update manifest. See **[docs/release.md](docs/release.md)** for the updater keypair, code-signing secrets, and how to test an update.
 
 ## Server requirements
 
