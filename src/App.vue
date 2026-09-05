@@ -84,7 +84,10 @@ const connect = async () => {
     }
     // a different workspace means a different token: drop the old one now so
     // a failed device flow can't leave a stale pairing behind
-    if (auth.workspace !== resolved.origin) auth.token = '';
+    if (auth.workspace !== resolved.origin) {
+        auth.token = '';
+        forgetLastTimer();
+    }
     auth.workspace = resolved.origin;
     // show just the name when it lives under the default domain, otherwise the full host
     const host = resolved.origin.replace(/^https?:\/\//, '');
@@ -145,6 +148,7 @@ const disconnect = (message = '') => {
     me.value = null;
     sheet.value = null;
     summary.value = null;
+    forgetLastTimer();
     lastTray = '';
     invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null }).catch(() => {});
 };
@@ -303,13 +307,25 @@ interface LastTimer {
     project: string | null;
     task: string | null;
     date: string;
+    workspace?: string; // the timer only means something on the workspace it came from
 }
 const lastTimer = ref<LastTimer | null>(null);
+const forgetLastTimer = () => {
+    lastTimer.value = null;
+    try {
+        localStorage.removeItem('zebu.lastTimer');
+    } catch {
+        /* fine */
+    }
+};
 try {
     lastTimer.value = JSON.parse(localStorage.getItem('zebu.lastTimer') ?? 'null');
 } catch {
     /* none remembered */
 }
+// A timer remembered on another workspace (e.g. a dev server's demo data) would
+// offer to resume a project that does not exist here: drop it.
+if (lastTimer.value && lastTimer.value.workspace !== auth.workspace) forgetLastTimer();
 const rememberTimer = (e: Entry) => {
     lastTimer.value = {
         entry_id: e.id,
@@ -319,6 +335,7 @@ const rememberTimer = (e: Entry) => {
         project: e.project,
         task: e.task,
         date: e.date,
+        workspace: auth.workspace,
     };
     try {
         localStorage.setItem('zebu.lastTimer', JSON.stringify(lastTimer.value));
