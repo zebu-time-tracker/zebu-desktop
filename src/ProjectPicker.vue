@@ -10,9 +10,12 @@ const props = defineProps<{
     modelValue: string;
     projects: ProjectOption[];
     placeholder: string;
+    searchPlaceholder: string;
     empty: string;
+    /** Footer link; the timer stays a timer, so new projects are created in the web app. */
+    createLabel: string;
 }>();
-const emit = defineEmits<{ 'update:modelValue': [string] }>();
+const emit = defineEmits<{ 'update:modelValue': [string]; create: [] }>();
 
 const open = ref(false);
 const query = ref('');
@@ -64,7 +67,7 @@ const onKey = (e: KeyboardEvent) => {
             </template>
             <template v-else>{{ placeholder }}</template>
         </button>
-        <input v-else ref="input" v-model="query" type="text" :placeholder="placeholder" autocomplete="off" spellcheck="false" @keydown="onKey" />
+        <input v-else ref="input" v-model="query" type="text" :placeholder="searchPlaceholder" autocomplete="off" spellcheck="false" @keydown="onKey" />
 
         <div v-if="open" ref="list" class="picker-list" role="listbox">
             <button
@@ -84,6 +87,7 @@ const onKey = (e: KeyboardEvent) => {
                 <span v-if="p.client" class="picker-client">({{ p.client }})</span>
             </button>
             <p v-if="!filtered.length" class="picker-empty">{{ empty }}</p>
+            <button type="button" class="picker-row picker-create" @mousedown.prevent="emit('create')">{{ createLabel }}</button>
         </div>
     </div>
 </template>

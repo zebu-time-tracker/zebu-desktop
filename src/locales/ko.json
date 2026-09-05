@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "항목 편집",
         "newTitle": "새 시간 항목",
-        "addProject": "프로젝트 선택",
-        "addTask": "작업 선택",
+        "addProject": "프로젝트 선택…",
+        "addTask": "작업 선택…",
         "notes": "메모 (선택)",
         "timerRunning": "타이머 실행 중",
         "delete": "삭제",
@@ -87,7 +87,8 @@
         "log": "기록",
         "start": "시작",
         "searchProject": "프로젝트 검색…",
-        "noProjects": "일치하는 프로젝트가 없습니다."
+        "noProjects": "일치하는 프로젝트가 없습니다.",
+        "newProjectLink": "Zebu에서 새 프로젝트 ↗"
     },
     "footer": {
         "newEntry": "새 시간 항목",

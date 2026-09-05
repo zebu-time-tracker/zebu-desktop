@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "Registratie bewerken",
         "newTitle": "Nieuwe registratie",
-        "addProject": "Kies project",
-        "addTask": "Kies taak",
+        "addProject": "Project kiezen…",
+        "addTask": "Taak kiezen…",
         "notes": "Notities (optioneel)",
         "timerRunning": "Timer loopt",
         "delete": "Verwijderen",
@@ -87,7 +87,8 @@
         "log": "Vastleggen",
         "start": "Starten",
         "searchProject": "Projecten zoeken…",
-        "noProjects": "Geen passend project."
+        "noProjects": "Geen passend project.",
+        "newProjectLink": "Nieuw project in Zebu ↗"
     },
     "footer": {
         "newEntry": "Nieuwe registratie",

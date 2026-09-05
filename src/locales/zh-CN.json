@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "编辑时间条目",
         "newTitle": "新建时间条目",
-        "addProject": "选择项目",
-        "addTask": "选择任务",
+        "addProject": "选择项目…",
+        "addTask": "选择任务…",
         "notes": "备注 (可选)",
         "timerRunning": "计时进行中",
         "delete": "删除",
@@ -87,7 +87,8 @@
         "log": "记录",
         "start": "开始",
         "searchProject": "搜索项目…",
-        "noProjects": "没有匹配的项目。"
+        "noProjects": "没有匹配的项目。",
+        "newProjectLink": "在 Zebu 中新建项目 ↗"
     },
     "footer": {
         "newEntry": "新建时间条目",

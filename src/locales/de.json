@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "Eintrag bearbeiten",
         "newTitle": "Neuer Zeiteintrag",
-        "addProject": "Projekt wählen",
-        "addTask": "Aufgabe wählen",
+        "addProject": "Projekt wählen…",
+        "addTask": "Aufgabe wählen…",
         "notes": "Notizen (optional)",
         "timerRunning": "Timer läuft",
         "delete": "Löschen",
@@ -87,7 +87,8 @@
         "log": "Erfassen",
         "start": "Starten",
         "searchProject": "Projekte suchen…",
-        "noProjects": "Kein passendes Projekt."
+        "noProjects": "Kein passendes Projekt.",
+        "newProjectLink": "Neues Projekt in Zebu ↗"
     },
     "footer": {
         "newEntry": "Neuer Zeiteintrag",

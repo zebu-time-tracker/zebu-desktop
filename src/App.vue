@@ -822,8 +822,11 @@ const toggleSummary = () => {
                 <ProjectPicker
                     v-model="form.project_id"
                     :projects="sheet?.projects ?? []"
-                    :placeholder="t('form.searchProject')"
+                    :placeholder="t('form.addProject')"
+                    :search-placeholder="t('form.searchProject')"
                     :empty="t('form.noProjects')"
+                    :create-label="t('form.newProjectLink')"
+                    @create="openUrl(`${auth.workspace}/projects/create`)"
                 />
                 <select v-model="form.task_id">
                     <option value="">{{ t('form.addTask') }}</option>

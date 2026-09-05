@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "Modifica voce",
         "newTitle": "Nuova voce",
-        "addProject": "Scegli progetto",
-        "addTask": "Scegli attività",
+        "addProject": "Scegli progetto…",
+        "addTask": "Scegli attività…",
         "notes": "Note (facoltative)",
         "timerRunning": "Timer attivo",
         "delete": "Elimina",
@@ -87,7 +87,8 @@
         "log": "Registra",
         "start": "Avvia",
         "searchProject": "Cerca progetti…",
-        "noProjects": "Nessun progetto corrispondente."
+        "noProjects": "Nessun progetto corrispondente.",
+        "newProjectLink": "Nuovo progetto in Zebu ↗"
     },
     "footer": {
         "newEntry": "Nuova voce",

@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "エントリを編集",
         "newTitle": "新規エントリ",
-        "addProject": "プロジェクトを選択",
-        "addTask": "タスクを選択",
+        "addProject": "プロジェクトを選択…",
+        "addTask": "タスクを選択…",
         "notes": "メモ (任意)",
         "timerRunning": "タイマー実行中",
         "delete": "削除",
@@ -87,7 +87,8 @@
         "log": "記録",
         "start": "開始",
         "searchProject": "プロジェクトを検索…",
-        "noProjects": "一致するプロジェクトがありません。"
+        "noProjects": "一致するプロジェクトがありません。",
+        "newProjectLink": "Zebu で新しいプロジェクト ↗"
     },
     "footer": {
         "newEntry": "新規エントリ",

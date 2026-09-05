@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "Modifier l'entrée",
         "newTitle": "Nouvelle entrée",
-        "addProject": "Choisir un projet",
-        "addTask": "Choisir une tâche",
+        "addProject": "Choisir un projet…",
+        "addTask": "Choisir une tâche…",
         "notes": "Notes (facultatif)",
         "timerRunning": "Minuteur en cours",
         "delete": "Supprimer",
@@ -87,7 +87,8 @@
         "log": "Consigner",
         "start": "Démarrer",
         "searchProject": "Rechercher un projet…",
-        "noProjects": "Aucun projet correspondant."
+        "noProjects": "Aucun projet correspondant.",
+        "newProjectLink": "Nouveau projet dans Zebu ↗"
     },
     "footer": {
         "newEntry": "Nouvelle entrée",

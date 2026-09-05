@@ -78,8 +78,8 @@
     "form": {
         "editTitle": "Edytuj wpis",
         "newTitle": "Nowy wpis",
-        "addProject": "Wybierz projekt",
-        "addTask": "Wybierz zadanie",
+        "addProject": "Wybierz projekt…",
+        "addTask": "Wybierz zadanie…",
         "notes": "Notatki (opcjonalne)",
         "timerRunning": "Stoper działa",
         "delete": "Usuń",
@@ -87,7 +87,8 @@
         "log": "Dodaj",
         "start": "Start",
         "searchProject": "Szukaj projektów…",
-        "noProjects": "Brak pasującego projektu."
+        "noProjects": "Brak pasującego projektu.",
+        "newProjectLink": "Nowy projekt w Zebu ↗"
     },
     "footer": {
         "newEntry": "Nowy wpis",

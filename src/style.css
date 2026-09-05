@@ -165,3 +165,4 @@ textarea:focus {
 .picker-row.active { background: var(--bg-hover, rgba(127, 127, 127, 0.15)); }
 .picker-row.current { font-weight: 600; }
 .picker-empty { margin: 0; padding: 10px 8px; text-align: center; opacity: 0.6; font-size: 12px; }
+.picker-create { border-top: 1px solid var(--border); border-radius: 0; margin-top: 4px; padding-top: 8px; opacity: 0.75; font-size: 12px; }
