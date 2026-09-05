@@ -89,9 +89,19 @@ fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_positioner::init());
+
+    // Auto-update is a desktop concern: the updater fetches latest.json from
+    // the GitHub release (endpoint + public key in tauri.conf.json) and the
+    // process plugin relaunches into the freshly installed build.
+    #[cfg(desktop)]
+    let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
+
+    builder
         .invoke_handler(tauri::generate_handler![
             set_tray_title,
             quit,

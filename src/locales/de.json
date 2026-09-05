@@ -103,6 +103,19 @@
         "disconnect": "Gerät trennen",
         "quit": "Zebu beenden"
     },
+    "update": {
+        "available": "Zebu {version} ist verfügbar",
+        "body": "Das Update wird im Hintergrund geladen und die App neu gestartet. Ein laufender Timer läuft auf dem Server weiter.",
+        "install": "Installieren & neu starten",
+        "later": "Später",
+        "installVersion": "{version} installieren",
+        "check": "Nach Updates suchen",
+        "checking": "Suche nach Updates…",
+        "downloading": "Wird geladen…",
+        "installing": "Wird installiert…",
+        "upToDate": "Aktuell",
+        "failed": "Update-Prüfung fehlgeschlagen"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (gestoppt)",

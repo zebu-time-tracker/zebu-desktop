@@ -103,6 +103,19 @@
         "disconnect": "Odłącz to urządzenie",
         "quit": "Zakończ Zebu"
     },
+    "update": {
+        "available": "Dostępna jest wersja Zebu {version}",
+        "body": "Aktualizacja pobiera się w tle, a aplikacja uruchomi się ponownie. Uruchomiony stoper nadal działa na serwerze.",
+        "install": "Zainstaluj i uruchom ponownie",
+        "later": "Później",
+        "installVersion": "Zainstaluj {version}",
+        "check": "Sprawdź aktualizacje",
+        "checking": "Sprawdzanie aktualizacji…",
+        "downloading": "Pobieranie…",
+        "installing": "Instalowanie…",
+        "upToDate": "Aktualna wersja",
+        "failed": "Sprawdzanie aktualizacji nie powiodło się"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (zatrzymany)",

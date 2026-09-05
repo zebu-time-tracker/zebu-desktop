@@ -103,6 +103,19 @@
         "disconnect": "Disconnect this device",
         "quit": "Quit Zebu"
     },
+    "update": {
+        "available": "Zebu {version} is available",
+        "body": "The update downloads in the background and relaunches the app. A running timer keeps running on the server.",
+        "install": "Install & relaunch",
+        "later": "Later",
+        "installVersion": "Install {version}",
+        "check": "Check for updates",
+        "checking": "Checking for updates…",
+        "downloading": "Downloading…",
+        "installing": "Installing…",
+        "upToDate": "Up to date",
+        "failed": "Update check failed"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (stopped)",

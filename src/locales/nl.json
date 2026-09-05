@@ -103,6 +103,19 @@
         "disconnect": "Dit apparaat loskoppelen",
         "quit": "Zebu afsluiten"
     },
+    "update": {
+        "available": "Zebu {version} is beschikbaar",
+        "body": "De update wordt op de achtergrond gedownload en de app herstart. Een lopende timer loopt door op de server.",
+        "install": "Installeren en herstarten",
+        "later": "Later",
+        "installVersion": "{version} installeren",
+        "check": "Controleren op updates",
+        "checking": "Controleren op updates…",
+        "downloading": "Downloaden…",
+        "installing": "Installeren…",
+        "upToDate": "Up-to-date",
+        "failed": "Controleren op updates mislukt"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (gestopt)",

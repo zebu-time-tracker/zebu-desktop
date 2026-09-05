@@ -103,6 +103,19 @@
         "disconnect": "Déconnecter cet appareil",
         "quit": "Quitter Zebu"
     },
+    "update": {
+        "available": "Zebu {version} est disponible",
+        "body": "La mise à jour se télécharge en arrière-plan et l’application redémarre. Un minuteur en cours continue sur le serveur.",
+        "install": "Installer et redémarrer",
+        "later": "Plus tard",
+        "installVersion": "Installer {version}",
+        "check": "Rechercher des mises à jour",
+        "checking": "Recherche de mises à jour…",
+        "downloading": "Téléchargement…",
+        "installing": "Installation…",
+        "upToDate": "À jour",
+        "failed": "Échec de la recherche de mises à jour"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (arrêté)",

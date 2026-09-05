@@ -103,6 +103,19 @@
         "disconnect": "Desconectar este dispositivo",
         "quit": "Sair do Zebu"
     },
+    "update": {
+        "available": "Zebu {version} está disponível",
+        "body": "A atualização é baixada em segundo plano e o app reinicia. Um timer em andamento continua rodando no servidor.",
+        "install": "Instalar e reiniciar",
+        "later": "Depois",
+        "installVersion": "Instalar {version}",
+        "check": "Verificar atualizações",
+        "checking": "Verificando atualizações…",
+        "downloading": "Baixando…",
+        "installing": "Instalando…",
+        "upToDate": "Atualizado",
+        "failed": "Falha ao verificar atualizações"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (parado)",

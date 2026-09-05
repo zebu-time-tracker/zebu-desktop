@@ -103,6 +103,19 @@
         "disconnect": "この端末の接続を解除",
         "quit": "Zebu を終了"
     },
+    "update": {
+        "available": "Zebu {version} が利用可能です",
+        "body": "更新はバックグラウンドでダウンロードされ、アプリが再起動します。実行中のタイマーはサーバー上で継続されます。",
+        "install": "インストールして再起動",
+        "later": "後で",
+        "installVersion": "{version} をインストール",
+        "check": "更新を確認",
+        "checking": "更新を確認中…",
+        "downloading": "ダウンロード中…",
+        "installing": "インストール中…",
+        "upToDate": "最新です",
+        "failed": "更新の確認に失敗しました"
+    },
     "tray": {
         "tooltipRunning": "{detail} · {time}",
         "tooltipStopped": "{detail} · {time} (停止中)",

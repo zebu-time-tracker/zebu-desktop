@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api, auth, CENTRAL_URL, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
+import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
 const { t } = useI18n();
 
@@ -276,6 +277,8 @@ onMounted(() => {
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
     idleWatch = setInterval(pollIdle, 15_000);
+    // quiet launch-time update check; the prompt only appears when there is one
+    setTimeout(() => checkForUpdates(false), 4000);
 });
 onUnmounted(() => {
     if (tick) clearInterval(tick);
@@ -776,6 +779,18 @@ const toggleSummary = () => {
             </div>
         </div>
 
+        <!-- a newer release is available -->
+        <div v-if="updatePromptOpen" class="sheet-overlay" @click.self="dismissUpdate">
+            <div class="sheet">
+                <p class="sheet-title">{{ t('update.available', { version: updateVersion }) }}</p>
+                <p class="muted">{{ t('update.body') }}</p>
+                <div class="sheet-actions">
+                    <button class="btn-outline" @click="dismissUpdate">{{ t('update.later') }}</button>
+                    <button class="btn-primary" @click="installUpdate">{{ t('update.install') }}</button>
+                </div>
+            </div>
+        </div>
+
         <!-- new entry sheet -->
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
             <div class="sheet">
@@ -863,7 +878,16 @@ const toggleSummary = () => {
             <button class="link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
             <button class="link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
             <hr class="sep" />
-            <p class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}</p>
+            <div class="build-row">
+                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}</span>
+                <button v-if="updateStatus === 'available'" class="link update-link" @click="installUpdate">{{ t('update.installVersion', { version: updateVersion }) }}</button>
+                <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
+                <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
+                <span v-else-if="updateStatus === 'installing'" class="muted update-status">{{ t('update.installing') }}</span>
+                <span v-else-if="updateStatus === 'upToDate'" class="muted update-status">{{ t('update.upToDate') }}</span>
+                <span v-else-if="updateStatus === 'error'" class="muted update-status">{{ t('update.failed') }}</span>
+                <button v-else class="link update-link" @click="checkForUpdates(true)">{{ t('update.check') }}</button>
+            </div>
         </div>
     </div>
 </template>
@@ -1463,14 +1487,26 @@ const toggleSummary = () => {
     margin: 4px 0 0;
     text-align: center;
 }
-.build-line {
+.build-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+.build-line,
+.update-status,
+.update-link {
     color: var(--muted);
     font-size: 10px;
-    text-align: center;
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.update-link {
+    color: var(--accent);
+    flex: none;
 }
 
 /* ---- footer ---- */
