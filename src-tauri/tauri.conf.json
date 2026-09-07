@@ -91,7 +91,7 @@
     },
     "plugins": {
         "updater": {
-            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQwNzUwOEE4QUEyMjZFQzkKUldUSmJpS3FxQWgxUU0yNTJRQWpQRmdGaFlza29wT2hKRVJTRlpQQ1psY2VJdmJ0TWpDN0h6L1UK",
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ0OTA5NDk0MUNBOTMxODAKUldTQU1ha2NsSlNRUkg0S2gvQnI4UWVmM3lZMHVMMzNBcG9wKzZtSTA5NTNyY1BvMFlIZ1VqUUIK",
             "endpoints": [
                 "https://github.com/zebu-time-tracker/zebu-desktop/releases/latest/download/latest.json"
             ]
