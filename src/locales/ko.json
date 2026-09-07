@@ -60,7 +60,6 @@
         "total": "합계",
         "uninvoiced": "미청구",
         "budget": "예산",
-        "budgetNone": "미지정",
         "weekLocked": "이번 주는 승인되어 잠겨 있습니다."
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "주",
-        "day": "일",
-        "hour": "시간"
+        "hour": "시간",
+        "minute": "분"
     }
 }

@@ -60,7 +60,6 @@
         "total": "Total",
         "uninvoiced": "Uninvoiced",
         "budget": "Budget",
-        "budgetNone": "Unspecified",
         "weekLocked": "This week is approved and locked."
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "w",
-        "day": "d",
-        "hour": "h"
+        "hour": "h",
+        "minute": "m"
     }
 }

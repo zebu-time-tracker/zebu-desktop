@@ -6,7 +6,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
@@ -175,7 +175,9 @@ const refresh = async () => {
     if (view.value !== 'main') return;
     loading.value = true;
     try {
-        sheet.value = await api.timesheet(selectedDate.value);
+        // the insights panel, while open, stays in step with the timesheet
+        const [fresh] = await Promise.all([api.timesheet(selectedDate.value), summaryOpen.value ? loadSummary() : null]);
+        sheet.value = fresh;
         errorMessage.value = '';
     } catch (e: any) {
         if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
@@ -204,7 +206,8 @@ const weekDays = computed(() => {
         return {
             date,
             letter: narrowWeekday.format(d),
-            minutes: (sheet.value?.entries ?? []).filter((e) => e.date === date).reduce((s, e) => s + e.minutes, 0),
+            // elapsed(), not minutes: a running timer counts up in the strip too
+            minutes: (sheet.value?.entries ?? []).filter((e) => e.date === date).reduce((s, e) => s + elapsed(e), 0),
         };
     });
 });
@@ -359,6 +362,15 @@ watch(intlLocale, () => updateTray());
 
 const confirmNewDay = ref(false);
 
+/**
+ * Starting or resuming a timer jumps to the entry's day (today, for a fresh
+ * timer) so the running row is on screen; act() then refreshes that day.
+ */
+const showEntry = async (result: Promise<{ entry: Entry }>) => {
+    const { entry } = await result;
+    if (entry.date !== selectedDate.value) selectedDate.value = entry.date;
+};
+
 const resumeLast = () => {
     const last = lastTimer.value;
     if (!last || running.value) return;
@@ -366,19 +378,36 @@ const resumeLast = () => {
         confirmNewDay.value = true; // don't silently back-date onto an old entry
         return;
     }
-    act(() => api.startTimer({ project_id: last.project_id, entry_id: last.entry_id }));
+    act(() => showEntry(api.startTimer({ project_id: last.project_id, entry_id: last.entry_id })));
 };
 
 const startFreshToday = () => {
     const last = lastTimer.value;
     confirmNewDay.value = false;
     if (!last) return;
-    act(() => api.startTimer({ project_id: last.project_id, task_id: last.task_id, notes: last.notes }));
+    act(() => showEntry(api.startTimer({ project_id: last.project_id, task_id: last.task_id, notes: last.notes })));
 };
 
-const statsFor = (entry: Entry) => sheet.value?.project_stats?.[entry.project_id] ?? null;
-const budgetClass = (pct: number | null) => {
-    if (pct === null) return 'none';
+// Minutes the running timer has accrued beyond the stored `minutes` the
+// server summed — added to every total the timer belongs in, on each tick.
+const runningExtra = computed(() => (running.value ? Math.max(0, elapsed(running.value) - running.value.minutes) : 0));
+
+const statsFor = (entry: Entry): ProjectStats | null => {
+    const stats = sheet.value?.project_stats?.[entry.project_id];
+    if (!stats) return null;
+    const r = running.value;
+    if (!r || r.project_id !== entry.project_id || !runningExtra.value) return stats;
+    return {
+        ...stats,
+        total_minutes: stats.total_minutes + runningExtra.value,
+        uninvoiced_minutes: stats.uninvoiced_minutes + (r.is_billable ? runningExtra.value : 0),
+    };
+};
+// pad hours so the h/m markers line up down the list
+const statHoursWidth = computed(() =>
+    hoursWidthFor(Object.values(sheet.value?.project_stats ?? {}).flatMap((s) => [s.total_minutes + runningExtra.value, s.uninvoiced_minutes + runningExtra.value])),
+);
+const budgetClass = (pct: number) => {
     if (pct > 100) return 'over';
     if (pct > 80) return 'high';
     if (pct > 50) return 'mid';
@@ -386,8 +415,34 @@ const budgetClass = (pct: number | null) => {
 };
 
 // insights helpers
-const chartMax = computed(() => Math.max(...(summary.value?.month_by_day ?? [0]), 60));
-const yearMax = computed(() => Math.max(...(summary.value?.year_by_month ?? [0]), 60));
+const mondayOf = (date: string) => {
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // weeks start on Monday, as on the server
+    return toDateString(d);
+};
+// the server's summary plus the running timer's live minutes, so the tiles
+// and charts count up with the clock instead of waiting for a stop
+const liveSummary = computed<Summary | null>(() => {
+    const s = summary.value;
+    const r = running.value;
+    const extra = runningExtra.value;
+    if (!s || !r || !extra) return s;
+    const today = todayStr();
+    const [ry, rm, rd] = r.date.split('-').map(Number);
+    const [ty, tm] = today.split('-').map(Number);
+    const live: Summary = { ...s, month_by_day: [...s.month_by_day], year_by_month: [...s.year_by_month] };
+    if (r.date === today) live.today += extra;
+    if (mondayOf(r.date) === mondayOf(today)) live.this_week += extra;
+    if (ry === ty && rm === tm) {
+        live.this_month += extra;
+        if (r.is_billable) live.uninvoiced_minutes += extra;
+        if (rd - 1 < live.month_by_day.length) live.month_by_day[rd - 1] += extra;
+    }
+    if (ry === ty && rm - 1 < live.year_by_month.length) live.year_by_month[rm - 1] += extra;
+    return live;
+});
+const chartMax = computed(() => Math.max(...(liveSummary.value?.month_by_day ?? [0]), 60));
+const yearMax = computed(() => Math.max(...(liveSummary.value?.year_by_month ?? [0]), 60));
 const todayIndex = new Date().getDate() - 1;
 const thisMonthIndex = new Date().getMonth();
 const monthLabel = computed(() => new Date().toLocaleDateString(intlLocale.value, { month: 'long' }));
@@ -461,7 +516,7 @@ const act = async (fn: () => Promise<unknown>) => {
 };
 
 const stopTimer = () => act(() => api.stopTimer());
-const resumeEntry = (id: string, projectId: string) => act(() => api.startTimer({ project_id: projectId, entry_id: id }));
+const resumeEntry = (id: string, projectId: string) => act(() => showEntry(api.startTimer({ project_id: projectId, entry_id: id })));
 
 const deleteFromSheet = () => {
     const id = editingEntry.value?.id;
@@ -525,9 +580,9 @@ const submitForm = () =>
                 ...(durationChanged && minutes !== null ? { minutes } : {}),
             });
         } else if (minutes !== null && minutes > 0) {
-            await api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes });
+            await showEntry(api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes }));
         } else {
-            await api.startTimer(payload);
+            await showEntry(api.startTimer(payload));
         }
         formOpen.value = false;
         editingEntry.value = null;
@@ -539,13 +594,13 @@ const summaryOpen = ref(false);
 const settingsOpen = ref(false);
 
 // Window height per state: compact connect screen, ~3.5 entry rows for the
-// timesheet (the cut-off half row signals there's more below the fold), and
-// tall enough for both charts while the insights panel is open. Anchored
-// under the tray, so height grows downward.
+// timesheet (the cut-off half row signals there's more below the fold). The
+// insights panel is an overlay that scrolls inside these bounds — it never
+// resizes the window.
 watch(
-    [view, summaryOpen],
-    ([v, insights]) => {
-        const height = v === 'connect' ? 240 : insights ? 560 : 330;
+    view,
+    (v) => {
+        const height = v === 'connect' ? 240 : 330;
         try {
             getCurrentWindow()
                 .setSize(new LogicalSize(380, height))
@@ -581,6 +636,16 @@ const toggleSummary = () => {
     settingsOpen.value = false;
     if (summaryOpen.value) loadSummary();
 };
+
+// Escape dismisses whichever popover is open (click-away is the backdrop)
+const onKeydown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || !(summaryOpen.value || settingsOpen.value)) return;
+    summaryOpen.value = false;
+    settingsOpen.value = false;
+    e.preventDefault();
+};
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
@@ -621,7 +686,7 @@ const toggleSummary = () => {
     </div>
 
     <!-- ======== main ======== -->
-    <div v-else class="main" :class="{ 'insights-open': summaryOpen }">
+    <div v-else class="main">
         <header class="header">
             <span class="header-title">{{ headerLabel }}</span>
             <div class="header-actions">
@@ -639,45 +704,45 @@ const toggleSummary = () => {
         <!-- summary popover -->
         <div v-if="summaryOpen" class="popover-backdrop" @click="summaryOpen = false"></div>
         <div v-if="summaryOpen" class="summary">
-            <template v-if="summary">
+            <template v-if="liveSummary">
                 <div class="summary-grid">
-                    <div><span>{{ t('summary.hoursToday') }}</span><strong>{{ formatMinutes(summary.today) }}</strong></div>
-                    <div><span>{{ t('summary.hoursYesterday') }}</span><strong>{{ formatMinutes(summary.yesterday) }}</strong></div>
-                    <div><span>{{ t('summary.hoursThisWeek') }}</span><strong>{{ formatMinutes(summary.this_week) }}</strong></div>
-                    <div><span>{{ t('summary.hoursLastWeek') }}</span><strong>{{ formatMinutes(summary.last_week) }}</strong></div>
-                    <div><span>{{ t('summary.hoursThisMonth') }}</span><strong>{{ formatMinutes(summary.this_month) }}</strong></div>
-                    <div><span>{{ t('summary.billableThisMonth') }}</span><strong>{{ summary.billable_pct_month }}%</strong></div>
+                    <div><span>{{ t('summary.hoursToday') }}</span><strong>{{ formatMinutes(liveSummary.today) }}</strong></div>
+                    <div><span>{{ t('summary.hoursYesterday') }}</span><strong>{{ formatMinutes(liveSummary.yesterday) }}</strong></div>
+                    <div><span>{{ t('summary.hoursThisWeek') }}</span><strong>{{ formatMinutes(liveSummary.this_week) }}</strong></div>
+                    <div><span>{{ t('summary.hoursLastWeek') }}</span><strong>{{ formatMinutes(liveSummary.last_week) }}</strong></div>
+                    <div><span>{{ t('summary.hoursThisMonth') }}</span><strong>{{ formatMinutes(liveSummary.this_month) }}</strong></div>
+                    <div><span>{{ t('summary.billableThisMonth') }}</span><strong>{{ liveSummary.billable_pct_month }}%</strong></div>
                 </div>
                 <hr class="sep" />
                 <div class="summary-uninv">
                     <p class="uninv-title">{{ t('summary.uninvoicedThisMonth') }}</p>
-                    <div class="uninv-row"><span>{{ t('summary.time') }}</span><strong>{{ formatDurationHuman(summary.uninvoiced_minutes) }}</strong></div>
-                    <div v-for="(cents, cur) in summary.uninvoiced_amounts" :key="cur" class="uninv-row">
+                    <div class="uninv-row"><span>{{ t('summary.time') }}</span><strong>{{ formatDurationHuman(liveSummary.uninvoiced_minutes) }}</strong></div>
+                    <div v-for="(cents, cur) in liveSummary.uninvoiced_amounts" :key="cur" class="uninv-row">
                         <span>{{ cur }}</span>
                         <strong>{{ (cents / 100).toLocaleString(intlLocale, { maximumFractionDigits: 0 }) }}</strong>
                     </div>
-                    <div v-if="summary.uninvoiced_total" class="uninv-row uninv-total">
-                        <span>{{ t('summary.approxTotal', { currency: summary.base_currency }) }}</span>
-                        <strong>{{ (summary.uninvoiced_total / 100).toLocaleString(intlLocale, { maximumFractionDigits: 0 }) }}</strong>
+                    <div v-if="liveSummary.uninvoiced_total" class="uninv-row uninv-total">
+                        <span>{{ t('summary.approxTotal', { currency: liveSummary.base_currency }) }}</span>
+                        <strong>{{ (liveSummary.uninvoiced_total / 100).toLocaleString(intlLocale, { maximumFractionDigits: 0 }) }}</strong>
                     </div>
                 </div>
                 <div class="mini-chart" @mouseleave="chartHover = null">
                     <span
-                        v-for="(m, i) in summary.month_by_day"
+                        v-for="(m, i) in liveSummary.month_by_day"
                         :key="i"
                         :class="{ today: i === todayIndex, hovered: chartHover?.kind === 'day' && chartHover.i === i }"
                         @mouseenter="chartHover = { kind: 'day', i, m }"
                     >
                         <i :style="{ height: `${Math.max(4, (m / chartMax) * 100)}%` }"></i>
                     </span>
-                    <div v-if="chartHover?.kind === 'day'" class="chart-tip" :style="{ left: tipLeft(chartHover.i, summary.month_by_day.length) }">
+                    <div v-if="chartHover?.kind === 'day'" class="chart-tip" :style="{ left: tipLeft(chartHover.i, liveSummary.month_by_day.length) }">
                         {{ chartTip }}
                     </div>
                 </div>
                 <p class="muted chart-caption">{{ t('summary.hoursPerDay', { month: monthLabel }) }}</p>
                 <div class="mini-chart" @mouseleave="chartHover = null">
                     <span
-                        v-for="(m, i) in summary.year_by_month"
+                        v-for="(m, i) in liveSummary.year_by_month"
                         :key="i"
                         :class="{ today: i === thisMonthIndex, hovered: chartHover?.kind === 'month' && chartHover.i === i }"
                         @mouseenter="chartHover = { kind: 'month', i, m }"
@@ -756,12 +821,14 @@ const toggleSummary = () => {
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
                         <span class="entry-stats-dim">
-                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes) }} · {{ t('entry.uninvoiced') }}:
-                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes) }} ·
+                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes, { hoursWidth: statHoursWidth }) }} · {{ t('entry.uninvoiced') }}:
+                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes, { hoursWidth: statHoursWidth }) }}
                         </span>
-                        <span class="budget-pill" :class="budgetClass(statsFor(entry)!.budget_pct)">
-                            {{ t('entry.budget') }}: {{ statsFor(entry)!.budget_pct === null ? t('entry.budgetNone') : `${statsFor(entry)!.budget_pct}%` }}
-                        </span>
+                        <!-- only projects with a budget get a budget line -->
+                        <template v-if="statsFor(entry)!.budget_pct !== null">
+                            <span class="entry-stats-dim"> · </span>
+                            <span class="budget-pill" :class="budgetClass(statsFor(entry)!.budget_pct!)">{{ t('entry.budget') }}: {{ statsFor(entry)!.budget_pct }}%</span>
+                        </template>
                     </span>
                 </div>
                 <span class="entry-time">{{ formatMinutes(elapsed(entry)) }}</span>
@@ -962,11 +1029,6 @@ const toggleSummary = () => {
     flex-direction: column;
     position: relative;
 }
-/* the insights panel grows the window, not the timesheet behind it */
-.main.insights-open {
-    height: 330px;
-    overflow: visible;
-}
 .header {
     background: linear-gradient(180deg, var(--header-from), var(--header-to));
     color: #fff;
@@ -995,19 +1057,20 @@ const toggleSummary = () => {
     background: rgba(255, 255, 255, 0.2);
 }
 
-/* ---- summary popover ---- */
+/* ---- summary popover: an overlay inside the window, scrolling within it ---- */
 .summary {
     position: absolute;
     top: 40px;
+    left: 8px;
     right: 8px;
     z-index: 30;
     background: var(--bg-raised);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px;
-    width: 300px;
     max-height: calc(100vh - 52px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .summary-grid {
@@ -1243,6 +1306,7 @@ const toggleSummary = () => {
 .entry-stats {
     color: var(--muted);
     font-size: 10px;
+    font-variant-numeric: tabular-nums; /* figure-space padding lines the h/m markers up */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1269,9 +1333,6 @@ const toggleSummary = () => {
 }
 .budget-pill.over {
     color: var(--danger);
-}
-.budget-pill.none {
-    color: var(--muted);
 }
 .entry-sub {
     color: var(--muted);
@@ -1464,6 +1525,9 @@ const toggleSummary = () => {
     justify-content: space-between;
     font-size: 12px;
     line-height: 1.7;
+}
+.uninv-row strong {
+    font-variant-numeric: tabular-nums;
 }
 .uninv-row span {
     color: var(--muted);

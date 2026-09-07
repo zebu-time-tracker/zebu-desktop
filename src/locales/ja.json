@@ -60,7 +60,6 @@
         "total": "合計",
         "uninvoiced": "未請求",
         "budget": "予算",
-        "budgetNone": "未設定",
         "weekLocked": "この週は承認済みでロックされています。"
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "週",
-        "day": "日",
-        "hour": "時間"
+        "hour": "時間",
+        "minute": "分"
     }
 }

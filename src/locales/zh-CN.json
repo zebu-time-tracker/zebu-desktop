@@ -60,7 +60,6 @@
         "total": "合计",
         "uninvoiced": "未开票",
         "budget": "预算",
-        "budgetNone": "未设定",
         "weekLocked": "本周已批准并锁定。"
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "周",
-        "day": "天",
-        "hour": "小时"
+        "hour": "小时",
+        "minute": "分钟"
     }
 }

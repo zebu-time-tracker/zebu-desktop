@@ -5,10 +5,12 @@
 // app.zebu.work site. So there is no fixed server: every request goes to the
 // workspace the user connected on the connect screen.
 
+import { formatDurationHuman as formatDuration, type DurationOptions } from './duration';
 import { i18n } from './i18n';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
 export { CENTRAL_URL, DEFAULT_DOMAIN };
+export { formatMinutes, hoursWidthFor, parseDuration } from './duration';
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {});
 
@@ -241,40 +243,12 @@ export const api = {
     deleteEntry: (id: string) => request<{ ok: boolean }>('DELETE', `/time/${id}`),
 };
 
-/** Big totals read better in work units: an 8h day, a 5-day week. Unit labels come from the locale catalog. */
-export function formatDurationHuman(minutes: number): string {
-    const m = Math.max(0, Math.round(minutes));
-    if (m < 8 * 60) return formatMinutes(m);
-    const day = t('units.day');
-    const week = t('units.week');
-    const hours = m / 60;
-    if (hours < 40) {
-        const d = Math.floor(hours / 8);
-        const h = Math.round(hours - d * 8);
-        return h > 0 ? `${d}${day} ${h}${t('units.hour')}` : `${d}${day}`;
-    }
-    const w = Math.floor(hours / 40);
-    const d = Math.round((hours - w * 40) / 8);
-    if (d >= 5) return `${w + 1}${week}`;
-    return d > 0 ? `${w}${week} ${d}${day}` : `${w}${week}`;
-}
-
-export function formatMinutes(minutes: number): string {
-    const m = Math.max(0, Math.round(minutes));
-    return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-}
-
-/** "1:30", "1.5", "90m" -> minutes */
-export function parseDuration(input: string): number | null {
-    const s = input.trim().toLowerCase();
-    if (!s) return null;
-    let m = s.match(/^(\d+):(\d{1,2})$/);
-    if (m) return parseInt(m[1]) * 60 + parseInt(m[2]);
-    m = s.match(/^(\d+)m$/);
-    if (m) return parseInt(m[1]);
-    m = s.match(/^(\d+(?:[.,]\d+)?)$/);
-    if (m) return Math.round(parseFloat(m[1].replace(',', '.')) * 60);
-    return null;
+/**
+ * Tracked / uninvoiced totals as hours and minutes ("38h 12m") with the
+ * locale's unit labels. See src/duration.ts for the formatting rules.
+ */
+export function formatDurationHuman(minutes: number, opts?: DurationOptions): string {
+    return formatDuration(minutes, { hour: t('units.hour'), minute: t('units.minute') }, opts);
 }
 
 export function toDateString(d: Date): string {

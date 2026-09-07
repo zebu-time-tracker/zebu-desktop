@@ -60,7 +60,6 @@
         "total": "Gesamt",
         "uninvoiced": "Offen",
         "budget": "Budget",
-        "budgetNone": "Ohne",
         "weekLocked": "Diese Woche ist freigegeben und gesperrt."
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "W",
-        "day": "T",
-        "hour": "h"
+        "hour": "h",
+        "minute": "min"
     }
 }

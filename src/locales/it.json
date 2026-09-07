@@ -60,7 +60,6 @@
         "total": "Totale",
         "uninvoiced": "Non fatturato",
         "budget": "Budget",
-        "budgetNone": "Non definito",
         "weekLocked": "Questa settimana è approvata e bloccata."
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "sett",
-        "day": "g",
-        "hour": "h"
+        "hour": "h",
+        "minute": "min"
     }
 }

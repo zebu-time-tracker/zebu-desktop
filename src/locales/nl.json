@@ -60,7 +60,6 @@
         "total": "Totaal",
         "uninvoiced": "Ongefactureerd",
         "budget": "Budget",
-        "budgetNone": "Onbepaald",
         "weekLocked": "Deze week is goedgekeurd en vergrendeld."
     },
     "newDay": {
@@ -126,8 +125,7 @@
         "tooltipIdle": "Zebu — {time}"
     },
     "units": {
-        "week": "w",
-        "day": "d",
-        "hour": "u"
+        "hour": "u",
+        "minute": "m"
     }
 }
