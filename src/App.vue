@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getVersion } from '@tauri-apps/api/app';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -286,7 +287,8 @@ onMounted(() => {
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
-    idleWatch = setInterval(pollIdle, 15_000);
+    listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
+    syncIdleThreshold();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
 });
@@ -294,7 +296,7 @@ onUnmounted(() => {
     if (tick) clearInterval(tick);
     if (refreshLoop) clearInterval(refreshLoop);
     if (pollTimer) clearInterval(pollTimer);
-    if (idleWatch) clearInterval(idleWatch);
+    idleUnlisten?.();
 });
 
 // ---- running-timer awareness ----------------------------------------------
@@ -464,30 +466,26 @@ const tipLeft = (i: number, count: number) => `min(max(${(((i + 0.5) / count) * 
 const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(intlLocale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
 // ---- idle detection (Harvest-style) ----------------------------------------
+//
+// The OS idle counter is watched from a native thread (src-tauri/src/lib.rs):
+// webview timers are throttled or paused while the popover is hidden, and the
+// counter does not tick through system sleep, so polling from here missed
+// long absences. The frontend only tells Rust the threshold (0 = off) and
+// renders the prompt when Rust reports a return.
 
 const idlePrompt = ref<{ startedAt: number; minutes: number } | null>(null);
-let idleWatch: ReturnType<typeof setInterval> | null = null;
-let lastIdleS = 0;
+let idleUnlisten: UnlistenFn | null = null;
 
-const pollIdle = async () => {
-    if (view.value !== 'main' || !running.value || idlePrompt.value || !prefs.value.idleEnabled) {
-        lastIdleS = 0;
-        return;
-    }
-    const thresholdS = Math.max(1, prefs.value.idleMinutes) * 60;
-    try {
-        const s = await invoke<number>('idle_seconds');
-        if (s < lastIdleS && lastIdleS >= thresholdS) {
-            // the user just came back from a long idle stretch — ask about it
-            idlePrompt.value = { startedAt: Date.now() - lastIdleS * 1000, minutes: Math.max(1, Math.round(lastIdleS / 60)) };
-            const win = getCurrentWindow();
-            await win.show();
-            await win.setFocus();
-        }
-        lastIdleS = s;
-    } catch {
-        // idle detection unavailable on this platform — stay quiet
-    }
+const syncIdleThreshold = () => {
+    const seconds = prefs.value.idleEnabled && running.value ? Math.max(1, prefs.value.idleMinutes) * 60 : 0;
+    invoke('set_idle_threshold', { seconds }).catch(() => {});
+};
+watch([() => prefs.value.idleEnabled, () => prefs.value.idleMinutes, () => running.value?.id ?? null], syncIdleThreshold);
+
+const onIdleReturn = (payload: { started_at_ms: number; seconds: number }) => {
+    if (!running.value || idlePrompt.value) return;
+    idlePrompt.value = { startedAt: payload.started_at_ms, minutes: Math.max(1, Math.round(payload.seconds / 60)) };
+    if (view.value !== 'main') view.value = 'main';
 };
 
 const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {

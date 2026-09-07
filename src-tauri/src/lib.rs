@@ -1,9 +1,10 @@
 mod tray_icon;
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -19,6 +20,70 @@ fn idle_seconds() -> u64 {
     user_idle::UserIdle::get_time()
         .map(|t| t.as_seconds())
         .unwrap_or(0)
+}
+
+/// Idle threshold in seconds; 0 = detection off (no timer running, or the
+/// preference is disabled). The frontend keeps this current.
+static IDLE_THRESHOLD_S: AtomicU64 = AtomicU64::new(0);
+
+#[tauri::command]
+fn set_idle_threshold(seconds: u64) {
+    IDLE_THRESHOLD_S.store(seconds, Ordering::SeqCst);
+}
+
+/// How long the user was away, given two samples of the OS idle counter
+/// taken `gap_s` seconds of wall-clock time apart. None while the stretch
+/// continues (or nothing happened); Some(seconds) the moment input resumes.
+///
+/// Wall-clock gaps matter as much as the counter: the machine sleeping, or
+/// the process being suspended, shows up as a gap far longer than the
+/// sampling interval, and macOS's counter does not tick during sleep — so a
+/// lid closed for two hours reads as a two-hour absence either way.
+fn away_seconds(prev_idle_s: u64, gap_s: u64, idle_s: u64) -> Option<u64> {
+    let still_idle = idle_s + 3 >= prev_idle_s + gap_s; // counter kept climbing (±jitter)
+    if still_idle {
+        return None;
+    }
+    let away = (prev_idle_s + gap_s).saturating_sub(idle_s);
+    (away > 0).then_some(away)
+}
+
+/// Watches the OS idle counter from a native thread (webview timers are
+/// throttled or paused while the popover is hidden). When input resumes
+/// after at least the threshold, shows the popover and emits `idle-return`
+/// with when the absence started and how long it lasted.
+fn spawn_idle_watcher(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let mut prev_idle = idle_seconds();
+        let mut prev_at = SystemTime::now();
+        loop {
+            std::thread::sleep(Duration::from_secs(2));
+            let now = SystemTime::now();
+            let gap = now.duration_since(prev_at).unwrap_or_default().as_secs();
+            let idle = idle_seconds();
+            let threshold = IDLE_THRESHOLD_S.load(Ordering::SeqCst);
+
+            if threshold > 0 {
+                if let Some(away) = away_seconds(prev_idle, gap, idle) {
+                    if away >= threshold {
+                        let started_ms = prev_at
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() as u64)
+                            .unwrap_or(0)
+                            .saturating_sub(prev_idle * 1000);
+                        let _ = app.emit("idle-return", serde_json::json!({ "started_at_ms": started_ms, "seconds": away }));
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.move_window(Position::TrayCenter);
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+            }
+            prev_idle = idle;
+            prev_at = now;
+        }
+    });
 }
 
 /// Quit the app entirely — a menubar app with no dock icon otherwise has no
@@ -106,6 +171,7 @@ pub fn run() {
             set_tray_title,
             quit,
             idle_seconds,
+            set_idle_threshold,
             set_dock_visible,
             set_hide_on_blur
         ])
@@ -155,8 +221,41 @@ pub fn run() {
             // start on the idle pill
             apply_icon(&tray, tray_icon::render(None, false));
 
+            spawn_idle_watcher(app.handle().clone());
+
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod idle_tests {
+    use super::away_seconds;
+
+    #[test]
+    fn a_climbing_counter_is_not_a_return() {
+        assert_eq!(away_seconds(600, 2, 602), None);
+        assert_eq!(away_seconds(600, 2, 601), None); // jitter
+        assert_eq!(away_seconds(0, 2, 2), None);
+    }
+
+    #[test]
+    fn input_after_a_long_stretch_reports_the_whole_absence() {
+        // idle 15 minutes, sampled 2 s later with the counter reset by a keypress
+        assert_eq!(away_seconds(900, 2, 1), Some(901));
+    }
+
+    #[test]
+    fn a_wall_clock_gap_counts_as_absence() {
+        // the laptop slept for two hours; macOS's counter did not tick meanwhile
+        assert_eq!(away_seconds(300, 7200, 302), Some(7198));
+        // …and the user pressed a key on waking
+        assert_eq!(away_seconds(300, 7200, 0), Some(7500));
+    }
+
+    #[test]
+    fn a_short_fidget_is_ignored_by_the_caller_threshold() {
+        assert_eq!(away_seconds(40, 2, 0), Some(42)); // below any sane threshold
+    }
 }
