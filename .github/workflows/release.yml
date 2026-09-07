@@ -141,6 +141,45 @@ jobs:
         if: runner.os == 'macOS' && env.HAS_APPLE_SIGNING != 'true'
         run: echo "::warning::No Apple signing secrets configured — the .dmg will be unsigned and Gatekeeper will refuse it by default. See docs/release.md."
 
+      # Fail in seconds, not after ten minutes of compiling, when the updater
+      # key is missing or malformed. Secrets live per repository: the ones on a
+      # fork or an old copy of this repo are invisible here.
+      - name: Check the updater signing key
+        shell: bash
+        env:
+          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set on $GITHUB_REPOSITORY (Settings → Secrets and variables → Actions). See docs/release.md."
+            exit 1
+          fi
+          case "$TAURI_KEY" in
+            "untrusted comment:"*) echo "updater key present" ;;
+            *) echo "::error::TAURI_SIGNING_PRIVATE_KEY must be the whole key file, including its first 'untrusted comment:' line (cat ~/.tauri/zebu-desktop.key | pbcopy)."; exit 1 ;;
+          esac
+
+      # Only hand the Apple variables to tauri when they are set: an empty
+      # APPLE_CERTIFICATE still makes the bundler try (and fail) to sign.
+      - name: Export Apple signing secrets
+        if: runner.os == 'macOS' && env.HAS_APPLE_SIGNING == 'true'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            value="${!name}"
+            if [ -z "$value" ]; then echo "::error::$name is empty while APPLE_CERTIFICATE is set — all six Apple secrets are needed."; exit 1; fi
+            # strip any newlines a base64 export may have wrapped in
+            value="$(printf '%s' "$value" | tr -d '\n\r')"
+            printf '%s<<__EOF__\n%s\n__EOF__\n' "$name" "$value" >> "$GITHUB_ENV"
+          done
+          echo "Apple signing enabled for $APPLE_SIGNING_IDENTITY"
+
       - name: Build and publish with tauri-action
         uses: tauri-apps/tauri-action@v0
         env:
@@ -148,13 +187,8 @@ jobs:
           # updater artifacts (.sig files + latest.json) — required
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS Developer ID signing + notarization (skipped when empty)
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # macOS Developer ID signing + notarization: APPLE_* come from the
+          # "Export Apple signing secrets" step above, only when configured.
           # Windows Azure Trusted Signing credentials (read by trusted-signing-cli)
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
