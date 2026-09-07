@@ -1333,6 +1333,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     min-width: 0;
     display: flex;
     flex-direction: column;
+    gap: 3px; /* breathing room between the project line and the task/notes line */
 }
 .entry-project {
     font-weight: 600;
