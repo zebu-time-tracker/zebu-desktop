@@ -474,6 +474,9 @@ const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(in
 // renders the prompt when Rust reports a return.
 
 const idlePrompt = ref<{ startedAt: number; minutes: number } | null>(null);
+// Two toggles: what to do with the idle time, and whether the timer keeps running.
+// Defaults match the common case — you stepped away, that time is not work.
+const idleChoice = ref<{ remove: boolean; stop: boolean }>({ remove: true, stop: false });
 let idleUnlisten: UnlistenFn | null = null;
 
 const syncIdleThreshold = () => {
@@ -485,7 +488,16 @@ watch([() => prefs.value.idleEnabled, () => prefs.value.idleMinutes, () => runni
 const onIdleReturn = (payload: { started_at_ms: number; seconds: number }) => {
     if (!running.value || idlePrompt.value) return;
     idlePrompt.value = { startedAt: payload.started_at_ms, minutes: Math.max(1, Math.round(payload.seconds / 60)) };
+    idleChoice.value = { remove: true, stop: false };
     if (view.value !== 'main') view.value = 'main';
+};
+
+/** Map the two toggles onto the API: remove+continue / remove+stop are one call; ignore+stop is a plain stop. */
+const applyIdleChoice = async () => {
+    const { remove, stop } = idleChoice.value;
+    if (remove) return resolveIdle(stop ? 'discard_stop' : 'discard_keep');
+    await resolveIdle('keep');
+    if (stop) stopTimer();
 };
 
 const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
@@ -862,10 +874,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <div class="sheet">
                 <p class="sheet-title">{{ t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes) }}</p>
                 <p v-if="running" class="muted">{{ t('idle.whileTiming', { project: running.project }) }}</p>
-                <div class="sheet-actions idle-actions">
-                    <button class="btn-outline" @click="resolveIdle('keep')">{{ t('idle.keep') }}</button>
-                    <button class="btn-primary" @click="resolveIdle('discard_keep')">{{ t('idle.removeKeep') }}</button>
-                    <button class="btn-outline" @click="resolveIdle('discard_stop')">{{ t('idle.removeStop') }}</button>
+                <div class="idle-choices">
+                    <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
+                        <button :class="{ active: !idleChoice.remove }" role="radio" :aria-checked="!idleChoice.remove" @click="idleChoice.remove = false">{{ t('idle.ignore') }}</button>
+                        <button :class="{ active: idleChoice.remove }" role="radio" :aria-checked="idleChoice.remove" @click="idleChoice.remove = true">{{ t('idle.remove') }}</button>
+                    </div>
+                    <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
+                        <button :class="{ active: idleChoice.stop }" role="radio" :aria-checked="idleChoice.stop" @click="idleChoice.stop = true">{{ t('idle.stopTiming') }}</button>
+                        <button :class="{ active: !idleChoice.stop }" role="radio" :aria-checked="!idleChoice.stop" @click="idleChoice.stop = false">{{ t('idle.continueTiming') }}</button>
+                    </div>
+                </div>
+                <div class="sheet-actions">
+                    <button class="btn-primary" @click="applyIdleChoice">{{ t('idle.ok') }}</button>
                 </div>
             </div>
         </div>
@@ -1281,9 +1301,32 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .running-elsewhere:hover .running-elsewhere-jump {
     opacity: 0.75;
 }
-.idle-actions {
+.idle-choices {
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
+    gap: 8px;
+    margin: 4px 0;
+}
+.seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-input);
+}
+.seg button {
+    padding: 8px 10px;
+    color: var(--muted);
+    font-weight: 500;
+}
+.seg button + button {
+    border-left: 1px solid var(--border);
+}
+.seg button.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
 }
 .entry-text {
     flex: 1;

@@ -70,9 +70,13 @@
     "idle": {
         "title": "{n} 分間操作がありませんでした",
         "whileTiming": "{project} を計測中",
-        "removeKeep": "削除して計測を続ける",
-        "removeStop": "削除して計測を停止",
-        "keep": "無視"
+        "ignore": "無視",
+        "remove": "削除",
+        "stopTiming": "計測を停止",
+        "continueTiming": "計測を続ける",
+        "ok": "OK",
+        "timeQuestion": "アイドル時間の扱い",
+        "timerQuestion": "タイマーの扱い"
     },
     "form": {
         "editTitle": "エントリを編集",

@@ -70,9 +70,13 @@
     "idle": {
         "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
         "whileTiming": "während {project} lief",
-        "removeKeep": "Entfernen und weiter messen",
-        "removeStop": "Entfernen und Timer stoppen",
-        "keep": "Ignorieren"
+        "ignore": "Ignorieren",
+        "remove": "Entfernen",
+        "stopTiming": "Zeitmessung stoppen",
+        "continueTiming": "Weiter messen",
+        "ok": "OK",
+        "timeQuestion": "Was mit der Leerlaufzeit passieren soll",
+        "timerQuestion": "Was mit dem Timer passieren soll"
     },
     "form": {
         "editTitle": "Eintrag bearbeiten",

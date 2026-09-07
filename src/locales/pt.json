@@ -70,9 +70,13 @@
     "idle": {
         "title": "Você ficou inativo por {n} minuto | Você ficou inativo por {n} minutos",
         "whileTiming": "enquanto cronometrava {project}",
-        "removeKeep": "Remover e continuar a contar",
-        "removeStop": "Remover e parar o temporizador",
-        "keep": "Ignorar"
+        "ignore": "Ignorar",
+        "remove": "Remover",
+        "stopTiming": "Parar",
+        "continueTiming": "Continuar a contar",
+        "ok": "OK",
+        "timeQuestion": "O que fazer com o tempo inativo",
+        "timerQuestion": "O que fazer com o temporizador"
     },
     "form": {
         "editTitle": "Editar entrada",

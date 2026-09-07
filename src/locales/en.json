@@ -70,9 +70,13 @@
     "idle": {
         "title": "You were idle for {n} minute | You were idle for {n} minutes",
         "whileTiming": "while timing {project}",
-        "removeKeep": "Remove and keep timing",
-        "removeStop": "Remove and stop timing",
-        "keep": "Ignore"
+        "ignore": "Ignore",
+        "remove": "Remove",
+        "stopTiming": "Stop timing",
+        "continueTiming": "Continue timing",
+        "ok": "OK",
+        "timeQuestion": "What to do with the idle time",
+        "timerQuestion": "What to do with the timer"
     },
     "form": {
         "editTitle": "Edit Time Entry",

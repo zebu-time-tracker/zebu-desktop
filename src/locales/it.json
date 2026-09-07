@@ -70,9 +70,13 @@
     "idle": {
         "title": "Sei stato inattivo per {n} minuto | Sei stato inattivo per {n} minuti",
         "whileTiming": "durante il timer di {project}",
-        "removeKeep": "Rimuovi e continua",
-        "removeStop": "Rimuovi e ferma il timer",
-        "keep": "Ignora"
+        "ignore": "Ignora",
+        "remove": "Rimuovi",
+        "stopTiming": "Ferma il timer",
+        "continueTiming": "Continua",
+        "ok": "OK",
+        "timeQuestion": "Cosa fare del tempo di inattività",
+        "timerQuestion": "Cosa fare del timer"
     },
     "form": {
         "editTitle": "Modifica voce",
