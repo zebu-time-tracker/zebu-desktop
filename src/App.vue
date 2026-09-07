@@ -491,6 +491,8 @@ const onIdleReturn = (payload: { started_at_ms: number; seconds: number }) => {
 const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
     const prompt = idlePrompt.value;
     idlePrompt.value = null;
+    // the popover only opened for this question: tuck it away again
+    getCurrentWindow().hide().catch(() => {});
     if (!prompt || action === 'keep') return;
     try {
         await api.idleTimer({ idle_started_at: new Date(prompt.startedAt).toISOString(), action });
@@ -861,9 +863,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <p class="sheet-title">{{ t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes) }}</p>
                 <p v-if="running" class="muted">{{ t('idle.whileTiming', { project: running.project }) }}</p>
                 <div class="sheet-actions idle-actions">
+                    <button class="btn-outline" @click="resolveIdle('keep')">{{ t('idle.keep') }}</button>
                     <button class="btn-primary" @click="resolveIdle('discard_keep')">{{ t('idle.removeKeep') }}</button>
                     <button class="btn-outline" @click="resolveIdle('discard_stop')">{{ t('idle.removeStop') }}</button>
-                    <button class="link" @click="resolveIdle('keep')">{{ t('idle.keep') }}</button>
                 </div>
             </div>
         </div>

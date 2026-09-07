@@ -70,9 +70,9 @@
     "idle": {
         "title": "Brak aktywności przez {n} minutę | Brak aktywności przez {n} minuty | Brak aktywności przez {n} minut",
         "whileTiming": "podczas mierzenia {project}",
-        "removeKeep": "Usuń czas bezczynności",
-        "removeStop": "Usuń i zatrzymaj",
-        "keep": "Zachowaj czas"
+        "removeKeep": "Usuń i licz dalej",
+        "removeStop": "Usuń i zatrzymaj stoper",
+        "keep": "Ignoruj"
     },
     "form": {
         "editTitle": "Edytuj wpis",

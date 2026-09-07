@@ -70,9 +70,9 @@
     "idle": {
         "title": "{n}분 동안 자리를 비웠습니다",
         "whileTiming": "{project} 기록 중",
-        "removeKeep": "자리 비움 시간 제거",
-        "removeStop": "제거하고 정지",
-        "keep": "시간 유지"
+        "removeKeep": "제거하고 계속 측정",
+        "removeStop": "제거하고 타이머 중지",
+        "keep": "무시"
     },
     "form": {
         "editTitle": "항목 편집",

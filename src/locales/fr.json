@@ -70,9 +70,9 @@
     "idle": {
         "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
         "whileTiming": "pendant le suivi de {project}",
-        "removeKeep": "Retirer le temps inactif",
-        "removeStop": "Retirer et arrêter",
-        "keep": "Conserver le temps"
+        "removeKeep": "Retirer et continuer",
+        "removeStop": "Retirer et arrêter le minuteur",
+        "keep": "Ignorer"
     },
     "form": {
         "editTitle": "Modifier l'entrée",

@@ -70,9 +70,9 @@
     "idle": {
         "title": "您已闲置 {n} 分钟",
         "whileTiming": "正在为 {project} 计时",
-        "removeKeep": "移除闲置时间",
-        "removeStop": "移除并停止",
-        "keep": "保留闲置时间"
+        "removeKeep": "移除并继续计时",
+        "removeStop": "移除并停止计时",
+        "keep": "忽略"
     },
     "form": {
         "editTitle": "编辑时间条目",

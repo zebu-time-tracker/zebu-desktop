@@ -226,8 +226,9 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
 
         let idle = render_pixmap(Glyph::Play, "zzzz", true, false).unwrap();
-        assert_eq!(idle.height(), HEIGHT);
-        assert_eq!(idle.width(), MIN_WIDTH as u32);
+        // drawn at SCALE x for Retina: the backing store is twice the 18pt menubar height
+        assert_eq!(idle.height(), (HEIGHT as f32 * SCALE) as u32);
+        assert_eq!(idle.width(), (MIN_WIDTH * SCALE) as u32);
         idle.save_png(dir.join("idle.png")).unwrap();
 
         let running = render_pixmap(Glyph::Pause, "1:20", false, false).unwrap();

@@ -70,9 +70,9 @@
     "idle": {
         "title": "Estuviste inactivo {n} minuto | Estuviste inactivo {n} minutos",
         "whileTiming": "mientras se registraba {project}",
-        "removeKeep": "Quitar tiempo inactivo",
-        "removeStop": "Quitar y detener",
-        "keep": "Conservar el tiempo"
+        "removeKeep": "Quitar y seguir contando",
+        "removeStop": "Quitar y detener el temporizador",
+        "keep": "Ignorar"
     },
     "form": {
         "editTitle": "Editar entrada",

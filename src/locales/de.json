@@ -70,9 +70,9 @@
     "idle": {
         "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
         "whileTiming": "während {project} lief",
-        "removeKeep": "Inaktive Zeit entfernen",
-        "removeStop": "Entfernen & Timer stoppen",
-        "keep": "Zeit behalten"
+        "removeKeep": "Entfernen und weiter messen",
+        "removeStop": "Entfernen und Timer stoppen",
+        "keep": "Ignorieren"
     },
     "form": {
         "editTitle": "Eintrag bearbeiten",

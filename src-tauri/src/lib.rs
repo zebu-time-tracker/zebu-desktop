@@ -22,6 +22,32 @@ fn idle_seconds() -> u64 {
         .unwrap_or(0)
 }
 
+/// Show the popover hanging from the menubar icon. The positioner only knows
+/// the tray's place once a tray event has been seen; straight after launch
+/// (or when the idle watcher fires before any click) it errors, so fall back
+/// to asking the tray for its rect directly. Never lets the window land in
+/// the middle of the screen.
+fn show_popover(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if window.move_window(Position::TrayCenter).is_err() {
+        if let (Some(Ok(Some(rect))), Ok(win)) = (app.tray_by_id("main").map(|t| t.rect()), window.outer_size()) {
+            // tray-icon reports physical pixels already (same assumption as the positioner)
+            let pos = rect.position.to_physical::<f64>(1.0);
+            let size = rect.size.to_physical::<f64>(1.0);
+            let x = pos.x + size.width / 2.0 - win.width as f64 / 2.0;
+            #[cfg(target_os = "macos")]
+            let y = pos.y;
+            #[cfg(not(target_os = "macos"))]
+            let y = pos.y + size.height;
+            let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+        }
+    }
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 /// Idle threshold in seconds; 0 = detection off (no timer running, or the
 /// preference is disabled). The frontend keeps this current.
 static IDLE_THRESHOLD_S: AtomicU64 = AtomicU64::new(0);
@@ -72,11 +98,7 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
                             .unwrap_or(0)
                             .saturating_sub(prev_idle * 1000);
                         let _ = app.emit("idle-return", serde_json::json!({ "started_at_ms": started_ms, "seconds": away }));
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.move_window(Position::TrayCenter);
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_popover(&app);
                     }
                 }
             }
@@ -207,9 +229,7 @@ pub fn run() {
                                 if window.is_visible().unwrap_or(false) {
                                     let _ = window.hide();
                                 } else {
-                                    let _ = window.move_window(Position::TrayCenter);
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
+                                    show_popover(app);
                                 }
                             }
                         }
