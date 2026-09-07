@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "You were idle for {n} minute | You were idle for {n} minutes",
-        "whileTiming": "while timing {project}",
         "ignore": "Ignore",
         "remove": "Remove",
         "stopTiming": "Stop timing",

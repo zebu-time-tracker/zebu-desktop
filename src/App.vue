@@ -490,6 +490,10 @@ const onIdleReturn = (payload: { started_at_ms: number; seconds: number }) => {
     idlePrompt.value = { startedAt: payload.started_at_ms, minutes: Math.max(1, Math.round(payload.seconds / 60)) };
     idleChoice.value = { remove: true, stop: false };
     if (view.value !== 'main') view.value = 'main';
+    // the callout hangs from the running entry, so show the day it lives on
+    // (a timer left running overnight sits on yesterday) and bring it into view
+    if (running.value.date !== selectedDate.value) goDate(running.value.date);
+    nextTick(() => document.querySelector('.entry.running')?.scrollIntoView({ block: 'nearest' }));
 };
 
 /** Map the two toggles onto the API: remove+continue / remove+stop are one call; ignore+stop is a plain stop. */
@@ -845,6 +849,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
                 <span class="entry-time">{{ formatMinutes(elapsed(entry)) }}</span>
                 <button v-if="entry.timer_started_at" class="entry-btn stop" :title="t('timer.stop')" @click="stopTimer">■</button>
+                <!-- idle callout: hangs from the running timer's stop button after a long stretch away -->
+                <div v-if="idlePrompt && entry.timer_started_at" class="idle-callout" role="dialog" :aria-label="t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes)">
+                    <p class="idle-callout-title">{{ t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes) }}</p>
+                    <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
+                        <button :class="{ active: !idleChoice.remove }" role="radio" :aria-checked="!idleChoice.remove" @click="idleChoice.remove = false">{{ t('idle.ignore') }}</button>
+                        <button :class="{ active: idleChoice.remove }" role="radio" :aria-checked="idleChoice.remove" @click="idleChoice.remove = true">{{ t('idle.remove') }}</button>
+                    </div>
+                    <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
+                        <button :class="{ active: idleChoice.stop }" role="radio" :aria-checked="idleChoice.stop" @click="idleChoice.stop = true">{{ t('idle.stopTiming') }}</button>
+                        <button :class="{ active: !idleChoice.stop }" role="radio" :aria-checked="!idleChoice.stop" @click="idleChoice.stop = false">{{ t('idle.continueTiming') }}</button>
+                    </div>
+                    <button class="btn-primary" @click="applyIdleChoice">{{ t('idle.ok') }}</button>
+                </div>
                 <button
                     v-else-if="!entry.locked && !sheet?.week_locked"
                     class="entry-btn play"
@@ -865,27 +882,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div class="sheet-actions">
                     <button class="btn-outline" @click="confirmNewDay = false">{{ t('common.cancel') }}</button>
                     <button class="btn-primary" @click="startFreshToday">{{ t('newDay.confirm') }}</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- idle prompt: back from a long stretch away with the clock running -->
-        <div v-if="idlePrompt" class="sheet-overlay">
-            <div class="sheet">
-                <p class="sheet-title">{{ t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes) }}</p>
-                <p v-if="running" class="muted">{{ t('idle.whileTiming', { project: running.project }) }}</p>
-                <div class="idle-choices">
-                    <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
-                        <button :class="{ active: !idleChoice.remove }" role="radio" :aria-checked="!idleChoice.remove" @click="idleChoice.remove = false">{{ t('idle.ignore') }}</button>
-                        <button :class="{ active: idleChoice.remove }" role="radio" :aria-checked="idleChoice.remove" @click="idleChoice.remove = true">{{ t('idle.remove') }}</button>
-                    </div>
-                    <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
-                        <button :class="{ active: idleChoice.stop }" role="radio" :aria-checked="idleChoice.stop" @click="idleChoice.stop = true">{{ t('idle.stopTiming') }}</button>
-                        <button :class="{ active: !idleChoice.stop }" role="radio" :aria-checked="!idleChoice.stop" @click="idleChoice.stop = false">{{ t('idle.continueTiming') }}</button>
-                    </div>
-                </div>
-                <div class="sheet-actions">
-                    <button class="btn-primary" @click="applyIdleChoice">{{ t('idle.ok') }}</button>
                 </div>
             </div>
         </div>
@@ -1189,6 +1185,43 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .entry.running {
     background: var(--accent-soft);
+    position: relative; /* anchors the idle callout */
+}
+.idle-callout {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 8px;
+    width: 250px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+.idle-callout::before {
+    /* arrow pointing up at the stop button */
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 14px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-raised);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    transform: rotate(45deg);
+}
+.idle-callout-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 12px;
+}
+.idle-callout .btn-primary {
+    padding: 7px 12px;
 }
 /* running-timer-on-another-day banner (pinned between week strip and list):
    header line + divider + an entry-style row, all one green jump target */
@@ -1300,12 +1333,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .running-elsewhere:hover .running-elsewhere-jump {
     opacity: 0.75;
-}
-.idle-choices {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 4px 0;
 }
 .seg {
     display: grid;

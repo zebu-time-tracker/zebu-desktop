@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "{n}분 동안 자리를 비웠습니다",
-        "whileTiming": "{project} 기록 중",
         "ignore": "무시",
         "remove": "제거",
         "stopTiming": "측정 중지",

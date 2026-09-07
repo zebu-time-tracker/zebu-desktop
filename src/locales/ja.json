@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "{n} 分間操作がありませんでした",
-        "whileTiming": "{project} を計測中",
         "ignore": "無視",
         "remove": "削除",
         "stopTiming": "計測を停止",

@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "您已闲置 {n} 分钟",
-        "whileTiming": "正在为 {project} 计时",
         "ignore": "忽略",
         "remove": "移除",
         "stopTiming": "停止计时",

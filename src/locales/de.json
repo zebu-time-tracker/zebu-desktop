@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
-        "whileTiming": "während {project} lief",
         "ignore": "Ignorieren",
         "remove": "Entfernen",
         "stopTiming": "Zeitmessung stoppen",

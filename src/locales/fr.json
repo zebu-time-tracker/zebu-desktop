@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
-        "whileTiming": "pendant le suivi de {project}",
         "ignore": "Ignorer",
         "remove": "Retirer",
         "stopTiming": "Arrêter le minuteur",

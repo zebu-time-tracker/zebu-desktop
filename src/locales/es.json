@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "Estuviste inactivo {n} minuto | Estuviste inactivo {n} minutos",
-        "whileTiming": "mientras se registraba {project}",
         "ignore": "Ignorar",
         "remove": "Quitar",
         "stopTiming": "Detener",

@@ -69,7 +69,6 @@
     },
     "idle": {
         "title": "Você ficou inativo por {n} minuto | Você ficou inativo por {n} minutos",
-        "whileTiming": "enquanto cronometrava {project}",
         "ignore": "Ignorar",
         "remove": "Remover",
         "stopTiming": "Parar",
