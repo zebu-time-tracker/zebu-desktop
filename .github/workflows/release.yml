@@ -153,9 +153,13 @@ jobs:
             echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set on $GITHUB_REPOSITORY (Settings → Secrets and variables → Actions). See docs/release.md."
             exit 1
           fi
-          case "$TAURI_KEY" in
+          # `tauri signer generate` writes the key as one base64 line whose decoded
+          # form is a minisign box starting with "untrusted comment:". Accept the
+          # file content as written (also with stray whitespace/newlines).
+          decoded=$(printf '%s' "$TAURI_KEY" | tr -d ' \n\r' | { base64 -d 2>/dev/null || base64 -D 2>/dev/null; } | head -c 200 || true)
+          case "$decoded" in
             "untrusted comment:"*) echo "updater key present" ;;
-            *) echo "::error::TAURI_SIGNING_PRIVATE_KEY must be the whole key file, including its first 'untrusted comment:' line (cat ~/.tauri/zebu-desktop.key | pbcopy)."; exit 1 ;;
+            *) echo "::error::TAURI_SIGNING_PRIVATE_KEY does not decode to an updater key. Set it to the exact content of the file written by 'npm run tauri signer generate' (gh secret set TAURI_SIGNING_PRIVATE_KEY -R $GITHUB_REPOSITORY < ~/.tauri/zebu-desktop.key)."; exit 1 ;;
           esac
 
       # Only hand the Apple variables to tauri when they are set: an empty
