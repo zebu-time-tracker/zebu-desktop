@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Annulla",
         "loading": "Caricamento…",
-        "system": "Sistema"
+        "no": "No",
+        "system": "Sistema",
+        "yes": "Sì"
     },
     "connect": {
         "login": "Accedi",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "Sei stato inattivo per {n} minuto | Sei stato inattivo per {n} minuti",
-        "ignore": "Ignora",
-        "remove": "Rimuovi",
-        "stopTiming": "Ferma il timer",
-        "continueTiming": "Continua",
-        "ok": "OK",
-        "timeQuestion": "Cosa fare del tempo di inattività",
-        "timerQuestion": "Cosa fare del timer"
+        "timeQuestion": "Rimuovere il tempo di inattività?",
+        "timerQuestion": "Continuare a misurare?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Modifica voce",

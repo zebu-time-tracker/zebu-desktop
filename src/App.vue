@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
+import { idleMinutes, resolveIdleChoice } from './idle';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
 const { t } = useI18n();
@@ -288,6 +289,8 @@ onMounted(() => {
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
     listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
+    // the answer comes back from the prompt's own window, via Rust
+    listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
     syncIdleThreshold();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
@@ -297,6 +300,7 @@ onUnmounted(() => {
     if (refreshLoop) clearInterval(refreshLoop);
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
+    idleChoiceUnlisten?.();
 });
 
 // ---- running-timer awareness ----------------------------------------------
@@ -470,14 +474,15 @@ const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(in
 // The OS idle counter is watched from a native thread (src-tauri/src/lib.rs):
 // webview timers are throttled or paused while the popover is hidden, and the
 // counter does not tick through system sleep, so polling from here missed
-// long absences. The frontend only tells Rust the threshold (0 = off) and
-// renders the prompt when Rust reports a return.
+// long absences. The frontend only tells Rust the threshold (0 = off), decides
+// whether the return is worth asking about, and points Rust at the row the
+// prompt should hang from. The prompt itself is a window of its own (it used
+// to be a callout in this DOM, which the window frame clipped); its two
+// answers come back as an `idle-choice` event, and what they mean stays here.
 
 const idlePrompt = ref<{ startedAt: number; minutes: number } | null>(null);
-// Two toggles: what to do with the idle time, and whether the timer keeps running.
-// Defaults match the common case — you stepped away, that time is not work.
-const idleChoice = ref<{ remove: boolean; stop: boolean }>({ remove: true, stop: false });
 let idleUnlisten: UnlistenFn | null = null;
+let idleChoiceUnlisten: UnlistenFn | null = null;
 
 const syncIdleThreshold = () => {
     const seconds = prefs.value.idleEnabled && running.value ? Math.max(1, prefs.value.idleMinutes) * 60 : 0;
@@ -485,23 +490,44 @@ const syncIdleThreshold = () => {
 };
 watch([() => prefs.value.idleEnabled, () => prefs.value.idleMinutes, () => running.value?.id ?? null], syncIdleThreshold);
 
-const onIdleReturn = (payload: { started_at_ms: number; seconds: number }) => {
-    if (!running.value || idlePrompt.value) return;
-    idlePrompt.value = { startedAt: payload.started_at_ms, minutes: Math.max(1, Math.round(payload.seconds / 60)) };
-    idleChoice.value = { remove: true, stop: false };
-    if (view.value !== 'main') view.value = 'main';
-    // the callout hangs from the running entry, so show the day it lives on
-    // (a timer left running overnight sits on yesterday) and bring it into view
-    if (running.value.date !== selectedDate.value) goDate(running.value.date);
-    nextTick(() => document.querySelector('.entry.running')?.scrollIntoView({ block: 'nearest' }));
+/**
+ * The running entry's stop button, once it is on screen. Switching day starts
+ * a fetch, so the row the prompt points at may still be on its way; give it a
+ * moment rather than anchoring to nothing.
+ */
+const runningStopButton = async (timeoutMs = 1500): Promise<HTMLElement | null> => {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+        await nextTick();
+        const button = document.querySelector<HTMLElement>('.entry.running .entry-btn.stop');
+        if (button) return button;
+        if (Date.now() > deadline) return null;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
 };
 
-/** Map the two toggles onto the API: remove+continue / remove+stop are one call; ignore+stop is a plain stop. */
-const applyIdleChoice = async () => {
-    const { remove, stop } = idleChoice.value;
-    if (remove) return resolveIdle(stop ? 'discard_stop' : 'discard_keep');
-    await resolveIdle('keep');
-    if (stop) stopTimer();
+const onIdleReturn = async (payload: { started_at_ms: number; seconds: number }) => {
+    if (!running.value || idlePrompt.value) return;
+    const minutes = idleMinutes(payload.seconds);
+    idlePrompt.value = { startedAt: payload.started_at_ms, minutes };
+    if (view.value !== 'main') view.value = 'main';
+    // the prompt hangs from the running entry, so show the day it lives on
+    // (a timer left running overnight sits on yesterday) and bring it into view
+    if (running.value.date !== selectedDate.value) goDate(running.value.date);
+    const button = await runningStopButton();
+    button?.scrollIntoView({ block: 'nearest' });
+    // Hand Rust that button's rect in CSS pixels: it places the prompt window
+    // against it, or under the menubar icon when there is nothing to point at.
+    const rect = button?.getBoundingClientRect();
+    const anchor = rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null;
+    invoke('show_idle_prompt', { minutes, anchor }).catch(() => {});
+};
+
+/** Map the prompt's two answers onto the API: removing is one call, keeping-and-stopping is a plain stop. */
+const applyIdleChoice = async (choice: { remove: boolean; stop: boolean }) => {
+    const { action, stopAfter } = resolveIdleChoice(choice);
+    await resolveIdle(action);
+    if (stopAfter) stopTimer();
 };
 
 const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
@@ -848,20 +874,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </span>
                 </div>
                 <span class="entry-time">{{ formatMinutes(elapsed(entry)) }}</span>
+                <!-- the idle prompt hangs from this button, in its own window (src-tauri: show_idle_prompt) -->
                 <button v-if="entry.timer_started_at" class="entry-btn stop" :title="t('timer.stop')" @click="stopTimer">■</button>
-                <!-- idle callout: hangs from the running timer's stop button after a long stretch away -->
-                <div v-if="idlePrompt && entry.timer_started_at" class="idle-callout" role="dialog" :aria-label="t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes)">
-                    <p class="idle-callout-title">{{ t('idle.title', { n: idlePrompt.minutes }, idlePrompt.minutes) }}</p>
-                    <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
-                        <button :class="{ active: !idleChoice.remove }" role="radio" :aria-checked="!idleChoice.remove" @click="idleChoice.remove = false">{{ t('idle.ignore') }}</button>
-                        <button :class="{ active: idleChoice.remove }" role="radio" :aria-checked="idleChoice.remove" @click="idleChoice.remove = true">{{ t('idle.remove') }}</button>
-                    </div>
-                    <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
-                        <button :class="{ active: idleChoice.stop }" role="radio" :aria-checked="idleChoice.stop" @click="idleChoice.stop = true">{{ t('idle.stopTiming') }}</button>
-                        <button :class="{ active: !idleChoice.stop }" role="radio" :aria-checked="!idleChoice.stop" @click="idleChoice.stop = false">{{ t('idle.continueTiming') }}</button>
-                    </div>
-                    <button class="btn-primary" @click="applyIdleChoice">{{ t('idle.ok') }}</button>
-                </div>
                 <button
                     v-else-if="!entry.locked && !sheet?.week_locked"
                     class="entry-btn play"
@@ -1185,43 +1199,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .entry.running {
     background: var(--accent-soft);
-    position: relative; /* anchors the idle callout */
-}
-.idle-callout {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 8px;
-    width: 250px;
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
-}
-.idle-callout::before {
-    /* arrow pointing up at the stop button */
-    content: '';
-    position: absolute;
-    top: -6px;
-    right: 14px;
-    width: 10px;
-    height: 10px;
-    background: var(--bg-raised);
-    border-left: 1px solid var(--border);
-    border-top: 1px solid var(--border);
-    transform: rotate(45deg);
-}
-.idle-callout-title {
-    margin: 0;
-    font-weight: 600;
-    font-size: 12px;
-}
-.idle-callout .btn-primary {
-    padding: 7px 12px;
 }
 /* running-timer-on-another-day banner (pinned between week strip and list):
    header line + divider + an entry-style row, all one green jump target */
@@ -1333,27 +1310,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .running-elsewhere:hover .running-elsewhere-jump {
     opacity: 0.75;
-}
-.seg {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--bg-input);
-}
-.seg button {
-    padding: 8px 10px;
-    color: var(--muted);
-    font-weight: 500;
-}
-.seg button + button {
-    border-left: 1px solid var(--border);
-}
-.seg button.active {
-    background: var(--accent);
-    color: #fff;
-    font-weight: 600;
 }
 .entry-text {
     flex: 1;

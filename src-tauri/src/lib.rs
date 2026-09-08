@@ -1,10 +1,11 @@
 mod tray_icon;
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, WindowEvent,
+    Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 #[cfg(target_os = "linux")]
 use tauri::menu::{Menu, MenuItem};
@@ -109,8 +110,11 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
                             .map(|d| d.as_millis() as u64)
                             .unwrap_or(0)
                             .saturating_sub(prev_idle * 1000);
-                        let _ = app.emit("idle-return", serde_json::json!({ "started_at_ms": started_ms, "seconds": away }));
+                        // open the list first: the frontend answers this event
+                        // by measuring the running row, which only sits where
+                        // the prompt should point once the window has moved
                         show_popover(&app);
+                        let _ = app.emit("idle-return", serde_json::json!({ "started_at_ms": started_ms, "seconds": away }));
                     }
                 }
             }
@@ -118,6 +122,208 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
             prev_at = now;
         }
     });
+}
+
+// ---- idle prompt window ----------------------------------------------------
+//
+// The prompt used to be a callout inside the timer list's DOM, which the main
+// window's frame clipped: with the running entry near the bottom of a long
+// list it hung below the visible area and had to be scrolled to. It is its own
+// borderless always-on-top window now, placed against the running entry's stop
+// button but clamped to the monitor's work area, so it is never cut off
+// wherever that entry sits.
+
+const IDLE_LABEL: &str = "idle";
+/// Logical size of the prompt: the width is fixed, the height is what the
+/// webview measures once the (translated) text has been laid out.
+const IDLE_WIDTH: f64 = 260.0;
+const IDLE_HEIGHT: f64 = 220.0;
+/// Breathing room between the anchor and the prompt, in logical pixels.
+const IDLE_GAP: f64 = 6.0;
+
+/// A rectangle in physical screen pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ScreenRect {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// What the prompt hangs from, as the frontend measured it: CSS pixels
+/// relative to the main window's webview (which fills the undecorated window).
+#[derive(serde::Deserialize)]
+struct AnchorRect {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// The absence currently being asked about. `None` once it has been answered.
+struct IdlePrompt {
+    minutes: u64,
+    anchor: Option<ScreenRect>,
+}
+static IDLE_PROMPT: Mutex<Option<IdlePrompt>> = Mutex::new(None);
+
+fn idle_prompt_pending() -> bool {
+    IDLE_PROMPT.lock().map(|p| p.is_some()).unwrap_or(false)
+}
+
+/// Where to put a `size` window so it hangs off `anchor` and still fits the
+/// screen: centred under the anchor, flipped above it when there is no room
+/// below, then clamped into the work area. All values are physical pixels.
+fn prompt_position(anchor: ScreenRect, size: (f64, f64), work: ScreenRect, gap: f64) -> (f64, f64) {
+    let (width, height) = size;
+    let below = anchor.y + anchor.height + gap;
+    let above = anchor.y - height - gap;
+    let bottom = work.y + work.height;
+    let fits_below = below + height <= bottom;
+    let fits_above = above >= work.y;
+    let y = if fits_below || !fits_above { below } else { above };
+    let x = anchor.x + anchor.width / 2.0 - width / 2.0;
+    (
+        x.clamp(work.x, (work.x + work.width - width).max(work.x)),
+        y.clamp(work.y, (bottom - height).max(work.y)),
+    )
+}
+
+/// The visible area of the display holding a point — the whole virtual desktop
+/// when no monitor can be identified, so nothing gets clamped away blindly.
+fn work_area(app: &tauri::AppHandle, x: f64, y: f64) -> ScreenRect {
+    let monitor = app
+        .monitor_from_point(x, y)
+        .ok()
+        .flatten()
+        .or_else(|| app.primary_monitor().ok().flatten());
+    match monitor {
+        Some(m) => {
+            let area = m.work_area();
+            ScreenRect {
+                x: area.position.x as f64,
+                y: area.position.y as f64,
+                width: area.size.width as f64,
+                height: area.size.height as f64,
+            }
+        }
+        None => ScreenRect { x: -1e6, y: -1e6, width: 2e6, height: 2e6 },
+    }
+}
+
+/// The frontend's rect turned into screen coordinates. None when the main
+/// window is hidden — an anchor no one can see points nowhere.
+fn anchor_on_screen(app: &tauri::AppHandle, anchor: AnchorRect) -> Option<ScreenRect> {
+    let window = app.get_webview_window("main")?;
+    if !window.is_visible().unwrap_or(false) {
+        return None;
+    }
+    let scale = window.scale_factor().ok()?;
+    let origin = window.outer_position().ok()?;
+    Some(ScreenRect {
+        x: origin.x as f64 + anchor.x * scale,
+        y: origin.y as f64 + anchor.y * scale,
+        width: anchor.width * scale,
+        height: anchor.height * scale,
+    })
+}
+
+/// Fallback anchor: the menubar icon, the same place the popover hangs from.
+fn tray_anchor(app: &tauri::AppHandle) -> Option<ScreenRect> {
+    let rect = app.tray_by_id("main")?.rect().ok()??;
+    // tray-icon reports physical pixels already (same assumption as show_popover)
+    let position = rect.position.to_physical::<f64>(1.0);
+    let size = rect.size.to_physical::<f64>(1.0);
+    Some(ScreenRect { x: position.x, y: position.y, width: size.width, height: size.height })
+}
+
+/// Size the prompt to its content, put it where it fits, and show it.
+fn place_idle_prompt(app: &tauri::AppHandle, height: f64) {
+    let Some(window) = app.get_webview_window(IDLE_LABEL) else {
+        return;
+    };
+    let _ = window.set_size(LogicalSize::new(IDLE_WIDTH, height));
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let anchor = IDLE_PROMPT
+        .lock()
+        .ok()
+        .and_then(|p| p.as_ref().and_then(|p| p.anchor))
+        .or_else(|| tray_anchor(app));
+    if let Some(anchor) = anchor {
+        let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
+        let (x, y) = prompt_position(anchor, (IDLE_WIDTH * scale, height * scale), area, IDLE_GAP * scale);
+        let _ = window.set_position(PhysicalPosition::new(x, y));
+    }
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+/// Open the prompt for an absence. Called by the frontend, which owns the
+/// decision to ask at all (a timer must be running, and only one prompt at a
+/// time) and measures the running entry's stop button as the anchor.
+///
+/// The window is created hidden: it reveals itself through `fit_idle_prompt`
+/// once its text is laid out, so it never flashes at the wrong size. The
+/// watchdog covers a webview that never gets that far.
+#[tauri::command]
+fn show_idle_prompt(app: tauri::AppHandle, minutes: u64, anchor: Option<AnchorRect>) {
+    let anchor = anchor.and_then(|a| anchor_on_screen(&app, a));
+    if let Ok(mut prompt) = IDLE_PROMPT.lock() {
+        *prompt = Some(IdlePrompt { minutes, anchor });
+    }
+    if app.get_webview_window(IDLE_LABEL).is_some() {
+        // reused window: it is already mounted, so tell it to re-read and re-fit
+        let _ = app.emit_to(IDLE_LABEL, "idle-prompt-show", ());
+    } else {
+        let _ = WebviewWindowBuilder::new(&app, IDLE_LABEL, WebviewUrl::App("index.html#idle".into()))
+            .title("Zebu")
+            .inner_size(IDLE_WIDTH, IDLE_HEIGHT)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .shadow(true)
+            .visible(false)
+            .focused(false)
+            .build();
+    }
+
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(1500));
+        let hidden = app
+            .get_webview_window(IDLE_LABEL)
+            .and_then(|w| w.is_visible().ok())
+            .map(|visible| !visible)
+            .unwrap_or(false);
+        if hidden && idle_prompt_pending() {
+            place_idle_prompt(&app, IDLE_HEIGHT);
+        }
+    });
+}
+
+/// The absence the prompt window should ask about, in whole minutes.
+#[tauri::command]
+fn idle_prompt_data() -> Option<u64> {
+    IDLE_PROMPT.lock().ok().and_then(|p| p.as_ref().map(|p| p.minutes))
+}
+
+/// The prompt reporting the height its content needs; also what reveals it.
+#[tauri::command]
+fn fit_idle_prompt(app: tauri::AppHandle, height: f64) {
+    place_idle_prompt(&app, height.clamp(120.0, 400.0));
+}
+
+/// The two answers, handed back to the main window, which owns what they mean.
+#[tauri::command]
+fn resolve_idle_prompt(app: tauri::AppHandle, remove: bool, stop: bool) {
+    if let Ok(mut prompt) = IDLE_PROMPT.lock() {
+        *prompt = None;
+    }
+    if let Some(window) = app.get_webview_window(IDLE_LABEL) {
+        let _ = window.hide();
+    }
+    let _ = app.emit_to("main", "idle-choice", serde_json::json!({ "remove": remove, "stop": stop }));
 }
 
 /// Quit the app entirely — a menubar app with no dock icon otherwise has no
@@ -212,12 +418,22 @@ pub fn run() {
             idle_seconds,
             set_idle_threshold,
             set_dock_visible,
-            set_hide_on_blur
+            set_hide_on_blur,
+            show_idle_prompt,
+            idle_prompt_data,
+            fit_idle_prompt,
+            resolve_idle_prompt
         ])
         .on_window_event(|window, event| {
             // "Hide when changing focus": the popover hides itself when focus
             // moves elsewhere, unless the preference turns that off.
             if let WindowEvent::Focused(false) = event {
+                // An unanswered idle prompt is a question, not a popover: it
+                // stays up (it loses focus the moment the list is clicked),
+                // and the list stays visible behind it for context.
+                if window.label() == IDLE_LABEL || idle_prompt_pending() {
+                    return;
+                }
                 if HIDE_ON_BLUR.load(Ordering::SeqCst) {
                     let _ = window.hide();
                 }
@@ -319,5 +535,50 @@ mod idle_tests {
     #[test]
     fn a_short_fidget_is_ignored_by_the_caller_threshold() {
         assert_eq!(away_seconds(40, 2, 0), Some(42)); // below any sane threshold
+    }
+}
+
+#[cfg(test)]
+mod prompt_position_tests {
+    use super::{prompt_position, ScreenRect};
+
+    /// A 1440x900 display with a 25px menubar, as physical pixels.
+    const WORK: ScreenRect = ScreenRect { x: 0.0, y: 25.0, width: 1440.0, height: 875.0 };
+    const SIZE: (f64, f64) = (260.0, 220.0);
+
+    fn anchor(x: f64, y: f64) -> ScreenRect {
+        ScreenRect { x, y, width: 24.0, height: 24.0 }
+    }
+
+    #[test]
+    fn hangs_centred_under_the_anchor_when_there_is_room() {
+        // stop button at the top of the list, plenty of screen below it
+        assert_eq!(prompt_position(anchor(700.0, 200.0), SIZE, WORK, 6.0), (582.0, 230.0));
+    }
+
+    #[test]
+    fn flips_above_the_anchor_rather_than_off_the_bottom() {
+        // the running entry sits near the bottom of a long list: below would
+        // run past the screen edge, so the prompt goes above the button
+        assert_eq!(prompt_position(anchor(700.0, 800.0), SIZE, WORK, 6.0), (582.0, 574.0));
+    }
+
+    #[test]
+    fn stays_on_screen_at_the_left_and_right_edges() {
+        assert_eq!(prompt_position(anchor(4.0, 200.0), SIZE, WORK, 6.0).0, 0.0);
+        assert_eq!(prompt_position(anchor(1420.0, 200.0), SIZE, WORK, 6.0).0, 1180.0);
+    }
+
+    #[test]
+    fn a_screen_too_short_for_either_side_still_shows_the_whole_prompt() {
+        let cramped = ScreenRect { x: 0.0, y: 0.0, width: 800.0, height: 300.0 };
+        let (_, y) = prompt_position(anchor(400.0, 150.0), SIZE, cramped, 6.0);
+        assert_eq!(y, 80.0); // clamped so the bottom edge lands on the work area's
+    }
+
+    #[test]
+    fn a_second_display_is_placed_in_its_own_coordinates() {
+        let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
+        assert_eq!(prompt_position(anchor(1450.0, 100.0), SIZE, right, 6.0), (1440.0, 130.0));
     }
 }
