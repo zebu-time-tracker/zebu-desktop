@@ -365,36 +365,158 @@ fn apply_icon(tray: &TrayIcon, rendered: Option<(tauri::image::Image<'static>, b
     }
 }
 
-/// Update the menubar widget: a rendered pill showing play + "zzzz" when
-/// idle, or green pause bars + the elapsed time while a timer runs. `detail`
-/// (project · task) feeds the hover tooltip as a quick preview. `tooltip`
-/// carries the fully formatted, localized tooltip from the frontend (which
-/// owns the locale catalogs); the format! fallback below only covers older
-/// callers that don't send one.
-#[tauri::command]
-fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, running: bool, tooltip: Option<String>) {
-    if let Some(tray) = app.tray_by_id("main") {
-        let elapsed = (!title.is_empty()).then_some(title.as_str());
+// ---- menubar pill ----------------------------------------------------------
+//
+// The pill used to be repainted by the webview on a setInterval, which macOS
+// throttles (or pauses outright) while the popover is hidden — so the elapsed
+// time froze until the icon was clicked and the window regained focus. Now the
+// frontend only describes *what* is on the clock (banked minutes, when the
+// running stretch started, project · task, the localized tooltip) whenever
+// that changes, and a native thread derives the elapsed time itself every
+// second, repainting only when the displayed minute rolls over.
 
-        #[cfg(not(target_os = "linux"))]
-        apply_icon(&tray, tray_icon::render(elapsed, running));
-        #[cfg(target_os = "macos")]
-        let _ = tray.set_title(None::<String>);
+/// The entry the pill shows, as the frontend last described it. None = idle.
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize)]
+struct TrayEntry {
+    /// Minutes already banked on the entry, before any running stretch.
+    minutes: f64,
+    /// When the running stretch began (unix ms); None when the entry is stopped.
+    started_at_ms: Option<u64>,
+    /// "project · task", for the tooltip fallback.
+    detail: Option<String>,
+    /// Localized tooltip from the frontend (which owns the locale catalogs),
+    /// with a literal `{time}` where the clock goes.
+    tooltip: Option<String>,
+    /// Agentic work: an agent is being waited on right now.
+    agent_waiting: bool,
+}
 
-        let tip = tooltip.filter(|t| !t.is_empty()).unwrap_or_else(|| {
-            match (elapsed, detail.filter(|d| !d.is_empty())) {
-                (Some(t), Some(d)) if running => format!("{d} · {t}"),
-                (Some(t), Some(d)) => format!("{d} · {t} (stopped)"),
-                (Some(t), None) => format!("Zebu — {t}"),
-                _ => "Zebu".to_string(),
-            }
-        });
-        #[cfg(target_os = "linux")]
-        if let Some(item) = TRAY_STATUS_ITEM.get() {
-            let _ = item.set_text(&tip);
-        }
-        let _ = tray.set_tooltip(Some(tip));
+/// One rendered state of the pill; equal frames are not repainted.
+#[derive(Clone, Debug, PartialEq)]
+struct TrayFrame {
+    /// The clock text, "" when nothing is on the clock today.
+    title: String,
+    running: bool,
+    tooltip: String,
+}
+
+static TRAY_STATE: Mutex<Option<TrayEntry>> = Mutex::new(None);
+static TRAY_FRAME: Mutex<Option<TrayFrame>> = Mutex::new(None);
+
+/// How often the ticker asks the webview to re-fetch the timesheet, so a timer
+/// started or stopped from another client shows up here without a click. The
+/// nudge comes from this native thread rather than a webview interval because
+/// the webview's own timers stall while the popover is hidden.
+const REFRESH_NUDGE_S: u64 = 20;
+
+fn unix_ms(at: SystemTime) -> u64 {
+    at.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// Clock-style "h:mm", rounded to the nearest minute like the frontend's
+/// formatMinutes so the pill and the list agree.
+fn format_clock(minutes: f64) -> String {
+    let m = minutes.max(0.0).round() as u64;
+    format!("{}:{:02}", m / 60, m % 60)
+}
+
+/// Minutes on the clock right now: banked plus the running stretch.
+fn elapsed_minutes(entry: &TrayEntry, now_ms: u64) -> f64 {
+    match entry.started_at_ms {
+        Some(started) => entry.minutes + now_ms.saturating_sub(started) as f64 / 60_000.0,
+        None => entry.minutes,
     }
+}
+
+/// What the pill should show for `entry` at `now_ms`.
+fn tray_frame(entry: Option<&TrayEntry>, now_ms: u64) -> TrayFrame {
+    let Some(entry) = entry else {
+        return TrayFrame { title: String::new(), running: false, tooltip: "Zebu".to_string() };
+    };
+    let running = entry.started_at_ms.is_some();
+    let clock = format_clock(elapsed_minutes(entry, now_ms));
+    let detail = entry.detail.as_deref().filter(|d| !d.is_empty());
+    let tooltip = match entry.tooltip.as_deref().filter(|t| !t.is_empty()) {
+        Some(template) => template.replace("{time}", &clock),
+        None => match detail {
+            Some(d) if running => format!("{d} · {clock}"),
+            Some(d) => format!("{d} · {clock} (stopped)"),
+            None => format!("Zebu — {clock}"),
+        },
+    };
+    let title = if running && entry.agent_waiting { format!("{clock} ⏳") } else { clock };
+    TrayFrame { title, running, tooltip }
+}
+
+/// Paint a frame onto the tray: the rendered pill (green pause bars + elapsed
+/// while running, play + "zzzz" when idle) and the hover tooltip. Linux gets
+/// the tooltip as a disabled menu line instead (see TRAY_STATUS_ITEM).
+fn paint_tray(app: &tauri::AppHandle, frame: &TrayFrame) {
+    let Some(tray) = app.tray_by_id("main") else {
+        return;
+    };
+    let elapsed = (!frame.title.is_empty()).then_some(frame.title.as_str());
+
+    #[cfg(not(target_os = "linux"))]
+    apply_icon(&tray, tray_icon::render(elapsed, frame.running));
+    #[cfg(target_os = "linux")]
+    let _ = elapsed;
+    #[cfg(target_os = "macos")]
+    let _ = tray.set_title(None::<String>);
+
+    #[cfg(target_os = "linux")]
+    if let Some(item) = TRAY_STATUS_ITEM.get() {
+        let _ = item.set_text(&frame.tooltip);
+    }
+    let _ = tray.set_tooltip(Some(frame.tooltip.clone()));
+}
+
+/// Repaint the pill if what it should show has changed since the last paint.
+fn refresh_tray(app: &tauri::AppHandle) {
+    let frame = {
+        let state = TRAY_STATE.lock().ok();
+        tray_frame(state.as_ref().and_then(|s| s.as_ref()), unix_ms(SystemTime::now()))
+    };
+    let changed = TRAY_FRAME.lock().map(|mut last| {
+        if last.as_ref() == Some(&frame) {
+            false
+        } else {
+            *last = Some(frame.clone());
+            true
+        }
+    });
+    if changed.unwrap_or(true) {
+        paint_tray(app, &frame);
+    }
+}
+
+/// The frontend describing what is on the clock. Sent when the running entry,
+/// today's latest entry, the agent-waiting flag or the locale changes — never
+/// on a timer. `None` clears the pill back to idle (e.g. on disconnect).
+#[tauri::command]
+fn set_tray_state(app: tauri::AppHandle, entry: Option<TrayEntry>) {
+    if let Ok(mut state) = TRAY_STATE.lock() {
+        *state = entry;
+    }
+    refresh_tray(&app);
+}
+
+/// Native clock for the pill: repaints on minute rollovers while the popover
+/// is hidden, and every REFRESH_NUDGE_S asks the webview to re-fetch the
+/// timesheet (`refresh-due`) so changes made elsewhere are picked up.
+fn spawn_tray_ticker(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let mut last_nudge = SystemTime::now();
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+            refresh_tray(&app);
+            let since = SystemTime::now().duration_since(last_nudge).unwrap_or_default().as_secs();
+            if since >= REFRESH_NUDGE_S {
+                last_nudge = SystemTime::now();
+                let _ = app.emit_to("main", "refresh-due", ());
+            }
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -413,7 +535,7 @@ pub fn run() {
 
     builder
         .invoke_handler(tauri::generate_handler![
-            set_tray_title,
+            set_tray_state,
             quit,
             idle_seconds,
             set_idle_threshold,
@@ -500,11 +622,85 @@ pub fn run() {
             let _ = &tray;
 
             spawn_idle_watcher(app.handle().clone());
+            spawn_tray_ticker(app.handle().clone());
 
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tray_tests {
+    use super::{format_clock, tray_frame, TrayEntry, TrayFrame};
+
+    const T0: u64 = 1_800_000_000_000; // some unix ms
+
+    fn running(minutes: f64, started_ago_s: u64) -> TrayEntry {
+        TrayEntry {
+            minutes,
+            started_at_ms: Some(T0 - started_ago_s * 1000),
+            detail: Some("Acme · Design".into()),
+            tooltip: Some("Acme · Design · {time}".into()),
+            agent_waiting: false,
+        }
+    }
+
+    #[test]
+    fn the_clock_rounds_to_the_nearest_minute_like_the_list() {
+        assert_eq!(format_clock(0.0), "0:00");
+        assert_eq!(format_clock(0.4), "0:00");
+        assert_eq!(format_clock(0.6), "0:01");
+        assert_eq!(format_clock(95.0), "1:35");
+        assert_eq!(format_clock(-3.0), "0:00");
+    }
+
+    #[test]
+    fn a_running_entry_counts_from_its_start_without_the_webview() {
+        // 20 banked minutes, started 30 minutes ago: the pill says 0:50
+        let frame = tray_frame(Some(&running(20.0, 30 * 60)), T0);
+        assert_eq!(frame, TrayFrame { title: "0:50".into(), running: true, tooltip: "Acme · Design · 0:50".into() });
+        // …and a minute later, 0:51 — without anyone sending a new state
+        assert_eq!(tray_frame(Some(&running(20.0, 30 * 60)), T0 + 60_000).title, "0:51");
+    }
+
+    #[test]
+    fn equal_minutes_give_equal_frames_so_nothing_is_repainted_mid_minute() {
+        let entry = running(0.0, 600);
+        assert_eq!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 20_000));
+        assert_ne!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 40_000));
+    }
+
+    #[test]
+    fn a_stopped_entry_shows_its_banked_minutes_as_a_paused_pill() {
+        let entry = TrayEntry { minutes: 125.0, started_at_ms: None, detail: Some("Acme".into()), tooltip: None, agent_waiting: false };
+        let frame = tray_frame(Some(&entry), T0);
+        assert_eq!(frame.title, "2:05");
+        assert!(!frame.running);
+        assert_eq!(frame.tooltip, "Acme · 2:05 (stopped)");
+        // the clock never moves on a stopped entry
+        assert_eq!(tray_frame(Some(&entry), T0 + 3_600_000).title, "2:05");
+    }
+
+    #[test]
+    fn nothing_today_is_the_idle_pill() {
+        assert_eq!(tray_frame(None, T0), TrayFrame { title: String::new(), running: false, tooltip: "Zebu".into() });
+    }
+
+    #[test]
+    fn a_start_in_the_future_reads_as_zero_not_as_garbage() {
+        // a client clock behind the server: never a negative or wrapped elapsed
+        let entry = TrayEntry { started_at_ms: Some(T0 + 90_000), ..running(5.0, 0) };
+        assert_eq!(tray_frame(Some(&entry), T0).title, "0:05");
+    }
+
+    #[test]
+    fn waiting_on_an_agent_marks_the_running_clock() {
+        let entry = TrayEntry { agent_waiting: true, ..running(0.0, 120) };
+        assert_eq!(tray_frame(Some(&entry), T0).title, "0:02 ⏳");
+        let stopped = TrayEntry { started_at_ms: None, agent_waiting: true, ..running(7.0, 0) };
+        assert_eq!(tray_frame(Some(&stopped), T0).title, "0:07");
+    }
 }
 
 #[cfg(test)]

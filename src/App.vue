@@ -10,6 +10,7 @@ import ProjectPicker from './ProjectPicker.vue';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
+import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
 const { t } = useI18n();
@@ -152,8 +153,7 @@ const disconnect = (message = '') => {
     sheet.value = null;
     summary.value = null;
     forgetLastTimer();
-    lastTray = '';
-    invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null }).catch(() => {});
+    invoke('set_tray_state', { entry: null }).catch(() => {});
 };
 
 // the workspace answered 401: the device was revoked in the browser (or the
@@ -251,6 +251,7 @@ const elapsed = (entry: { minutes: number; timer_started_at: string | null }) =>
 
 let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
+let refreshUnlisten: UnlistenFn | null = null;
 
 // the pill falls back to today's most recent entry, so a timer stopped
 // elsewhere leaves the day's total on screen rather than "zzzz"
@@ -260,31 +261,23 @@ const todaysLatest = computed(() => {
 });
 const trayEntry = computed(() => running.value ?? todaysLatest.value);
 
-let lastTray: string | null = null;
+// The pill itself is painted by Rust, which ticks the elapsed time on its own
+// thread (webview timers stall while the popover is hidden, so the old
+// setInterval here left the menubar frozen until the icon was clicked). This
+// only hands over what is on the clock, whenever that changes; the tooltip is
+// rendered here so it follows the app's locale, with `{time}` left for Rust.
 const updateTray = () => {
-    const entry = trayEntry.value;
-    const isRunning = !!running.value;
-    const title = entry ? formatMinutes(elapsed(entry)) : '';
-    // project · task feeds the tray tooltip as a hover preview; the tooltip is
-    // rendered here (not in Rust) so it follows the app's locale
-    const detail = entry ? [entry.project, entry.task].filter(Boolean).join(' · ') : '';
-    const tooltip = title
-        ? detail
-            ? t(isRunning ? 'tray.tooltipRunning' : 'tray.tooltipStopped', { detail, time: title })
-            : t('tray.tooltipIdle', { time: title })
-        : 'Zebu';
-    const key = `${title}|${detail}|${isRunning}|${tooltip}`;
-    if (key === lastTray) return; // re-render only when something changes
-    lastTray = key;
-    invoke('set_tray_title', { title: isRunning && running.value?.agent_waiting ? `${title} ⏳` : title, detail: detail || null, running: isRunning, tooltip }).catch(() => {});
+    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t) }).catch(() => {});
 };
 
 onMounted(() => {
-    tick = setInterval(() => {
-        now.value = Date.now();
-        updateTray();
-    }, 15000);
-    refreshLoop = setInterval(refresh, 20000);
+    tick = setInterval(() => (now.value = Date.now()), 15000);
+    // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
+    // another client shows up without a click; outside Tauri (plain-browser
+    // dev) fall back to a webview interval.
+    listen('refresh-due', () => refresh())
+        .then((off) => (refreshUnlisten = off))
+        .catch(() => (refreshLoop = setInterval(refresh, 20000)));
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
@@ -298,6 +291,7 @@ onMounted(() => {
 onUnmounted(() => {
     if (tick) clearInterval(tick);
     if (refreshLoop) clearInterval(refreshLoop);
+    refreshUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
