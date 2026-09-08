@@ -28,6 +28,10 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers
   do, via the `idle-choice` event.
+- Insights is its own window too (`toggle_insights`, label `insights`,
+  `src/Insights.vue`), placed beside the popover and sized to what its content
+  measures, so the stats and charts are not squeezed into the timer's frame.
+  It and the popover hide together only when focus leaves the app.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

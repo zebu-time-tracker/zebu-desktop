@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Cancel",
+        "close": "Close",
         "loading": "Loading…",
         "no": "No",
         "system": "System",
