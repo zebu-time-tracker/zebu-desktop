@@ -2,7 +2,9 @@
     "common": {
         "cancel": "取消",
         "loading": "加载中…",
-        "system": "系统"
+        "no": "否",
+        "system": "系统",
+        "yes": "是"
     },
     "connect": {
         "login": "登录",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "您已闲置 {n} 分钟",
-        "ignore": "忽略",
-        "remove": "移除",
-        "stopTiming": "停止计时",
-        "continueTiming": "继续计时",
-        "ok": "确定",
-        "timeQuestion": "如何处理闲置时间",
-        "timerQuestion": "如何处理计时器"
+        "timeQuestion": "移除闲置时间？",
+        "timerQuestion": "继续计时？",
+        "ok": "确定"
     },
     "form": {
         "editTitle": "编辑时间条目",

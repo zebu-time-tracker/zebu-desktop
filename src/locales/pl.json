@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Anuluj",
         "loading": "Wczytywanie…",
-        "system": "Systemowy"
+        "no": "Nie",
+        "system": "Systemowy",
+        "yes": "Tak"
     },
     "connect": {
         "login": "Zaloguj się",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "Brak aktywności przez {n} minutę | Brak aktywności przez {n} minuty | Brak aktywności przez {n} minut",
-        "ignore": "Ignoruj",
-        "remove": "Usuń",
-        "stopTiming": "Zatrzymaj stoper",
-        "continueTiming": "Licz dalej",
-        "ok": "OK",
-        "timeQuestion": "Co zrobić z czasem bezczynności",
-        "timerQuestion": "Co zrobić ze stoperem"
+        "timeQuestion": "Usunąć czas bezczynności?",
+        "timerQuestion": "Kontynuować odliczanie?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Edytuj wpis",

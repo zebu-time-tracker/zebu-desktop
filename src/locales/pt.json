@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Cancelar",
         "loading": "Carregando…",
-        "system": "Sistema"
+        "no": "Não",
+        "system": "Sistema",
+        "yes": "Sim"
     },
     "connect": {
         "login": "Entrar",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "Você ficou inativo por {n} minuto | Você ficou inativo por {n} minutos",
-        "ignore": "Ignorar",
-        "remove": "Remover",
-        "stopTiming": "Parar",
-        "continueTiming": "Continuar a contar",
-        "ok": "OK",
-        "timeQuestion": "O que fazer com o tempo inativo",
-        "timerQuestion": "O que fazer com o temporizador"
+        "timeQuestion": "Remover o tempo inativo?",
+        "timerQuestion": "Continuar a contar?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Editar entrada",

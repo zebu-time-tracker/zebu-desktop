@@ -1,0 +1,11 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "idle-prompt",
+    "description": "The idle prompt window: it only listens for its own re-show event and calls this app's own idle commands, so it needs nothing beyond the core defaults.",
+    "windows": [
+        "idle"
+    ],
+    "permissions": [
+        "core:default"
+    ]
+}

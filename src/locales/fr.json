@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Annuler",
         "loading": "Chargement…",
-        "system": "Système"
+        "no": "Non",
+        "system": "Système",
+        "yes": "Oui"
     },
     "connect": {
         "login": "Se connecter",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
-        "ignore": "Ignorer",
-        "remove": "Retirer",
-        "stopTiming": "Arrêter le minuteur",
-        "continueTiming": "Continuer",
-        "ok": "OK",
-        "timeQuestion": "Que faire du temps d’inactivité",
-        "timerQuestion": "Que faire du minuteur"
+        "timeQuestion": "Retirer le temps d’inactivité ?",
+        "timerQuestion": "Continuer le minuteur ?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Modifier l'entrée",

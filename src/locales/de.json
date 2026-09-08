@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Abbrechen",
         "loading": "Lädt…",
-        "system": "System"
+        "no": "Nein",
+        "system": "System",
+        "yes": "Ja"
     },
     "connect": {
         "login": "Anmelden",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
-        "ignore": "Ignorieren",
-        "remove": "Entfernen",
-        "stopTiming": "Zeitmessung stoppen",
-        "continueTiming": "Weiter messen",
-        "ok": "OK",
-        "timeQuestion": "Was mit der Leerlaufzeit passieren soll",
-        "timerQuestion": "Was mit dem Timer passieren soll"
+        "timeQuestion": "Leerlaufzeit entfernen?",
+        "timerQuestion": "Weiter messen?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Eintrag bearbeiten",

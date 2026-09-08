@@ -2,7 +2,9 @@
     "common": {
         "cancel": "취소",
         "loading": "불러오는 중…",
-        "system": "시스템"
+        "no": "아니요",
+        "system": "시스템",
+        "yes": "예"
     },
     "connect": {
         "login": "로그인",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "{n}분 동안 자리를 비웠습니다",
-        "ignore": "무시",
-        "remove": "제거",
-        "stopTiming": "측정 중지",
-        "continueTiming": "계속 측정",
-        "ok": "확인",
-        "timeQuestion": "유휴 시간 처리",
-        "timerQuestion": "타이머 처리"
+        "timeQuestion": "유휴 시간을 제거할까요?",
+        "timerQuestion": "계속 측정할까요?",
+        "ok": "확인"
     },
     "form": {
         "editTitle": "항목 편집",

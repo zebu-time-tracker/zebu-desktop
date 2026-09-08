@@ -24,6 +24,10 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
 - Idle detection lives in Rust (`spawn_idle_watcher`); the frontend only sets
   the threshold and renders the prompt. Webview timers are throttled while
   hidden, so never rely on `setInterval` for anything time-critical.
+- The idle prompt is its own always-on-top window (`show_idle_prompt`, label
+  `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
+  frame; it only presents the question — App.vue still owns what the answers
+  do, via the `idle-choice` event.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

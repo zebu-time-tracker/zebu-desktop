@@ -2,7 +2,9 @@
     "common": {
         "cancel": "Cancel",
         "loading": "Loading…",
-        "system": "System"
+        "no": "No",
+        "system": "System",
+        "yes": "Yes"
     },
     "connect": {
         "login": "Log in",
@@ -69,13 +71,9 @@
     },
     "idle": {
         "title": "You were idle for {n} minute | You were idle for {n} minutes",
-        "ignore": "Ignore",
-        "remove": "Remove",
-        "stopTiming": "Stop timing",
-        "continueTiming": "Continue timing",
-        "ok": "OK",
-        "timeQuestion": "What to do with the idle time",
-        "timerQuestion": "What to do with the timer"
+        "timeQuestion": "Remove Idle Time?",
+        "timerQuestion": "Continue Timing?",
+        "ok": "OK"
     },
     "form": {
         "editTitle": "Edit Time Entry",
