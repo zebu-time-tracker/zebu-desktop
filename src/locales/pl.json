@@ -71,7 +71,7 @@
     },
     "idle": {
         "title": "Brak aktywności przez {duration}",
-        "timeQuestion": "Usunąć czas bezczynności?",
+        "timeQuestion": "Usunąć bezczynność?",
         "timerQuestion": "Kontynuować odliczanie?",
         "ok": "OK"
     },

@@ -71,7 +71,7 @@
     },
     "idle": {
         "title": "Estuviste inactivo {duration}",
-        "timeQuestion": "¿Quitar el tiempo inactivo?",
+        "timeQuestion": "¿Quitar la inactividad?",
         "timerQuestion": "¿Seguir contando?",
         "ok": "OK"
     },

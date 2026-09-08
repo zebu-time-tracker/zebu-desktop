@@ -71,7 +71,7 @@
     },
     "idle": {
         "title": "Inactif pendant {duration}",
-        "timeQuestion": "Retirer le temps d’inactivité ?",
+        "timeQuestion": "Retirer l’inactivité ?",
         "timerQuestion": "Continuer le minuteur ?",
         "ok": "OK"
     },

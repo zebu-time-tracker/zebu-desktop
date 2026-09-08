@@ -71,7 +71,7 @@
     },
     "idle": {
         "title": "{duration} 操作がありませんでした",
-        "timeQuestion": "アイドル時間を削除しますか？",
+        "timeQuestion": "無操作時間を削除しますか？",
         "timerQuestion": "計測を続けますか？",
         "ok": "OK"
     },

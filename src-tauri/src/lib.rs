@@ -136,7 +136,13 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
 const IDLE_LABEL: &str = "idle";
 /// Logical size of the prompt: the width is fixed, the height is what the
 /// webview measures once the (translated) text has been laid out.
-const IDLE_WIDTH: f64 = 260.0;
+///
+/// The width is set by the two side-by-side questions in `IdlePrompt.vue`:
+/// each column needs (330 - 14px padding ×2 - 1px border ×2 - 10px gap) / 2 =
+/// 145px, and the longest question in any locale measures ~136px (nl
+/// "Inactieve tijd verwijderen?", pt "Remover o tempo inativo?"), so every
+/// catalog keeps both questions and both Yes/No pairs on one line.
+const IDLE_WIDTH: f64 = 330.0;
 const IDLE_HEIGHT: f64 = 220.0;
 /// Breathing room between the anchor and the prompt, in logical pixels.
 const IDLE_GAP: f64 = 6.0;
@@ -544,7 +550,7 @@ mod prompt_position_tests {
 
     /// A 1440x900 display with a 25px menubar, as physical pixels.
     const WORK: ScreenRect = ScreenRect { x: 0.0, y: 25.0, width: 1440.0, height: 875.0 };
-    const SIZE: (f64, f64) = (260.0, 220.0);
+    const SIZE: (f64, f64) = (330.0, 220.0);
 
     fn anchor(x: f64, y: f64) -> ScreenRect {
         ScreenRect { x, y, width: 24.0, height: 24.0 }
@@ -553,20 +559,20 @@ mod prompt_position_tests {
     #[test]
     fn hangs_centred_under_the_anchor_when_there_is_room() {
         // stop button at the top of the list, plenty of screen below it
-        assert_eq!(prompt_position(anchor(700.0, 200.0), SIZE, WORK, 6.0), (582.0, 230.0));
+        assert_eq!(prompt_position(anchor(700.0, 200.0), SIZE, WORK, 6.0), (547.0, 230.0));
     }
 
     #[test]
     fn flips_above_the_anchor_rather_than_off_the_bottom() {
         // the running entry sits near the bottom of a long list: below would
         // run past the screen edge, so the prompt goes above the button
-        assert_eq!(prompt_position(anchor(700.0, 800.0), SIZE, WORK, 6.0), (582.0, 574.0));
+        assert_eq!(prompt_position(anchor(700.0, 800.0), SIZE, WORK, 6.0), (547.0, 574.0));
     }
 
     #[test]
     fn stays_on_screen_at_the_left_and_right_edges() {
         assert_eq!(prompt_position(anchor(4.0, 200.0), SIZE, WORK, 6.0).0, 0.0);
-        assert_eq!(prompt_position(anchor(1420.0, 200.0), SIZE, WORK, 6.0).0, 1180.0);
+        assert_eq!(prompt_position(anchor(1420.0, 200.0), SIZE, WORK, 6.0).0, 1110.0);
     }
 
     #[test]
