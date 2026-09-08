@@ -35,15 +35,12 @@ fn idle_seconds() -> u64 {
         .unwrap_or(0)
 }
 
-/// Show the popover hanging from the menubar icon. The positioner only knows
-/// the tray's place once a tray event has been seen; straight after launch
-/// (or when the idle watcher fires before any click) it errors, so fall back
-/// to asking the tray for its rect directly. Never lets the window land in
-/// the middle of the screen.
-fn show_popover(app: &tauri::AppHandle) {
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
+/// Put the popover where it hangs from the menubar icon (without showing it).
+/// The positioner only knows the tray's place once a tray event has been
+/// seen; straight after launch (or when the idle watcher fires before any
+/// click) it errors, so fall back to asking the tray for its rect directly.
+/// Never lets the window land in the middle of the screen.
+fn anchor_popover(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
     if window.move_window(Position::TrayCenter).is_err() {
         if let (Some(Ok(Some(rect))), Ok(win)) = (app.tray_by_id("main").map(|t| t.rect()), window.outer_size()) {
             // tray-icon reports physical pixels already (same assumption as the positioner)
@@ -57,8 +54,74 @@ fn show_popover(app: &tauri::AppHandle) {
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }
     }
+}
+
+/// Show the popover hanging from the menubar icon.
+fn show_popover(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    anchor_popover(app, &window);
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+// ---- popover height ---------------------------------------------------------
+//
+// The timesheet window sizes itself to the day. The entries list gets room for
+// its rows — never less than 3.5 rows (a short or empty day still has a
+// comfortable list), never more than 5.5, after which it scrolls. The half row
+// peeking out at the bottom is deliberate: it is what says "there is more".
+// The frontend measures what it actually rendered (the chrome around the
+// list, the average row height) and this side clamps and applies, so the
+// numbers stay honest whatever a locale or font does to a row.
+
+/// Logical width of the popover, matching tauri.conf.json.
+const MAIN_WIDTH: f64 = 380.0;
+/// The list is never shorter than this many rows…
+const MIN_ROWS: f64 = 3.5;
+/// …and never taller than this many; beyond that it scrolls.
+const MAX_ROWS: f64 = 5.5;
+
+/// Height of the entries list for `entries` rows of `row` px plus `extra` px
+/// of non-row content (the list's padding, a locked-week note), clamped to
+/// the row band.
+fn list_height(entries: usize, row: f64, extra: f64) -> f64 {
+    let content = entries as f64 * row + extra;
+    content.clamp(MIN_ROWS * row, MAX_ROWS * row)
+}
+
+/// The whole popover: the chrome (header, week strip, banners, footer) plus
+/// the list, but never taller than the display's work area — a short screen
+/// gets a shorter list rather than a window hanging off the bottom.
+fn popover_height(chrome: f64, list: f64, work_height: f64) -> f64 {
+    (chrome + list).min(work_height.max(chrome))
+}
+
+/// The frontend's measurements of the timesheet, in CSS pixels: everything
+/// around the list, one entry row, how many rows the day has, and what else
+/// sits inside the list. Resizes the window to fit; it stays hanging from the
+/// tray icon because growth keeps the top edge where it is.
+#[tauri::command]
+fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, extra: f64) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if !(row > 0.0) {
+        return; // nothing measured yet
+    }
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let origin = window.outer_position().map(|p| (p.x as f64, p.y as f64)).unwrap_or((0.0, 0.0));
+    let work = work_area(&app, origin.0 + MAIN_WIDTH * scale / 2.0, origin.1 + 1.0);
+    let height = popover_height(chrome, list_height(entries, row, extra), work.height / scale).round();
+    let current = window.inner_size().map(|s| (s.height as f64 / scale).round()).unwrap_or(0.0);
+    if current == height {
+        return;
+    }
+    let _ = window.set_size(LogicalSize::new(MAIN_WIDTH, height));
+    if window.is_visible().unwrap_or(false) {
+        anchor_popover(&app, &window);
+    }
 }
 
 /// Idle threshold in seconds; 0 = detection off (no timer running, or the
@@ -419,6 +482,7 @@ pub fn run() {
             set_idle_threshold,
             set_dock_visible,
             set_hide_on_blur,
+            fit_popover,
             show_idle_prompt,
             idle_prompt_data,
             fit_idle_prompt,
@@ -580,5 +644,63 @@ mod prompt_position_tests {
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
         assert_eq!(prompt_position(anchor(1450.0, 100.0), SIZE, right, 6.0), (1440.0, 130.0));
+    }
+}
+
+#[cfg(test)]
+mod popover_height_tests {
+    use super::{list_height, popover_height};
+
+    /// An entry row with its project-stats line, and the list's bottom padding.
+    const ROW: f64 = 67.0;
+    const PAD: f64 = 8.0;
+    /// Header + week strip + footer, as rendered.
+    const CHROME: f64 = 136.0;
+
+    #[test]
+    fn a_short_or_empty_day_still_gets_three_and_a_half_rows() {
+        for entries in 0..=3 {
+            assert_eq!(list_height(entries, ROW, PAD), 3.5 * ROW, "{entries} entries");
+        }
+    }
+
+    #[test]
+    fn four_and_five_entries_fit_exactly_with_no_scrolling() {
+        assert_eq!(list_height(4, ROW, PAD), 4.0 * ROW + PAD);
+        assert_eq!(list_height(5, ROW, PAD), 5.0 * ROW + PAD);
+    }
+
+    #[test]
+    fn six_or_more_stop_at_five_and_a_half_rows_and_scroll() {
+        assert_eq!(list_height(6, ROW, PAD), 5.5 * ROW);
+        assert_eq!(list_height(10, ROW, PAD), 5.5 * ROW);
+    }
+
+    #[test]
+    fn a_locked_week_note_counts_as_list_content() {
+        // five rows plus a note would run past 5.5 rows, so the cap wins
+        assert_eq!(list_height(5, ROW, PAD + 30.0), 5.5 * ROW);
+        // three rows plus a note just outgrow 3.5 rows: the note stays visible
+        assert_eq!(list_height(3, ROW, PAD + 30.0), 3.0 * ROW + PAD + 30.0);
+        assert_eq!(list_height(2, ROW, PAD + 30.0), 3.5 * ROW);
+    }
+
+    #[test]
+    fn shorter_rows_make_a_shorter_window() {
+        // a day whose projects carry no stats line renders shorter rows
+        assert_eq!(list_height(6, 52.0, PAD), 5.5 * 52.0);
+    }
+
+    #[test]
+    fn the_window_is_the_chrome_plus_the_list() {
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 875.0), 370.5);
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 875.0), 504.5);
+    }
+
+    #[test]
+    fn a_short_screen_caps_the_window_at_its_work_area() {
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 400.0), 400.0);
+        // …but never below the chrome, which cannot shrink
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 100.0), CHROME);
     }
 }
