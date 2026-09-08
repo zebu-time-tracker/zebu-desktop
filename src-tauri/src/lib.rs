@@ -23,7 +23,7 @@ static HIDE_ON_BLUR: AtomicBool = AtomicBool::new(true);
 /// emitted even though the icon shows), so a menu is the only way the icon
 /// can be interacted with there.
 #[cfg(target_os = "linux")]
-static TRAY_STATUS_ITEM: std::sync::OnceLock<MenuItem> = std::sync::OnceLock::new();
+static TRAY_STATUS_ITEM: std::sync::OnceLock<MenuItem<tauri::Wry>> = std::sync::OnceLock::new();
 
 /// Seconds since the last keyboard/mouse input, for Harvest-style idle
 /// detection. 0 when the platform can't tell (detection simply stays off).
