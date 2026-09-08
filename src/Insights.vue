@@ -220,7 +220,13 @@ html[data-window='insights'] body {
     background: var(--bg-raised);
     border: 1px solid var(--border);
     border-radius: 12px;
-    overflow: hidden;
+    /* The window is sized to this content, so there is normally nothing to
+       scroll. On a display too short for the whole panel Rust caps the window
+       at the work area (see insights_height) — the overflow has to be reachable
+       then, rather than sliced off at the bottom edge. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 </style>
 

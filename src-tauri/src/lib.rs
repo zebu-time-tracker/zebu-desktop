@@ -339,6 +339,8 @@ const INSIGHTS_LABEL: &str = "insights";
 /// once the (translated, data-dependent) panel has laid out.
 const INSIGHTS_WIDTH: f64 = 440.0;
 const INSIGHTS_HEIGHT: f64 = 540.0;
+/// Never smaller than this, however little the webview reports.
+const INSIGHTS_MIN_HEIGHT: f64 = 320.0;
 /// Breathing room between the popover and the panel, in logical pixels.
 const INSIGHTS_GAP: f64 = 8.0;
 
@@ -381,19 +383,55 @@ fn insights_anchor(app: &tauri::AppHandle) -> Option<ScreenRect> {
     rect.or_else(|| tray_anchor(app))
 }
 
+/// The height to open the panel at, given what its content measured and how
+/// much of the display it can have. The upper bound used to be a flat 720
+/// logical pixels, which quietly cut the charts off the bottom of a panel with
+/// a long uninvoiced breakdown even on a display with room to spare; a panel
+/// that genuinely can't fit the screen is capped here and scrolls instead
+/// (see the insights window's `overflow-y` in Insights.vue).
+fn insights_height(measured: f64, available: f64) -> f64 {
+    measured.clamp(INSIGHTS_MIN_HEIGHT, available.max(INSIGHTS_MIN_HEIGHT))
+}
+
+/// How tall the panel may grow on the display it will open on, in logical
+/// pixels. Falls back to the fixed height when there is nothing to measure
+/// against yet.
+fn insights_available_height(app: &tauri::AppHandle) -> f64 {
+    let Some(window) = app.get_webview_window(INSIGHTS_LABEL) else {
+        return INSIGHTS_HEIGHT;
+    };
+    let Some(anchor) = insights_anchor(app) else {
+        return INSIGHTS_HEIGHT;
+    };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
+    area.height / scale - 2.0 * INSIGHTS_GAP
+}
+
 /// Size the panel to its content, put it where it fits, and show it.
 fn place_insights(app: &tauri::AppHandle, height: f64) {
     let Some(window) = app.get_webview_window(INSIGHTS_LABEL) else {
         return;
     };
     // A panel already on screen only ever resizes: it must not jump back
-    // beside the popover, nor steal focus, when it refreshes its figures.
+    // beside the popover, nor steal focus, when it refreshes its figures. It
+    // still has to stay on the display, though — a refresh that adds rows
+    // would otherwise push its bottom edge off the screen.
     let showing = window.is_visible().unwrap_or(false);
     let _ = window.set_size(LogicalSize::new(INSIGHTS_WIDTH, height));
+    let scale = window.scale_factor().unwrap_or(1.0);
     if showing {
+        if let Ok(pos) = window.outer_position() {
+            let (x, y) = (pos.x as f64, pos.y as f64);
+            let area = work_area(app, x + INSIGHTS_WIDTH * scale / 2.0, y);
+            let bottom = area.y + area.height;
+            let clamped = y.clamp(area.y, (bottom - height * scale).max(area.y));
+            if clamped != y {
+                let _ = window.set_position(PhysicalPosition::new(x, clamped));
+            }
+        }
         return;
     }
-    let scale = window.scale_factor().unwrap_or(1.0);
     if let Some(anchor) = insights_anchor(app) {
         let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
         let (x, y) = beside_position(anchor, (INSIGHTS_WIDTH * scale, height * scale), area, INSIGHTS_GAP * scale);
@@ -478,7 +516,8 @@ fn fit_insights(app: tauri::AppHandle, height: f64) {
     if !insights_wanted() {
         return; // closed again while it was still measuring
     }
-    place_insights(&app, height.clamp(320.0, 720.0));
+    let available = insights_available_height(&app);
+    place_insights(&app, insights_height(height, available));
 }
 
 /// Quit the app entirely — a menubar app with no dock icon otherwise has no
@@ -768,6 +807,43 @@ mod prompt_position_tests {
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
         assert_eq!(prompt_position(anchor(1450.0, 100.0), SIZE, right, 6.0), (1440.0, 130.0));
+    }
+}
+
+#[cfg(test)]
+mod insights_height_tests {
+    use super::{insights_height, INSIGHTS_MIN_HEIGHT};
+
+    /// A 900px-tall display's work area, in logical pixels.
+    const AVAILABLE: f64 = 875.0;
+
+    #[test]
+    fn takes_the_height_the_content_measured() {
+        assert_eq!(insights_height(545.0, AVAILABLE), 545.0);
+    }
+
+    #[test]
+    fn a_long_breakdown_grows_past_the_old_fixed_ceiling() {
+        // twelve currency rows measured 745: the flat 720 cap used to slice
+        // the second chart's caption off with no way to scroll to it
+        assert_eq!(insights_height(745.0, AVAILABLE), 745.0);
+        assert_eq!(insights_height(870.0, AVAILABLE), 870.0);
+    }
+
+    #[test]
+    fn never_grows_past_what_the_display_can_show() {
+        assert_eq!(insights_height(1200.0, AVAILABLE), AVAILABLE);
+    }
+
+    #[test]
+    fn a_panel_still_measuring_itself_gets_a_usable_minimum() {
+        assert_eq!(insights_height(0.0, AVAILABLE), INSIGHTS_MIN_HEIGHT);
+    }
+
+    #[test]
+    fn a_display_shorter_than_the_minimum_still_shows_the_minimum() {
+        // the whole panel scrolls there rather than opening as a sliver
+        assert_eq!(insights_height(600.0, 200.0), INSIGHTS_MIN_HEIGHT);
     }
 }
 
