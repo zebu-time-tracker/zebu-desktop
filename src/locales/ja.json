@@ -70,7 +70,7 @@
         "confirm": "今日から開始"
     },
     "idle": {
-        "title": "{n} 分間操作がありませんでした",
+        "title": "{duration} 操作がありませんでした",
         "timeQuestion": "アイドル時間を削除しますか？",
         "timerQuestion": "計測を続けますか？",
         "ok": "OK"

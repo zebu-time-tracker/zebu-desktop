@@ -70,7 +70,7 @@
         "confirm": "Avvia oggi"
     },
     "idle": {
-        "title": "Sei stato inattivo per {n} minuto | Sei stato inattivo per {n} minuti",
+        "title": "Sei stato inattivo per {duration}",
         "timeQuestion": "Rimuovere il tempo di inattività?",
         "timerQuestion": "Continuare a misurare?",
         "ok": "OK"

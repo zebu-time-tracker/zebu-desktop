@@ -70,7 +70,7 @@
         "confirm": "Iniciar hoje"
     },
     "idle": {
-        "title": "Você ficou inativo por {n} minuto | Você ficou inativo por {n} minutos",
+        "title": "Você ficou inativo por {duration}",
         "timeQuestion": "Remover o tempo inativo?",
         "timerQuestion": "Continuar a contar?",
         "ok": "OK"

@@ -70,7 +70,7 @@
         "confirm": "Démarrer aujourd'hui"
     },
     "idle": {
-        "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
+        "title": "Inactif pendant {duration}",
         "timeQuestion": "Retirer le temps d’inactivité ?",
         "timerQuestion": "Continuer le minuteur ?",
         "ok": "OK"

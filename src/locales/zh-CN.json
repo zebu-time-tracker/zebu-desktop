@@ -70,7 +70,7 @@
         "confirm": "今天开始"
     },
     "idle": {
-        "title": "您已闲置 {n} 分钟",
+        "title": "您已闲置 {duration}",
         "timeQuestion": "移除闲置时间？",
         "timerQuestion": "继续计时？",
         "ok": "确定"

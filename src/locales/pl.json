@@ -70,7 +70,7 @@
         "confirm": "Uruchom dziś"
     },
     "idle": {
-        "title": "Brak aktywności przez {n} minutę | Brak aktywności przez {n} minuty | Brak aktywności przez {n} minut",
+        "title": "Brak aktywności przez {duration}",
         "timeQuestion": "Usunąć czas bezczynności?",
         "timerQuestion": "Kontynuować odliczanie?",
         "ok": "OK"
