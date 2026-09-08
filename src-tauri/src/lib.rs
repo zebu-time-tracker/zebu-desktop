@@ -6,12 +6,24 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, WindowEvent,
 };
+#[cfg(target_os = "linux")]
+use tauri::menu::{Menu, MenuItem};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 /// Whether the app currently shows in the dock / app switcher.
 static DOCK_MODE: AtomicBool = AtomicBool::new(false);
 /// "Hide when changing focus" preference (default on).
 static HIDE_ON_BLUR: AtomicBool = AtomicBool::new(true);
+
+/// Linux only: our per-pixel pill icon can't render as a normal (square)
+/// tray icon there, and the tray tooltip API is a documented no-op on that
+/// platform — the running project/elapsed time goes in this disabled menu
+/// line instead. See the tray setup in `run()` for why Linux gets a menu at
+/// all: Tauri's own docs say the click event is "Unsupported" on Linux (never
+/// emitted even though the icon shows), so a menu is the only way the icon
+/// can be interacted with there.
+#[cfg(target_os = "linux")]
+static TRAY_STATUS_ITEM: std::sync::OnceLock<MenuItem> = std::sync::OnceLock::new();
 
 /// Seconds since the last keyboard/mouse input, for Harvest-style idle
 /// detection. 0 when the platform can't tell (detection simply stays off).
@@ -158,6 +170,7 @@ fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, 
     if let Some(tray) = app.tray_by_id("main") {
         let elapsed = (!title.is_empty()).then_some(title.as_str());
 
+        #[cfg(not(target_os = "linux"))]
         apply_icon(&tray, tray_icon::render(elapsed, running));
         #[cfg(target_os = "macos")]
         let _ = tray.set_title(None::<String>);
@@ -170,6 +183,10 @@ fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, 
                 _ => "Zebu".to_string(),
             }
         });
+        #[cfg(target_os = "linux")]
+        if let Some(item) = TRAY_STATUS_ITEM.get() {
+            let _ = item.set_text(&tip);
+        }
         let _ = tray.set_tooltip(Some(tip));
     }
 }
@@ -212,7 +229,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-            let tray = TrayIconBuilder::with_id("main")
+            #[allow(unused_mut)] // only reassigned on Linux, see below
+            let mut tray_builder = TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Zebu")
                 .on_tray_icon_event(|tray, event| {
@@ -235,11 +253,35 @@ pub fn run() {
                         }
                         _ => {}
                     }
-                })
-                .build(app)?;
+                });
 
-            // start on the idle pill
+            // Linux never emits the click event above at all (Tauri: "Unsupported.
+            // The event is not emitted even though the icon is shown") — clicking
+            // did nothing, which is the bug this fixes. A menu is the only
+            // interaction the AppIndicator protocol offers there, so it also
+            // carries the live status line the (also unsupported) tooltip can't.
+            #[cfg(target_os = "linux")]
+            {
+                let status = MenuItem::with_id(app, "status", "Zebu", false, None::<&str>)?;
+                let open = MenuItem::with_id(app, "open", "Open Zebu", true, None::<&str>)?;
+                let quit = MenuItem::with_id(app, "quit", "Quit Zebu", true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&status, &open, &quit])?;
+                let _ = TRAY_STATUS_ITEM.set(status);
+                tray_builder = tray_builder.menu(&menu).on_menu_event(|app, event| match event.id().as_ref() {
+                    "open" => show_popover(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                });
+            }
+
+            let tray = tray_builder.build(app)?;
+
+            // start on the idle pill (Linux keeps the plain app icon set above —
+            // our custom pill can't render as a normal square tray icon there)
+            #[cfg(not(target_os = "linux"))]
             apply_icon(&tray, tray_icon::render(None, false));
+            #[cfg(target_os = "linux")]
+            let _ = &tray;
 
             spawn_idle_watcher(app.handle().clone());
 
