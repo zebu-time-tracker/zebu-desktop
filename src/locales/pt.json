@@ -128,6 +128,8 @@
     },
     "units": {
         "hour": "h",
-        "minute": "min"
+        "minute": "min",
+        "day": "d",
+        "week": "sem"
     }
 }

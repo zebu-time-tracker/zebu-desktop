@@ -13,12 +13,16 @@ use tiny_skia::{Color, ColorU8, FillRule, Paint, PathBuilder, Pixmap, Transform}
 
 /// Backing-store scale: the menubar shows the widget at 18pt, so drawing every
 /// pixel twice over keeps text and edges crisp on Retina displays.
-const SCALE: f32 = 2.0;
+pub const SCALE: f32 = 2.0;
 const HEIGHT: u32 = 18;
 const MIN_WIDTH: f32 = 52.0;
 const RADIUS: f32 = 2.0;
 const TEXT_SIZE: f32 = 13.0;
 const GLYPH_END: f32 = 15.0; // play/pause artwork lives left of this
+/// Where the play/pause button ends and the clock begins, in points from the
+/// pill's left edge: midway between the artwork (ends at 15) and the text
+/// (starts at 22). The click handler in lib.rs splits the pill here.
+pub const BUTTON_END: f32 = 18.0;
 
 pub enum Glyph {
     Play,

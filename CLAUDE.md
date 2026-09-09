@@ -35,11 +35,15 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   `src/Insights.vue`), placed beside the popover and sized to what its content
   measures, so the stats and charts are not squeezed into the timer's frame.
   It and the popover hide together only when focus leaves the app.
-- The tray icon is a play/pause button, not a window toggle: left-click stops
-  the running timer (`tray-toggle-timer`) or opens the popover on a new timer
-  (`tray-open-new-timer`), right-click does the plain open/close. Rust branches
-  on `TIMER_RUNNING`, which `set_tray_state` keeps current; App.vue owns what
-  the two events do, the same split as `idle-choice`.
+- The tray pill is two controls (`on_pill_click`): a left-click on the
+  play/pause artwork plays or pauses the entry the pill shows
+  (`tray-toggle-timer`), one on the clock opens/closes the popover, and on the
+  idle "zzzz" pill the whole thing opens the popover on a new timer
+  (`tray-open-new-timer`); right-click is always the plain open/close. Rust
+  splits the click with `pill_zone` (the drawn pill's width from
+  `PILL_WIDTH`, the button's edge at `tray_icon::BUTTON_END`) and branches on
+  `TRAY_STATE`; App.vue owns what the two events do, the same split as
+  `idle-choice`.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite
