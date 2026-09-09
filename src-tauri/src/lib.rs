@@ -112,7 +112,7 @@ fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, ext
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
-    if !(row > 0.0) {
+    if row.is_nan() || row <= 0.0 {
         return; // nothing measured yet
     }
     let scale = window.scale_factor().unwrap_or(1.0);
