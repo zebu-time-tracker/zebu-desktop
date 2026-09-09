@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Anuluj",
+        "close": "Zamknij",
         "loading": "Wczytywanie…",
         "no": "Nie",
         "system": "Systemowy",
