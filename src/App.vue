@@ -599,17 +599,65 @@ const onTrayPlay = () => {
 
 const settingsOpen = ref(false);
 
-// Window height per state: compact connect screen, ~3.5 entry rows for the
-// timesheet (the cut-off half row signals there's more below the fold).
-// Insights is a window of its own now (src/Insights.vue) rather than an
-// overlay scrolling inside these bounds, so nothing else resizes this one.
+// Window height per state. The connect screen is a compact fixed card. The
+// timesheet sizes itself to the day (fitPopover): the entries list gets room
+// for 3.5 to 5.5 rows and only scrolls past that — the half row peeking out at
+// the bottom is the cue that there is more. Insights is a window of its own
+// (src/Insights.vue), so nothing else resizes this one.
+const mainEl = ref<HTMLElement | null>(null);
+const entriesEl = ref<HTMLElement | null>(null);
+// A row as last measured, for days with no rows of their own to measure. The
+// initial guess is a row with its project-stats line; it is replaced by the
+// real thing the first time a day with entries is shown.
+let rowHeight = 70;
+let lastFit = '';
+
+/** Height of an element including its vertical margins (the banners have some). */
+const outerHeight = (el: Element) => {
+    const style = getComputedStyle(el);
+    return el.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+};
+
+/**
+ * Measure what is on screen and let Rust size the window: the chrome around
+ * the list (header, week strip, banners, footer — whatever is there right now),
+ * the average entry row, how many rows the day has and what else sits in the
+ * list. Rust owns the 3.5–5.5 row clamp and the screen fit (`fit_popover`).
+ */
+const fitPopover = async () => {
+    await nextTick();
+    const main = mainEl.value;
+    const list = entriesEl.value;
+    if (view.value !== 'main' || !main || !list) return;
+    const rows = Array.from(list.querySelectorAll<HTMLElement>('.entry'));
+    if (rows.length) rowHeight = rows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0) / rows.length;
+    // in-flow siblings of the list; the popovers and sheets are absolute overlays
+    const chrome = Array.from(main.children)
+        .filter((el) => el !== list && getComputedStyle(el).position !== 'absolute')
+        .reduce((sum, el) => sum + outerHeight(el), 0);
+    // non-row content inside the list: an error or locked-week note above the
+    // rows, the padding below them (the empty-day placeholder fills whatever
+    // height the list gets, so it does not count)
+    const extra =
+        Array.from(list.children)
+            .filter((el) => !el.classList.contains('entry') && !el.classList.contains('empty'))
+            .reduce((sum, el) => sum + outerHeight(el), 0) + parseFloat(getComputedStyle(list).paddingBottom);
+    const key = [chrome, rowHeight, rows.length, extra].map((n) => Math.round(n * 10)).join('|');
+    if (key === lastFit) return; // nothing that affects the height has changed
+    lastFit = key;
+    invoke('fit_popover', { chrome, row: rowHeight, entries: rows.length, extra }).catch(() => {});
+};
+
 watch(
     view,
     (v) => {
-        const height = v === 'connect' ? 240 : 330;
+        if (v === 'main') {
+            fitPopover();
+            return;
+        }
         try {
             getCurrentWindow()
-                .setSize(new LogicalSize(380, height))
+                .setSize(new LogicalSize(380, 240))
                 .catch(() => {});
         } catch {
             // not inside Tauri (plain-browser vite dev) — nothing to resize
@@ -617,6 +665,10 @@ watch(
     },
     { immediate: true },
 );
+// Every refresh replaces `sheet`, so this covers entries coming and going, a
+// timer starting or stopping, the running-elsewhere and resume banners, a
+// locked week and the stats lines; the rest changes the chrome or row text.
+watch([sheet, lastTimer, errorMessage, loading, intlLocale], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
 const me = ref<{ name: string; email: string } | null>(null);
@@ -712,7 +764,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     </div>
 
     <!-- ======== main ======== -->
-    <div v-else class="main">
+    <div v-else ref="mainEl" class="main">
         <header class="header">
             <span class="header-title">{{ headerLabel }}</span>
             <div class="header-actions">
@@ -770,8 +822,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </span>
         </button>
 
-        <!-- entries -->
-        <main class="entries">
+        <!-- entries: the window is sized around this list, see fitPopover -->
+        <main ref="entriesEl" class="entries">
             <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
             <p v-if="sheet?.week_locked" class="muted locked-note">{{ t('entry.weekLocked') }}</p>
 
