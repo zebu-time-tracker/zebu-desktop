@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "취소",
+        "close": "닫기",
         "loading": "불러오는 중…",
         "no": "아니요",
         "system": "시스템",
@@ -70,7 +71,7 @@
         "confirm": "오늘 시작"
     },
     "idle": {
-        "title": "{n}분 동안 자리를 비웠습니다",
+        "title": "{duration} 동안 자리를 비웠습니다",
         "timeQuestion": "유휴 시간을 제거할까요?",
         "timerQuestion": "계속 측정할까요?",
         "ok": "확인"
