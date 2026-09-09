@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "취소",
+        "close": "닫기",
         "loading": "불러오는 중…",
         "no": "아니요",
         "system": "시스템",

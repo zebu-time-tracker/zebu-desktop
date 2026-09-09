@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "取消",
+        "close": "关闭",
         "loading": "加载中…",
         "no": "否",
         "system": "系统",

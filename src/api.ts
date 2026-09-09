@@ -10,7 +10,7 @@ import { i18n } from './i18n';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
 export { CENTRAL_URL, DEFAULT_DOMAIN };
-export { formatMinutes, hoursWidthFor, parseDuration } from './duration';
+export { elapsedMinutes, formatMinutes, hoursWidthFor, parseDuration } from './duration';
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {});
 

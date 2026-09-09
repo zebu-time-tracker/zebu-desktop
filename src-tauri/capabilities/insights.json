@@ -1,0 +1,11 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "insights-panel",
+    "description": "The insights panel window: it reads the workspace summary over plain fetch and calls this app's own insights commands, so it needs nothing beyond the core defaults.",
+    "windows": [
+        "insights"
+    ],
+    "permissions": [
+        "core:default"
+    ]
+}
