@@ -5,14 +5,26 @@
 export interface DurationUnits {
     hour: string;
     minute: string;
+    day: string;
+    week: string;
 }
 
-export const DEFAULT_UNITS: DurationUnits = { hour: 'h', minute: 'm' };
+export const DEFAULT_UNITS: DurationUnits = { hour: 'h', minute: 'm', day: 'd', week: 'w' };
+
+const HOUR = 60;
+const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
 
 /**
- * Tracked / uninvoiced totals in hours and minutes: "38h 12m", "4h", "45m".
- * Never converts to days or weeks — a 38-hour project is 38 hours of work,
- * not "4 days 6h", and 120 hours stays "120h".
+ * Tracked / uninvoiced totals at two units of precision, stepping up as they
+ * grow so a long-running project never reads "500h 9m":
+ *
+ *   under a day     "38m", "4h", "4h 5m"
+ *   under a week    "1d", "2d 3h"       — minutes dropped
+ *   from a week on  "1w", "1w 2d"       — hours dropped too
+ *
+ * Days are calendar days (24h) and weeks seven of them, not working days:
+ * the figure is how long the clock has been running, not a staffing estimate.
  *
  * Deliberately never padded: every use in the desktop app is inline prose
  * ("Total: 4h 5m · Uninvoiced: 1h 5m") or a single right-aligned value, where
@@ -20,12 +32,16 @@ export const DEFAULT_UNITS: DurationUnits = { hour: 'h', minute: 'm' };
  */
 export function formatDurationHuman(minutes: number, units: DurationUnits = DEFAULT_UNITS): string {
     const total = Math.max(0, Math.round(minutes));
-    const h = Math.floor(total / 60);
-    const m = total % 60;
 
-    if (h > 0 && m > 0) return `${h}${units.hour} ${m}${units.minute}`;
-    if (h > 0) return `${h}${units.hour}`;
-    return `${m}${units.minute}`;
+    if (total >= WEEK) return pair(Math.floor(total / WEEK), units.week, Math.floor((total % WEEK) / DAY), units.day);
+    if (total >= DAY) return pair(Math.floor(total / DAY), units.day, Math.floor((total % DAY) / HOUR), units.hour);
+    if (total >= HOUR) return pair(Math.floor(total / HOUR), units.hour, total % HOUR, units.minute);
+    return `${total}${units.minute}`;
+}
+
+/** "2d 3h", or just "2d" when the smaller unit is zero. */
+function pair(big: number, bigUnit: string, small: number, smallUnit: string): string {
+    return small > 0 ? `${big}${bigUnit} ${small}${smallUnit}` : `${big}${bigUnit}`;
 }
 
 /**

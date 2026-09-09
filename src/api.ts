@@ -244,11 +244,11 @@ export const api = {
 };
 
 /**
- * Tracked / uninvoiced totals as hours and minutes ("38h 12m") with the
- * locale's unit labels. See src/duration.ts for the formatting rules.
+ * Tracked / uninvoiced totals ("4h 5m", "2d 3h", "1w 2d") with the locale's
+ * unit labels. See src/duration.ts for the formatting rules.
  */
 export function formatDurationHuman(minutes: number): string {
-    return formatDuration(minutes, { hour: t('units.hour'), minute: t('units.minute') });
+    return formatDuration(minutes, { hour: t('units.hour'), minute: t('units.minute'), day: t('units.day'), week: t('units.week') });
 }
 
 export function toDateString(d: Date): string {

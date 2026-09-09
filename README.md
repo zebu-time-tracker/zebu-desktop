@@ -4,7 +4,7 @@ A tiny cross-platform **menubar/tray app** for [Zebu](../zebu): see today's time
 
 ## Features
 
-- Menubar popover (no dock icon on macOS). The tray icon is a **play/pause button**: click it to stop the running timer, or — when nothing is running — to open the popover on a new timer. **Right-click** opens and closes the popover on its own, without touching the clock
+- Menubar popover (no dock icon on macOS). The tray pill is a **play/pause button with a clock**: click the button to pause the running timer or resume today's last one, click the time to open and close the popover, and when nothing has run today ("zzzz") a click opens the popover on a new timer. **Right-click** always opens and closes the popover, without touching the clock
 - Week strip with per-day totals, ‹ › week navigation, **Jump to Today**
 - Day view listing entries with resume ▶ / stop ■ / delete; running entry ticks live
 - Running timer shown **next to the menubar icon** (macOS) / tray tooltip elsewhere

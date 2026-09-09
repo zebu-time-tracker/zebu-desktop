@@ -272,7 +272,7 @@ onMounted(() => {
     listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
     // the menubar pill is a play/pause button: Rust reads the running flag it
     // was last handed and sends whichever press this was (see below)
-    listen('tray-toggle-timer', () => onTrayPause()).then((off) => (trayPauseUnlisten = off));
+    listen('tray-toggle-timer', () => onTrayToggle()).then((off) => (trayPauseUnlisten = off));
     listen('tray-open-new-timer', () => onTrayPlay()).then((off) => (trayPlayUnlisten = off));
     syncIdleThreshold();
     // quiet launch-time update check; the prompt only appears when there is one
@@ -383,6 +383,10 @@ const startFreshToday = () => {
 // Minutes the running timer has accrued beyond the stored `minutes` the
 // server summed — added to every total the timer belongs in, on each tick.
 const runningExtra = computed(() => (running.value ? Math.max(0, elapsed(running.value) - running.value.minutes) : 0));
+
+// The row shows the project's client and code above and before its name; the
+// entry itself only carries the name, the rest comes from the sheet's projects.
+const projectOf = (entry: Entry) => sheet.value?.projects.find((p) => p.id === entry.project_id) ?? null;
 
 const statsFor = (entry: Entry): ProjectStats | null => {
     const stats = sheet.value?.project_stats?.[entry.project_id];
@@ -577,16 +581,24 @@ const submitForm = () =>
 let trayPauseUnlisten: UnlistenFn | null = null;
 let trayPlayUnlisten: UnlistenFn | null = null;
 
-/** Pause: exactly the stop the running entry's ■ button performs, opening nothing. */
-const onTrayPause = () => {
-    // Rust's flag can only be a beat behind this window's own view of things
-    // (a timer stopped in the browser, say); doing nothing leaves the next
-    // click — after the refresh that corrects the pill — to get it right.
-    if (!running.value) return;
-    stopTimer();
+/**
+ * The pill's play/pause button, opening nothing: the stop the running entry's
+ * ■ performs, or — on a paused pill — the ▶ of the entry the pill shows.
+ */
+const onTrayToggle = () => {
+    // Rust's view of the pill can only be a beat behind this window's own (a
+    // timer stopped in the browser, say); doing nothing leaves the next click
+    // — after the refresh that corrects the pill — to get it right.
+    if (running.value) {
+        stopTimer();
+        return;
+    }
+    const paused = todaysLatest.value;
+    if (!paused || paused.locked || sheet.value?.week_locked || view.value !== 'main') return;
+    resumeEntry(paused.id, paused.project_id);
 };
 
-/** Play: nothing to pause, so land in the same new-entry sheet the ＋ button opens. */
+/** The idle pill ("zzzz"): nothing to resume, so land in the same new-entry sheet the ＋ button opens. */
 const onTrayPlay = () => {
     // Rust has already shown the popover; on the connect screen, or a week the
     // server has locked, that is all there is to offer — there is nothing to
@@ -838,8 +850,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :title="!entry.locked && !sheet?.week_locked ? t('entry.edit') : undefined"
                     @click="openEdit(entry)"
                 >
-                    <span class="entry-project">{{ entry.project }}</span>
+                    <!-- client / [code] project / task — notes / totals -->
+                    <span v-if="projectOf(entry)?.client" class="entry-client">{{ projectOf(entry)!.client }}</span>
+                    <span class="entry-project">
+                        <span v-if="projectOf(entry)?.code" class="entry-code">{{ projectOf(entry)!.code }}</span>
+                        {{ entry.project }}
                         <span v-if="waitingLabel(entry)" class="entry-waiting" :class="{ live: entry.agent_waiting }">⏳ {{ waitingLabel(entry) }}</span>
+                    </span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
                         <!-- prose, not a column: plain "4h 5m", never padded (figure
@@ -1265,11 +1282,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     flex-direction: column;
     gap: 3px; /* breathing room between the project line and the task/notes line */
 }
+.entry-client {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .entry-project {
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.entry-code {
+    color: var(--muted);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    margin-right: 2px;
 }
 .entry-text.editable {
     cursor: pointer;

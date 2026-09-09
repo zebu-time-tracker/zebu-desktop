@@ -1,6 +1,6 @@
 mod tray_icon;
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
@@ -15,11 +15,10 @@ use tauri_plugin_positioner::{Position, WindowExt};
 static DOCK_MODE: AtomicBool = AtomicBool::new(false);
 /// "Hide when changing focus" preference (default on).
 static HIDE_ON_BLUR: AtomicBool = AtomicBool::new(true);
-/// Whether a timer is running, as the frontend last reported it through
-/// `set_tray_state` (which it calls on every state change). The tray click
-/// handler branches on this and has to answer the click there and then, so it
-/// cannot afford to ask the webview and wait for a reply.
-static TIMER_RUNNING: AtomicBool = AtomicBool::new(false);
+/// The drawn pill's width in points, as of the last paint. The tray rect a
+/// click reports is the whole status item, which macOS pads around the image;
+/// knowing the pill's own width is what lets the click be placed on it.
+static PILL_WIDTH: AtomicU32 = AtomicU32::new(0);
 
 /// Linux only: our per-pixel pill icon can't render as a normal (square)
 /// tray icon there, and the tray tooltip API is a documented no-op on that
@@ -668,6 +667,7 @@ fn set_dock_visible(app: tauri::AppHandle, visible: bool) {
 
 fn apply_icon(tray: &TrayIcon, rendered: Option<(tauri::image::Image<'static>, bool)>) {
     if let Some((icon, template)) = rendered {
+        PILL_WIDTH.store((icon.width() as f32 / tray_icon::SCALE).round() as u32, Ordering::SeqCst);
         // set_icon builds a fresh NSImage each time, dropping the template
         // flag — it must be re-applied with every frame or the idle pill
         // renders raw black on a dark menubar
@@ -803,16 +803,76 @@ fn refresh_tray(app: &tauri::AppHandle) {
 
 /// The frontend describing what is on the clock. Sent when the running entry,
 /// today's latest entry, the agent-waiting flag or the locale changes — never
-/// on a timer. `None` clears the pill back to idle (e.g. on disconnect).
+/// on a timer. `None` clears the pill back to idle (e.g. on disconnect). The
+/// click handler reads the same state to decide what a press means.
 #[tauri::command]
 fn set_tray_state(app: tauri::AppHandle, entry: Option<TrayEntry>) {
-    // Kept outside the tray lookup: the click handler branches on this even
-    // on platforms (or in the moments) where there is no tray to draw on.
-    TIMER_RUNNING.store(entry.as_ref().is_some_and(|e| e.started_at_ms.is_some()), Ordering::SeqCst);
     if let Ok(mut state) = TRAY_STATE.lock() {
         *state = entry;
     }
     refresh_tray(&app);
+}
+
+/// Whether anything is on the clock today — a running or a paused pill, as
+/// opposed to "zzzz".
+fn tray_has_entry() -> bool {
+    TRAY_STATE.lock().map(|s| s.is_some()).unwrap_or(false)
+}
+
+/// The two halves of the pill: the play/pause artwork, and the clock beside it.
+#[derive(Debug, PartialEq)]
+enum PillZone {
+    Button,
+    Clock,
+}
+
+/// Which half of the pill a click landed on. `click_x` is the click's offset
+/// from the left edge of the tray rect and `rect_width` that rect's width,
+/// both in physical pixels; `pill_width` is the drawn pill's width in points
+/// (see PILL_WIDTH). The status item is wider than the image and centres it,
+/// so that padding is taken off before the button's edge is compared.
+fn pill_zone(click_x: f64, rect_width: f64, pill_width: f64, scale: f64) -> PillZone {
+    let padding = ((rect_width - pill_width * scale) / 2.0).max(0.0);
+    if click_x < padding + f64::from(tray_icon::BUTTON_END) * scale {
+        PillZone::Button
+    } else {
+        PillZone::Clock
+    }
+}
+
+/// A left click on the pill. Nothing on the clock ("zzzz"): the whole pill
+/// is a play button and opens the popover on a new timer. Otherwise the
+/// press is placed: on the play/pause artwork it plays or pauses the entry
+/// the pill shows, on the clock it opens or closes the popover — so the week,
+/// insights and settings stay reachable without touching the timer. Rust
+/// can't act on a timer itself (auth and HTTP live in the frontend's api.ts),
+/// so the main window is told what was pressed and owns what it means, the
+/// same round-trip the idle prompt's answers take through `idle-choice`.
+fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>, rect: tauri::Rect) {
+    if !tray_has_entry() {
+        // Show the popover first so the form opens into a window that is
+        // already placed; the main webview runs whether or not the window is
+        // visible, so the event needs no delay to be heard.
+        show_popover(app);
+        let _ = app.emit_to("main", "tray-open-new-timer", ());
+        return;
+    }
+    let scale = app
+        .monitor_from_point(position.x, position.y)
+        .ok()
+        .flatten()
+        .or_else(|| app.primary_monitor().ok().flatten())
+        .map(|m| m.scale_factor())
+        .unwrap_or(f64::from(tray_icon::SCALE));
+    // tray-icon reports physical pixels already (same assumption as the positioner)
+    let rect_x = rect.position.to_physical::<f64>(1.0).x;
+    let rect_width = rect.size.to_physical::<f64>(1.0).width;
+    match pill_zone(position.x - rect_x, rect_width, PILL_WIDTH.load(Ordering::SeqCst) as f64, scale) {
+        PillZone::Button => {
+            let _ = app.emit_to("main", "tray-toggle-timer", ());
+        }
+        PillZone::Clock => toggle_popover(app),
+    }
 }
 
 /// Native clock for the pill: repaints on minute rollovers while the popover
@@ -894,45 +954,17 @@ pub fn run() {
                     tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
 
                     match event {
-                        // The pill draws a play or a pause glyph, so pressing it
-                        // presses play/pause — it no longer just opens the
-                        // popover. Rust can't act on a timer itself (auth and
-                        // HTTP live in the frontend's api.ts), so the main window
-                        // is told what was pressed and owns what it means, the
-                        // same round-trip the idle prompt's answers take through
-                        // `idle-choice`.
+                        // The pill is two controls: the play/pause artwork on the
+                        // left and the clock beside it (see on_pill_click).
                         TrayIconEvent::Click {
                             button: MouseButton::Left,
                             button_state: MouseButtonState::Up,
+                            position,
+                            rect,
                             ..
-                        } => {
-                            let app = tray.app_handle();
-                            if TIMER_RUNNING.load(Ordering::SeqCst) {
-                                // Pause: stop the timer where it stands, showing
-                                // and hiding nothing. Pressing pause should feel
-                                // like a button, not like launching an app.
-                                let _ = app.emit_to("main", "tray-toggle-timer", ());
-                            } else {
-                                // Play: there is nothing to pause, so offer to
-                                // start something. Show the popover first so the
-                                // form opens into a window that is already placed;
-                                // the main webview runs whether or not the window
-                                // is visible, so the event needs no delay to be
-                                // heard (unlike the idle prompt, whose window is
-                                // built on demand and reveals itself once its text
-                                // is laid out).
-                                show_popover(app);
-                                let _ = app.emit_to("main", "tray-open-new-timer", ());
-                            }
-                        }
-                        // Design decision (board card #34 left it open): left-click
-                        // now acts on the timer, which would otherwise cost you the
-                        // only way to reach the week, insights and settings while a
-                        // timer runs — you'd have to stop it to look at anything.
-                        // Secondary click inherits the plain open/close toggle, so
-                        // nothing that worked before is gone; it moved to the other
-                        // button. Reconsider if the toggle turns out to be worth
-                        // more than the one-press pause.
+                        } => on_pill_click(tray.app_handle(), position, rect),
+                        // Secondary click keeps the plain open/close toggle, so
+                        // the popover is reachable with either button.
                         TrayIconEvent::Click {
                             button: MouseButton::Right,
                             button_state: MouseButtonState::Up,
@@ -981,7 +1013,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tray_tests {
-    use super::{format_clock, tray_frame, TrayEntry, TrayFrame};
+    use super::{format_clock, pill_zone, tray_frame, PillZone, TrayEntry, TrayFrame};
 
     const T0: u64 = 1_800_000_000_000; // some unix ms
 
@@ -1049,6 +1081,28 @@ mod tray_tests {
         assert_eq!(tray_frame(Some(&entry), T0).title, "0:02 ⏳");
         let stopped = TrayEntry { started_at_ms: None, agent_waiting: true, ..running(7.0, 0) };
         assert_eq!(tray_frame(Some(&stopped), T0).title, "0:07");
+    }
+
+    // A 52pt pill centred in a 120px-wide status item on a Retina display:
+    // 8px of padding, then the button's edge 18pt = 36px into the pill — 44px.
+    #[test]
+    fn a_click_on_the_artwork_is_the_button_and_one_on_the_clock_is_not() {
+        assert_eq!(pill_zone(20.0, 120.0, 52.0, 2.0), PillZone::Button);
+        assert_eq!(pill_zone(43.0, 120.0, 52.0, 2.0), PillZone::Button);
+        assert_eq!(pill_zone(44.0, 120.0, 52.0, 2.0), PillZone::Clock);
+        assert_eq!(pill_zone(110.0, 120.0, 52.0, 2.0), PillZone::Clock);
+    }
+
+    #[test]
+    fn the_status_items_padding_shifts_the_edge_and_a_wider_pill_has_less_of_it() {
+        // 1x display, no padding: the edge sits at BUTTON_END itself
+        assert_eq!(pill_zone(17.9, 52.0, 52.0, 1.0), PillZone::Button);
+        assert_eq!(pill_zone(18.0, 52.0, 52.0, 1.0), PillZone::Clock);
+        // "12:34" grew the pill to 60pt inside a 68pt item: 4pt of padding
+        assert_eq!(pill_zone(21.9, 68.0, 60.0, 1.0), PillZone::Button);
+        assert_eq!(pill_zone(22.0, 68.0, 60.0, 1.0), PillZone::Clock);
+        // a rect narrower than the pill (never seen, but never negative padding)
+        assert_eq!(pill_zone(10.0, 40.0, 52.0, 1.0), PillZone::Button);
     }
 }
 
