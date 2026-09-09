@@ -15,6 +15,11 @@ use tauri_plugin_positioner::{Position, WindowExt};
 static DOCK_MODE: AtomicBool = AtomicBool::new(false);
 /// "Hide when changing focus" preference (default on).
 static HIDE_ON_BLUR: AtomicBool = AtomicBool::new(true);
+/// Whether a timer is running, as the frontend last reported it through
+/// `set_tray_title` (which it calls on every state change). The tray click
+/// handler branches on this and has to answer the click there and then, so it
+/// cannot afford to ask the webview and wait for a reply.
+static TIMER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Linux only: our per-pixel pill icon can't render as a normal (square)
 /// tray icon there, and the tray tooltip API is a documented no-op on that
@@ -121,6 +126,20 @@ fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, ext
     let _ = window.set_size(LogicalSize::new(MAIN_WIDTH, height));
     if window.is_visible().unwrap_or(false) {
         anchor_popover(&app, &window);
+    }
+}
+
+/// Open the popover, or put it away when it is already up. This is what a
+/// click on the menubar icon used to do; it is the secondary click's job now
+/// (see the tray event handler in `run()`).
+fn toggle_popover(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        let _ = window.hide();
+    } else {
+        show_popover(app);
     }
 }
 
@@ -436,6 +455,9 @@ fn apply_icon(tray: &TrayIcon, rendered: Option<(tauri::image::Image<'static>, b
 /// callers that don't send one.
 #[tauri::command]
 fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, running: bool, tooltip: Option<String>) {
+    // Kept outside the tray lookup below: the click handler reads this even on
+    // platforms (or in the moments) where there is no tray to draw on.
+    TIMER_RUNNING.store(running, Ordering::SeqCst);
     if let Some(tray) = app.tray_by_id("main") {
         let elapsed = (!title.is_empty()).then_some(title.as_str());
 
@@ -517,20 +539,50 @@ pub fn run() {
                     tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
 
                     match event {
+                        // The pill draws a play or a pause glyph, so pressing it
+                        // presses play/pause — it no longer just opens the
+                        // popover. Rust can't act on a timer itself (auth and
+                        // HTTP live in the frontend's api.ts), so the main window
+                        // is told what was pressed and owns what it means, the
+                        // same round-trip the idle prompt's answers take through
+                        // `idle-choice`.
                         TrayIconEvent::Click {
                             button: MouseButton::Left,
                             button_state: MouseButtonState::Up,
                             ..
                         } => {
                             let app = tray.app_handle();
-                            if let Some(window) = app.get_webview_window("main") {
-                                if window.is_visible().unwrap_or(false) {
-                                    let _ = window.hide();
-                                } else {
-                                    show_popover(app);
-                                }
+                            if TIMER_RUNNING.load(Ordering::SeqCst) {
+                                // Pause: stop the timer where it stands, showing
+                                // and hiding nothing. Pressing pause should feel
+                                // like a button, not like launching an app.
+                                let _ = app.emit_to("main", "tray-toggle-timer", ());
+                            } else {
+                                // Play: there is nothing to pause, so offer to
+                                // start something. Show the popover first so the
+                                // form opens into a window that is already placed;
+                                // the main webview runs whether or not the window
+                                // is visible, so the event needs no delay to be
+                                // heard (unlike the idle prompt, whose window is
+                                // built on demand and reveals itself once its text
+                                // is laid out).
+                                show_popover(app);
+                                let _ = app.emit_to("main", "tray-open-new-timer", ());
                             }
                         }
+                        // Design decision (board card #34 left it open): left-click
+                        // now acts on the timer, which would otherwise cost you the
+                        // only way to reach the week, insights and settings while a
+                        // timer runs — you'd have to stop it to look at anything.
+                        // Secondary click inherits the plain open/close toggle, so
+                        // nothing that worked before is gone; it moved to the other
+                        // button. Reconsider if the toggle turns out to be worth
+                        // more than the one-press pause.
+                        TrayIconEvent::Click {
+                            button: MouseButton::Right,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } => toggle_popover(tray.app_handle()),
                         _ => {}
                     }
                 });

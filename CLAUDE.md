@@ -28,6 +28,11 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers
   do, via the `idle-choice` event.
+- The tray icon is a play/pause button, not a window toggle: left-click stops
+  the running timer (`tray-toggle-timer`) or opens the popover on a new timer
+  (`tray-open-new-timer`), right-click does the plain open/close. Rust branches
+  on `TIMER_RUNNING`, which `set_tray_title` keeps current; App.vue owns what
+  the two events do, the same split as `idle-choice`.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

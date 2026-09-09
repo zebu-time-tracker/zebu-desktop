@@ -291,6 +291,10 @@ onMounted(() => {
     listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
     // the answer comes back from the prompt's own window, via Rust
     listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
+    // the menubar pill is a play/pause button: Rust reads the running flag it
+    // was last handed and sends whichever press this was (see below)
+    listen('tray-toggle-timer', () => onTrayPause()).then((off) => (trayPauseUnlisten = off));
+    listen('tray-open-new-timer', () => onTrayPlay()).then((off) => (trayPlayUnlisten = off));
     syncIdleThreshold();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
@@ -301,6 +305,8 @@ onUnmounted(() => {
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
+    trayPauseUnlisten?.();
+    trayPlayUnlisten?.();
 });
 
 // ---- running-timer awareness ----------------------------------------------
@@ -629,6 +635,36 @@ const submitForm = () =>
         formOpen.value = false;
         editingEntry.value = null;
     });
+
+// ---- the menubar pill as a play/pause button -------------------------------
+//
+// Clicking the tray icon presses play/pause on the timer instead of opening
+// the popover (board card #34). Rust owns the click and the running flag it
+// was last handed by updateTray(), but not the API — so it sends one of two
+// events and this window does the work, with the same calls the list's own ■
+// and ＋ buttons make. Secondary click still toggles the popover, so the week,
+// insights and settings stay reachable without stopping the clock.
+
+let trayPauseUnlisten: UnlistenFn | null = null;
+let trayPlayUnlisten: UnlistenFn | null = null;
+
+/** Pause: exactly the stop the running entry's ■ button performs, opening nothing. */
+const onTrayPause = () => {
+    // Rust's flag can only be a beat behind this window's own view of things
+    // (a timer stopped in the browser, say); doing nothing leaves the next
+    // click — after the refresh that corrects the pill — to get it right.
+    if (!running.value) return;
+    stopTimer();
+};
+
+/** Play: nothing to pause, so land in the same new-entry sheet the ＋ button opens. */
+const onTrayPlay = () => {
+    // Rust has already shown the popover; on the connect screen, or a week the
+    // server has locked, that is all there is to offer — there is nothing to
+    // start a timer against.
+    if (view.value !== 'main' || sheet.value?.week_locked) return;
+    openForm();
+};
 
 // ---- popovers --------------------------------------------------------------
 
