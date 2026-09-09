@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Abbrechen",
+        "close": "Schließen",
         "loading": "Lädt…",
         "no": "Nein",
         "system": "System",
@@ -70,7 +71,7 @@
         "confirm": "Heute starten"
     },
     "idle": {
-        "title": "Du warst {n} Minute inaktiv | Du warst {n} Minuten inaktiv",
+        "title": "Du warst {duration} inaktiv",
         "timeQuestion": "Leerlaufzeit entfernen?",
         "timerQuestion": "Weiter messen?",
         "ok": "OK"

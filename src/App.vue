@@ -7,9 +7,10 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
+import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
 const { t } = useI18n();
@@ -146,14 +147,12 @@ const disconnect = (message = '') => {
     connectState.value = message ? 'error' : 'idle';
     connectError.value = message;
     settingsOpen.value = false;
-    summaryOpen.value = false;
     formOpen.value = false;
+    closeInsights();
     me.value = null;
     sheet.value = null;
-    summary.value = null;
     forgetLastTimer();
-    lastTray = '';
-    invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null }).catch(() => {});
+    invoke('set_tray_state', { entry: null }).catch(() => {});
 };
 
 // the workspace answered 401: the device was revoked in the browser (or the
@@ -166,7 +165,6 @@ session.onExpired = () => {
 
 const selectedDate = ref(toDateString(new Date()));
 const sheet = ref<Timesheet | null>(null);
-const summary = ref<Summary | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
 
@@ -177,23 +175,14 @@ const refresh = async () => {
     if (view.value !== 'main') return;
     loading.value = true;
     try {
-        // the insights panel, while open, stays in step with the timesheet
-        const [fresh] = await Promise.all([api.timesheet(selectedDate.value), summaryOpen.value ? loadSummary() : null]);
-        sheet.value = fresh;
+        // the insights panel keeps itself in step, in its own window
+        sheet.value = await api.timesheet(selectedDate.value);
         errorMessage.value = '';
     } catch (e: any) {
         if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
         errorMessage.value = e.message;
     } finally {
         loading.value = false;
-    }
-};
-
-const loadSummary = async () => {
-    try {
-        summary.value = await api.summary();
-    } catch {
-        /* popover just stays empty */
     }
 };
 
@@ -244,13 +233,11 @@ const waitingLabel = (entry: { waiting_minutes?: number; agent_waiting?: boolean
     return '';
 };
 
-const elapsed = (entry: { minutes: number; timer_started_at: string | null }) => {
-    if (!entry.timer_started_at) return entry.minutes;
-    return entry.minutes + Math.max(0, (now.value - new Date(entry.timer_started_at).getTime()) / 60000);
-};
+const elapsed = (entry: { minutes: number; timer_started_at: string | null }) => elapsedMinutes(entry, now.value);
 
 let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
+let refreshUnlisten: UnlistenFn | null = null;
 
 // the pill falls back to today's most recent entry, so a timer stopped
 // elsewhere leaves the day's total on screen rather than "zzzz"
@@ -260,31 +247,23 @@ const todaysLatest = computed(() => {
 });
 const trayEntry = computed(() => running.value ?? todaysLatest.value);
 
-let lastTray: string | null = null;
+// The pill itself is painted by Rust, which ticks the elapsed time on its own
+// thread (webview timers stall while the popover is hidden, so the old
+// setInterval here left the menubar frozen until the icon was clicked). This
+// only hands over what is on the clock, whenever that changes; the tooltip is
+// rendered here so it follows the app's locale, with `{time}` left for Rust.
 const updateTray = () => {
-    const entry = trayEntry.value;
-    const isRunning = !!running.value;
-    const title = entry ? formatMinutes(elapsed(entry)) : '';
-    // project · task feeds the tray tooltip as a hover preview; the tooltip is
-    // rendered here (not in Rust) so it follows the app's locale
-    const detail = entry ? [entry.project, entry.task].filter(Boolean).join(' · ') : '';
-    const tooltip = title
-        ? detail
-            ? t(isRunning ? 'tray.tooltipRunning' : 'tray.tooltipStopped', { detail, time: title })
-            : t('tray.tooltipIdle', { time: title })
-        : 'Zebu';
-    const key = `${title}|${detail}|${isRunning}|${tooltip}`;
-    if (key === lastTray) return; // re-render only when something changes
-    lastTray = key;
-    invoke('set_tray_title', { title: isRunning && running.value?.agent_waiting ? `${title} ⏳` : title, detail: detail || null, running: isRunning, tooltip }).catch(() => {});
+    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t) }).catch(() => {});
 };
 
 onMounted(() => {
-    tick = setInterval(() => {
-        now.value = Date.now();
-        updateTray();
-    }, 15000);
-    refreshLoop = setInterval(refresh, 20000);
+    tick = setInterval(() => (now.value = Date.now()), 15000);
+    // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
+    // another client shows up without a click; outside Tauri (plain-browser
+    // dev) fall back to a webview interval.
+    listen('refresh-due', () => refresh())
+        .then((off) => (refreshUnlisten = off))
+        .catch(() => (refreshLoop = setInterval(refresh, 20000)));
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
@@ -302,6 +281,7 @@ onMounted(() => {
 onUnmounted(() => {
     if (tick) clearInterval(tick);
     if (refreshLoop) clearInterval(refreshLoop);
+    refreshUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
@@ -415,63 +395,12 @@ const statsFor = (entry: Entry): ProjectStats | null => {
         uninvoiced_minutes: stats.uninvoiced_minutes + (r.is_billable ? runningExtra.value : 0),
     };
 };
-// pad hours so the h/m markers line up down the list
-const statHoursWidth = computed(() =>
-    hoursWidthFor(Object.values(sheet.value?.project_stats ?? {}).flatMap((s) => [s.total_minutes + runningExtra.value, s.uninvoiced_minutes + runningExtra.value])),
-);
 const budgetClass = (pct: number) => {
     if (pct > 100) return 'over';
     if (pct > 80) return 'high';
     if (pct > 50) return 'mid';
     return 'ok';
 };
-
-// insights helpers
-const mondayOf = (date: string) => {
-    const d = new Date(date + 'T00:00:00');
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // weeks start on Monday, as on the server
-    return toDateString(d);
-};
-// the server's summary plus the running timer's live minutes, so the tiles
-// and charts count up with the clock instead of waiting for a stop
-const liveSummary = computed<Summary | null>(() => {
-    const s = summary.value;
-    const r = running.value;
-    const extra = runningExtra.value;
-    if (!s || !r || !extra) return s;
-    const today = todayStr();
-    const [ry, rm, rd] = r.date.split('-').map(Number);
-    const [ty, tm] = today.split('-').map(Number);
-    const live: Summary = { ...s, month_by_day: [...s.month_by_day], year_by_month: [...s.year_by_month] };
-    if (r.date === today) live.today += extra;
-    if (mondayOf(r.date) === mondayOf(today)) live.this_week += extra;
-    if (ry === ty && rm === tm) {
-        live.this_month += extra;
-        if (r.is_billable) live.uninvoiced_minutes += extra;
-        if (rd - 1 < live.month_by_day.length) live.month_by_day[rd - 1] += extra;
-    }
-    if (ry === ty && rm - 1 < live.year_by_month.length) live.year_by_month[rm - 1] += extra;
-    return live;
-});
-const chartMax = computed(() => Math.max(...(liveSummary.value?.month_by_day ?? [0]), 60));
-const yearMax = computed(() => Math.max(...(liveSummary.value?.year_by_month ?? [0]), 60));
-const todayIndex = new Date().getDate() - 1;
-const thisMonthIndex = new Date().getMonth();
-const monthLabel = computed(() => new Date().toLocaleDateString(intlLocale.value, { month: 'long' }));
-const yearLabel = new Date().getFullYear();
-
-const chartHover = ref<{ kind: 'day' | 'month'; i: number; m: number } | null>(null);
-const chartTip = computed(() => {
-    const h = chartHover.value;
-    if (!h) return '';
-    if (h.kind === 'day') {
-        const d = new Date(new Date().getFullYear(), new Date().getMonth(), h.i + 1);
-        return `${d.toLocaleDateString(intlLocale.value, { weekday: 'short', month: 'short', day: 'numeric' })}: ${formatMinutes(h.m)}`;
-    }
-    const m = new Date(new Date().getFullYear(), h.i, 1);
-    return `${m.toLocaleDateString(intlLocale.value, { month: 'long' })}: ${formatMinutes(h.m)}`;
-});
-const tipLeft = (i: number, count: number) => `min(max(${(((i + 0.5) / count) * 100).toFixed(1)}%, 16%), 84%)`;
 
 const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(intlLocale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -668,14 +597,13 @@ const onTrayPlay = () => {
 
 // ---- popovers --------------------------------------------------------------
 
-const summaryOpen = ref(false);
 const settingsOpen = ref(false);
 
 // Window height per state. The connect screen is a compact fixed card. The
 // timesheet sizes itself to the day (fitPopover): the entries list gets room
 // for 3.5 to 5.5 rows and only scrolls past that — the half row peeking out at
-// the bottom is the cue that there is more. The insights panel is an overlay
-// that scrolls inside these bounds — it never resizes the window.
+// the bottom is the cue that there is more. Insights is a window of its own
+// (src/Insights.vue), so nothing else resizes this one.
 const mainEl = ref<HTMLElement | null>(null);
 const entriesEl = ref<HTMLElement | null>(null);
 // A row as last measured, for days with no rows of their own to measure. The
@@ -761,16 +689,36 @@ getVersion()
     .then((v) => (appVersion.value = v))
     .catch(() => {});
 
-const toggleSummary = () => {
-    summaryOpen.value = !summaryOpen.value;
+// ---- insights --------------------------------------------------------------
+//
+// The stats, the uninvoiced breakdown and the charts have their own window
+// (src/Insights.vue, opened by Rust) — this popover is 380x330 and had to
+// scroll them inside an overlay. Only the header button's pressed state lives
+// here; Rust says when the panel goes away by itself (focus left the app, the
+// menubar icon was clicked), so the button never lies about it.
+
+const insightsOpen = ref(false);
+let insightsUnlisten: UnlistenFn | null = null;
+
+const toggleInsights = async () => {
     settingsOpen.value = false;
-    if (summaryOpen.value) loadSummary();
+    insightsOpen.value = await invoke<boolean>('toggle_insights').catch(() => false);
 };
 
-// Escape dismisses whichever popover is open (click-away is the backdrop)
+const closeInsights = () => {
+    insightsOpen.value = false;
+    invoke('close_insights').catch(() => {});
+};
+
+onMounted(() => {
+    listen<boolean>('insights-visible', (e) => (insightsOpen.value = e.payload)).then((off) => (insightsUnlisten = off));
+});
+onUnmounted(() => insightsUnlisten?.());
+
+// Escape dismisses the settings popover (click-away is the backdrop); the
+// insights window handles its own Escape.
 const onKeydown = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape' || !(summaryOpen.value || settingsOpen.value)) return;
-    summaryOpen.value = false;
+    if (e.key !== 'Escape' || !settingsOpen.value) return;
     settingsOpen.value = false;
     e.preventDefault();
 };
@@ -821,7 +769,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <span class="header-title">{{ headerLabel }}</span>
             <div class="header-actions">
                 <button v-if="!isToday" :title="t('header.jumpToToday')" @click="goDate(todayStr())">{{ t('header.today') }} ⤴︎</button>
-                <button :title="t('header.insights')" :class="{ active: summaryOpen }" @click="toggleSummary">
+                <!-- opens the insights panel in its own window (src-tauri: toggle_insights) -->
+                <button :title="t('header.insights')" :class="{ active: insightsOpen }" @click="toggleInsights">
                     <svg class="icon-chart" viewBox="0 0 14 14" width="13" height="13" aria-hidden="true">
                         <rect x="1" y="7" width="3" height="6" rx="1" />
                         <rect x="5.5" y="4" width="3" height="9" rx="1" />
@@ -830,63 +779,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </button>
             </div>
         </header>
-
-        <!-- summary popover -->
-        <div v-if="summaryOpen" class="popover-backdrop" @click="summaryOpen = false"></div>
-        <div v-if="summaryOpen" class="summary">
-            <template v-if="liveSummary">
-                <div class="summary-grid">
-                    <div><span>{{ t('summary.hoursToday') }}</span><strong>{{ formatMinutes(liveSummary.today) }}</strong></div>
-                    <div><span>{{ t('summary.hoursYesterday') }}</span><strong>{{ formatMinutes(liveSummary.yesterday) }}</strong></div>
-                    <div><span>{{ t('summary.hoursThisWeek') }}</span><strong>{{ formatMinutes(liveSummary.this_week) }}</strong></div>
-                    <div><span>{{ t('summary.hoursLastWeek') }}</span><strong>{{ formatMinutes(liveSummary.last_week) }}</strong></div>
-                    <div><span>{{ t('summary.hoursThisMonth') }}</span><strong>{{ formatMinutes(liveSummary.this_month) }}</strong></div>
-                    <div><span>{{ t('summary.billableThisMonth') }}</span><strong>{{ liveSummary.billable_pct_month }}%</strong></div>
-                </div>
-                <hr class="sep" />
-                <div class="summary-uninv">
-                    <p class="uninv-title">{{ t('summary.uninvoicedThisMonth') }}</p>
-                    <div class="uninv-row"><span>{{ t('summary.time') }}</span><strong>{{ formatDurationHuman(liveSummary.uninvoiced_minutes) }}</strong></div>
-                    <div v-for="(cents, cur) in liveSummary.uninvoiced_amounts" :key="cur" class="uninv-row">
-                        <span>{{ cur }}</span>
-                        <strong>{{ (cents / 100).toLocaleString(intlLocale, { maximumFractionDigits: 0 }) }}</strong>
-                    </div>
-                    <div v-if="liveSummary.uninvoiced_total" class="uninv-row uninv-total">
-                        <span>{{ t('summary.approxTotal', { currency: liveSummary.base_currency }) }}</span>
-                        <strong>{{ (liveSummary.uninvoiced_total / 100).toLocaleString(intlLocale, { maximumFractionDigits: 0 }) }}</strong>
-                    </div>
-                </div>
-                <div class="mini-chart" @mouseleave="chartHover = null">
-                    <span
-                        v-for="(m, i) in liveSummary.month_by_day"
-                        :key="i"
-                        :class="{ today: i === todayIndex, hovered: chartHover?.kind === 'day' && chartHover.i === i }"
-                        @mouseenter="chartHover = { kind: 'day', i, m }"
-                    >
-                        <i :style="{ height: `${Math.max(4, (m / chartMax) * 100)}%` }"></i>
-                    </span>
-                    <div v-if="chartHover?.kind === 'day'" class="chart-tip" :style="{ left: tipLeft(chartHover.i, liveSummary.month_by_day.length) }">
-                        {{ chartTip }}
-                    </div>
-                </div>
-                <p class="muted chart-caption">{{ t('summary.hoursPerDay', { month: monthLabel }) }}</p>
-                <div class="mini-chart" @mouseleave="chartHover = null">
-                    <span
-                        v-for="(m, i) in liveSummary.year_by_month"
-                        :key="i"
-                        :class="{ today: i === thisMonthIndex, hovered: chartHover?.kind === 'month' && chartHover.i === i }"
-                        @mouseenter="chartHover = { kind: 'month', i, m }"
-                    >
-                        <i :style="{ height: `${Math.max(4, (m / yearMax) * 100)}%` }"></i>
-                    </span>
-                    <div v-if="chartHover?.kind === 'month'" class="chart-tip" :style="{ left: tipLeft(chartHover.i, 12) }">
-                        {{ chartTip }}
-                    </div>
-                </div>
-                <p class="muted chart-caption">{{ t('summary.hoursPerMonth', { year: yearLabel }) }}</p>
-            </template>
-            <p v-else class="muted" style="text-align: center">{{ t('common.loading') }}</p>
-        </div>
 
         <!-- week strip -->
         <div class="week">
@@ -950,9 +842,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <span v-if="waitingLabel(entry)" class="entry-waiting" :class="{ live: entry.agent_waiting }">⏳ {{ waitingLabel(entry) }}</span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
+                        <!-- prose, not a column: plain "4h 5m", never padded (figure
+                             spaces read as stray gaps inside a sentence) -->
                         <span class="entry-stats-dim">
-                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes, { hoursWidth: statHoursWidth }) }} · {{ t('entry.uninvoiced') }}:
-                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes, { hoursWidth: statHoursWidth }) }}
+                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes) }} · {{ t('entry.uninvoiced') }}:
+                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes) }}
                         </span>
                         <!-- only projects with a budget get a budget line -->
                         <template v-if="statsFor(entry)!.budget_pct !== null">
@@ -1046,7 +940,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <footer class="footer">
             <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm">＋</button>
             <div class="footer-right">
-                <button :title="t('footer.settings')" :class="{ active: settingsOpen }" @click="settingsOpen = !settingsOpen; summaryOpen = false">⚙</button>
+                <button :title="t('footer.settings')" :class="{ active: settingsOpen }" @click="settingsOpen = !settingsOpen">⚙</button>
             </div>
         </footer>
 
@@ -1173,41 +1067,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .header-actions button:hover,
 .header-actions button.active {
     background: rgba(255, 255, 255, 0.2);
-}
-
-/* ---- summary popover: an overlay inside the window, scrolling within it ---- */
-.summary {
-    position: absolute;
-    top: 40px;
-    left: 8px;
-    right: 8px;
-    z-index: 30;
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px;
-    max-height: calc(100vh - 52px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-.summary-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 16px;
-}
-.summary-grid div {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.summary-grid span {
-    color: var(--muted);
-    font-size: 11px;
-}
-.summary-grid strong {
-    font-size: 18px;
-    font-variant-numeric: tabular-nums;
 }
 
 /* ---- week strip ---- */
@@ -1421,7 +1280,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .entry-stats {
     color: var(--muted);
     font-size: 10px;
-    font-variant-numeric: tabular-nums; /* figure-space padding lines the h/m markers up */
+    font-variant-numeric: tabular-nums; /* a ticking total must not jiggle the rest of the line */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1572,7 +1431,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     color: var(--danger);
 }
 
-/* click-away closes settings / summary popouts */
+/* click-away closes the settings popout */
 .popover-backdrop {
     position: absolute;
     inset: 0;
@@ -1624,76 +1483,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .icon-chart {
     fill: currentColor;
     display: block;
-}
-.uninv-title {
-    color: var(--muted);
-    font-size: 11px;
-    margin: 0 0 8px;
-}
-.uninv-total {
-    border-top: 1px solid var(--border);
-    margin-top: 4px;
-    padding-top: 4px;
-}
-.uninv-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    line-height: 1.7;
-}
-.uninv-row strong {
-    font-variant-numeric: tabular-nums;
-}
-.uninv-row span {
-    color: var(--muted);
-}
-.mini-chart {
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 44px;
-    margin-top: 8px;
-}
-.mini-chart span {
-    flex: 1;
-    height: 100%;
-    display: flex;
-    align-items: flex-end; /* full-height hover column; the bar sits at the bottom */
-}
-.mini-chart span i {
-    display: block;
-    width: 100%;
-    background: var(--border);
-    border-radius: 2px 2px 0 0;
-}
-.mini-chart span.today i {
-    background: var(--accent);
-}
-.mini-chart span.hovered i {
-    background: var(--text);
-}
-.mini-chart span.today.hovered i {
-    background: var(--accent);
-    filter: brightness(1.25);
-}
-.chart-tip {
-    position: absolute;
-    top: -26px;
-    transform: translateX(-50%);
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 8px;
-    font-size: 10px;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 5;
-}
-.chart-caption {
-    font-size: 10px;
-    margin: 4px 0 0;
-    text-align: center;
 }
 .build-row {
     display: flex;

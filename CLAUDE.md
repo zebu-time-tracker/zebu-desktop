@@ -23,15 +23,22 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   opens the web app instead of growing the popover.
 - Idle detection lives in Rust (`spawn_idle_watcher`); the frontend only sets
   the threshold and renders the prompt. Webview timers are throttled while
-  hidden, so never rely on `setInterval` for anything time-critical.
+  hidden, so never rely on `setInterval` for anything time-critical: the tray
+  pill ticks from `spawn_tray_ticker` (the frontend only describes what is on
+  the clock via `set_tray_state`, see `src/tray.ts`), and the same thread
+  emits `refresh-due` every 20 s for the timesheet re-fetch.
 - The idle prompt is its own always-on-top window (`show_idle_prompt`, label
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers
   do, via the `idle-choice` event.
+- Insights is its own window too (`toggle_insights`, label `insights`,
+  `src/Insights.vue`), placed beside the popover and sized to what its content
+  measures, so the stats and charts are not squeezed into the timer's frame.
+  It and the popover hide together only when focus leaves the app.
 - The tray icon is a play/pause button, not a window toggle: left-click stops
   the running timer (`tray-toggle-timer`) or opens the popover on a new timer
   (`tray-open-new-timer`), right-click does the plain open/close. Rust branches
-  on `TIMER_RUNNING`, which `set_tray_title` keeps current; App.vue owns what
+  on `TIMER_RUNNING`, which `set_tray_state` keeps current; App.vue owns what
   the two events do, the same split as `idle-choice`.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
