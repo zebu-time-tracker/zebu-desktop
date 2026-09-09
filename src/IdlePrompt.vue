@@ -14,13 +14,20 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatDurationHuman } from './api';
 import { setLocalePreference } from './i18n';
 
 const { t } = useI18n();
 
 const minutes = ref(1);
+/**
+ * The heading, with the absence as "12h 43m" rather than "763 minutes" — a raw
+ * minute count is hard to read once an absence runs past an hour. Same
+ * formatter (and locale unit labels) as the totals in the main window.
+ */
+const heading = computed(() => t('idle.title', { duration: formatDurationHuman(minutes.value) }));
 // "Remove Idle Time?" — yes by default: you stepped away, that time is not work.
 const removeIdle = ref(true);
 // "Continue Timing?" — yes by default, the timer keeps running (as before).
@@ -46,8 +53,11 @@ const load = async () => {
     removeIdle.value = true;
     keepTiming.value = true;
     await nextTick();
-    // measured, not guessed: translated headings wrap to two lines in some locales
-    invoke('fit_idle_prompt', { height: document.documentElement.scrollHeight }).catch(() => {});
+    // Measured, not guessed: translated questions wrap to two lines in some
+    // locales. Measure <body> — it is the card, borders included — rather than
+    // documentElement.scrollHeight, which can never report less than the
+    // window it is already in and so could only ever grow the window.
+    invoke('fit_idle_prompt', { height: Math.ceil(document.body.getBoundingClientRect().height) }).catch(() => {});
 };
 
 const ok = () => invoke('resolve_idle_prompt', { remove: removeIdle.value, stop: !keepTiming.value }).catch(() => {});
@@ -70,19 +80,27 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="idle" role="dialog" :aria-label="t('idle.title', { n: minutes }, minutes)">
-        <p class="idle-heading">{{ t('idle.title', { n: minutes }, minutes) }}</p>
+    <div class="idle" role="dialog" :aria-label="heading">
+        <p class="idle-heading">{{ heading }}</p>
 
-        <p class="idle-question">{{ t('idle.timeQuestion') }}</p>
-        <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
-            <button :class="{ active: removeIdle }" role="radio" :aria-checked="removeIdle" @click="removeIdle = true">{{ t('common.yes') }}</button>
-            <button :class="{ active: !removeIdle }" role="radio" :aria-checked="!removeIdle" @click="removeIdle = false">{{ t('common.no') }}</button>
-        </div>
+        <!-- the two questions sit side by side: each is one short line and its
+             own Yes/No pair, so the whole prompt stays a single glance -->
+        <div class="idle-questions">
+            <div>
+                <p class="idle-question">{{ t('idle.timeQuestion') }}</p>
+                <div class="seg" role="radiogroup" :aria-label="t('idle.timeQuestion')">
+                    <button :class="{ active: removeIdle }" role="radio" :aria-checked="removeIdle" @click="removeIdle = true">{{ t('common.yes') }}</button>
+                    <button :class="{ active: !removeIdle }" role="radio" :aria-checked="!removeIdle" @click="removeIdle = false">{{ t('common.no') }}</button>
+                </div>
+            </div>
 
-        <p class="idle-question">{{ t('idle.timerQuestion') }}</p>
-        <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
-            <button :class="{ active: keepTiming }" role="radio" :aria-checked="keepTiming" @click="keepTiming = true">{{ t('common.yes') }}</button>
-            <button :class="{ active: !keepTiming }" role="radio" :aria-checked="!keepTiming" @click="keepTiming = false">{{ t('common.no') }}</button>
+            <div>
+                <p class="idle-question">{{ t('idle.timerQuestion') }}</p>
+                <div class="seg" role="radiogroup" :aria-label="t('idle.timerQuestion')">
+                    <button :class="{ active: keepTiming }" role="radio" :aria-checked="keepTiming" @click="keepTiming = true">{{ t('common.yes') }}</button>
+                    <button :class="{ active: !keepTiming }" role="radio" :aria-checked="!keepTiming" @click="keepTiming = false">{{ t('common.no') }}</button>
+                </div>
+            </div>
         </div>
 
         <button class="idle-ok" @click="ok">{{ t('idle.ok') }}</button>
@@ -117,8 +135,21 @@ html[data-window='idle'] body {
     font-weight: 700;
     line-height: 1.3;
     color: var(--text);
+    text-align: center;
+}
+.idle-questions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+/* a column each: the question grows so both Yes/No pairs line up along the
+   bottom even when a translation is long enough to wrap onto a second line */
+.idle-questions > div {
+    display: flex;
+    flex-direction: column;
 }
 .idle-question {
+    flex: 1;
     margin: 0 0 5px;
     font-size: 11px;
     color: var(--muted);
@@ -130,10 +161,9 @@ html[data-window='idle'] body {
     border-radius: 8px;
     overflow: hidden;
     background: var(--bg-input);
-    margin-bottom: 12px;
 }
 .seg button {
-    padding: 8px 10px;
+    padding: 8px 4px;
     color: var(--muted);
     font-weight: 500;
 }
@@ -146,6 +176,7 @@ html[data-window='idle'] body {
     font-weight: 600;
 }
 .idle-ok {
+    margin-top: 18px;
     background: var(--accent);
     color: #fff;
     border-radius: 8px;

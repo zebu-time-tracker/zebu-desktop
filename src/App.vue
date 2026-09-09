@@ -7,9 +7,10 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
+import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
 const { t } = useI18n();
@@ -151,8 +152,7 @@ const disconnect = (message = '') => {
     me.value = null;
     sheet.value = null;
     forgetLastTimer();
-    lastTray = '';
-    invoke('set_tray_title', { title: '', detail: null, running: false, tooltip: null }).catch(() => {});
+    invoke('set_tray_state', { entry: null }).catch(() => {});
 };
 
 // the workspace answered 401: the device was revoked in the browser (or the
@@ -237,6 +237,7 @@ const elapsed = (entry: { minutes: number; timer_started_at: string | null }) =>
 
 let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
+let refreshUnlisten: UnlistenFn | null = null;
 
 // the pill falls back to today's most recent entry, so a timer stopped
 // elsewhere leaves the day's total on screen rather than "zzzz"
@@ -246,31 +247,23 @@ const todaysLatest = computed(() => {
 });
 const trayEntry = computed(() => running.value ?? todaysLatest.value);
 
-let lastTray: string | null = null;
+// The pill itself is painted by Rust, which ticks the elapsed time on its own
+// thread (webview timers stall while the popover is hidden, so the old
+// setInterval here left the menubar frozen until the icon was clicked). This
+// only hands over what is on the clock, whenever that changes; the tooltip is
+// rendered here so it follows the app's locale, with `{time}` left for Rust.
 const updateTray = () => {
-    const entry = trayEntry.value;
-    const isRunning = !!running.value;
-    const title = entry ? formatMinutes(elapsed(entry)) : '';
-    // project · task feeds the tray tooltip as a hover preview; the tooltip is
-    // rendered here (not in Rust) so it follows the app's locale
-    const detail = entry ? [entry.project, entry.task].filter(Boolean).join(' · ') : '';
-    const tooltip = title
-        ? detail
-            ? t(isRunning ? 'tray.tooltipRunning' : 'tray.tooltipStopped', { detail, time: title })
-            : t('tray.tooltipIdle', { time: title })
-        : 'Zebu';
-    const key = `${title}|${detail}|${isRunning}|${tooltip}`;
-    if (key === lastTray) return; // re-render only when something changes
-    lastTray = key;
-    invoke('set_tray_title', { title: isRunning && running.value?.agent_waiting ? `${title} ⏳` : title, detail: detail || null, running: isRunning, tooltip }).catch(() => {});
+    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t) }).catch(() => {});
 };
 
 onMounted(() => {
-    tick = setInterval(() => {
-        now.value = Date.now();
-        updateTray();
-    }, 15000);
-    refreshLoop = setInterval(refresh, 20000);
+    tick = setInterval(() => (now.value = Date.now()), 15000);
+    // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
+    // another client shows up without a click; outside Tauri (plain-browser
+    // dev) fall back to a webview interval.
+    listen('refresh-due', () => refresh())
+        .then((off) => (refreshUnlisten = off))
+        .catch(() => (refreshLoop = setInterval(refresh, 20000)));
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
@@ -288,6 +281,7 @@ onMounted(() => {
 onUnmounted(() => {
     if (tick) clearInterval(tick);
     if (refreshLoop) clearInterval(refreshLoop);
+    refreshUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
@@ -401,10 +395,6 @@ const statsFor = (entry: Entry): ProjectStats | null => {
         uninvoiced_minutes: stats.uninvoiced_minutes + (r.is_billable ? runningExtra.value : 0),
     };
 };
-// pad hours so the h/m markers line up down the list
-const statHoursWidth = computed(() =>
-    hoursWidthFor(Object.values(sheet.value?.project_stats ?? {}).flatMap((s) => [s.total_minutes + runningExtra.value, s.uninvoiced_minutes + runningExtra.value])),
-);
 const budgetClass = (pct: number) => {
     if (pct > 100) return 'over';
     if (pct > 80) return 'high';
@@ -609,17 +599,65 @@ const onTrayPlay = () => {
 
 const settingsOpen = ref(false);
 
-// Window height per state: compact connect screen, ~3.5 entry rows for the
-// timesheet (the cut-off half row signals there's more below the fold).
-// Insights is a window of its own now (src/Insights.vue) rather than an
-// overlay scrolling inside these bounds, so nothing else resizes this one.
+// Window height per state. The connect screen is a compact fixed card. The
+// timesheet sizes itself to the day (fitPopover): the entries list gets room
+// for 3.5 to 5.5 rows and only scrolls past that — the half row peeking out at
+// the bottom is the cue that there is more. Insights is a window of its own
+// (src/Insights.vue), so nothing else resizes this one.
+const mainEl = ref<HTMLElement | null>(null);
+const entriesEl = ref<HTMLElement | null>(null);
+// A row as last measured, for days with no rows of their own to measure. The
+// initial guess is a row with its project-stats line; it is replaced by the
+// real thing the first time a day with entries is shown.
+let rowHeight = 70;
+let lastFit = '';
+
+/** Height of an element including its vertical margins (the banners have some). */
+const outerHeight = (el: Element) => {
+    const style = getComputedStyle(el);
+    return el.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+};
+
+/**
+ * Measure what is on screen and let Rust size the window: the chrome around
+ * the list (header, week strip, banners, footer — whatever is there right now),
+ * the average entry row, how many rows the day has and what else sits in the
+ * list. Rust owns the 3.5–5.5 row clamp and the screen fit (`fit_popover`).
+ */
+const fitPopover = async () => {
+    await nextTick();
+    const main = mainEl.value;
+    const list = entriesEl.value;
+    if (view.value !== 'main' || !main || !list) return;
+    const rows = Array.from(list.querySelectorAll<HTMLElement>('.entry'));
+    if (rows.length) rowHeight = rows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0) / rows.length;
+    // in-flow siblings of the list; the popovers and sheets are absolute overlays
+    const chrome = Array.from(main.children)
+        .filter((el) => el !== list && getComputedStyle(el).position !== 'absolute')
+        .reduce((sum, el) => sum + outerHeight(el), 0);
+    // non-row content inside the list: an error or locked-week note above the
+    // rows, the padding below them (the empty-day placeholder fills whatever
+    // height the list gets, so it does not count)
+    const extra =
+        Array.from(list.children)
+            .filter((el) => !el.classList.contains('entry') && !el.classList.contains('empty'))
+            .reduce((sum, el) => sum + outerHeight(el), 0) + parseFloat(getComputedStyle(list).paddingBottom);
+    const key = [chrome, rowHeight, rows.length, extra].map((n) => Math.round(n * 10)).join('|');
+    if (key === lastFit) return; // nothing that affects the height has changed
+    lastFit = key;
+    invoke('fit_popover', { chrome, row: rowHeight, entries: rows.length, extra }).catch(() => {});
+};
+
 watch(
     view,
     (v) => {
-        const height = v === 'connect' ? 240 : 330;
+        if (v === 'main') {
+            fitPopover();
+            return;
+        }
         try {
             getCurrentWindow()
-                .setSize(new LogicalSize(380, height))
+                .setSize(new LogicalSize(380, 240))
                 .catch(() => {});
         } catch {
             // not inside Tauri (plain-browser vite dev) — nothing to resize
@@ -627,6 +665,10 @@ watch(
     },
     { immediate: true },
 );
+// Every refresh replaces `sheet`, so this covers entries coming and going, a
+// timer starting or stopping, the running-elsewhere and resume banners, a
+// locked week and the stats lines; the rest changes the chrome or row text.
+watch([sheet, lastTimer, errorMessage, loading, intlLocale], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
 const me = ref<{ name: string; email: string } | null>(null);
@@ -722,7 +764,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     </div>
 
     <!-- ======== main ======== -->
-    <div v-else class="main">
+    <div v-else ref="mainEl" class="main">
         <header class="header">
             <span class="header-title">{{ headerLabel }}</span>
             <div class="header-actions">
@@ -780,8 +822,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </span>
         </button>
 
-        <!-- entries -->
-        <main class="entries">
+        <!-- entries: the window is sized around this list, see fitPopover -->
+        <main ref="entriesEl" class="entries">
             <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
             <p v-if="sheet?.week_locked" class="muted locked-note">{{ t('entry.weekLocked') }}</p>
 
@@ -800,9 +842,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <span v-if="waitingLabel(entry)" class="entry-waiting" :class="{ live: entry.agent_waiting }">⏳ {{ waitingLabel(entry) }}</span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
+                        <!-- prose, not a column: plain "4h 5m", never padded (figure
+                             spaces read as stray gaps inside a sentence) -->
                         <span class="entry-stats-dim">
-                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes, { hoursWidth: statHoursWidth }) }} · {{ t('entry.uninvoiced') }}:
-                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes, { hoursWidth: statHoursWidth }) }}
+                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes) }} · {{ t('entry.uninvoiced') }}:
+                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes) }}
                         </span>
                         <!-- only projects with a budget get a budget line -->
                         <template v-if="statsFor(entry)!.budget_pct !== null">
@@ -1236,7 +1280,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .entry-stats {
     color: var(--muted);
     font-size: 10px;
-    font-variant-numeric: tabular-nums; /* figure-space padding lines the h/m markers up */
+    font-variant-numeric: tabular-nums; /* a ticking total must not jiggle the rest of the line */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

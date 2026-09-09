@@ -71,7 +71,7 @@
         "confirm": "Start today's timer"
     },
     "idle": {
-        "title": "You were idle for {n} minute | You were idle for {n} minutes",
+        "title": "You were idle for {duration}",
         "timeQuestion": "Remove Idle Time?",
         "timerQuestion": "Continue Timing?",
         "ok": "OK"

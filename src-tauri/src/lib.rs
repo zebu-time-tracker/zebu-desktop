@@ -16,7 +16,7 @@ static DOCK_MODE: AtomicBool = AtomicBool::new(false);
 /// "Hide when changing focus" preference (default on).
 static HIDE_ON_BLUR: AtomicBool = AtomicBool::new(true);
 /// Whether a timer is running, as the frontend last reported it through
-/// `set_tray_title` (which it calls on every state change). The tray click
+/// `set_tray_state` (which it calls on every state change). The tray click
 /// handler branches on this and has to answer the click there and then, so it
 /// cannot afford to ask the webview and wait for a reply.
 static TIMER_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -40,15 +40,12 @@ fn idle_seconds() -> u64 {
         .unwrap_or(0)
 }
 
-/// Show the popover hanging from the menubar icon. The positioner only knows
-/// the tray's place once a tray event has been seen; straight after launch
-/// (or when the idle watcher fires before any click) it errors, so fall back
-/// to asking the tray for its rect directly. Never lets the window land in
-/// the middle of the screen.
-fn show_popover(app: &tauri::AppHandle) {
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
+/// Put the popover where it hangs from the menubar icon (without showing it).
+/// The positioner only knows the tray's place once a tray event has been
+/// seen; straight after launch (or when the idle watcher fires before any
+/// click) it errors, so fall back to asking the tray for its rect directly.
+/// Never lets the window land in the middle of the screen.
+fn anchor_popover(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
     if window.move_window(Position::TrayCenter).is_err() {
         if let (Some(Ok(Some(rect))), Ok(win)) = (app.tray_by_id("main").map(|t| t.rect()), window.outer_size()) {
             // tray-icon reports physical pixels already (same assumption as the positioner)
@@ -62,8 +59,74 @@ fn show_popover(app: &tauri::AppHandle) {
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }
     }
+}
+
+/// Show the popover hanging from the menubar icon.
+fn show_popover(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    anchor_popover(app, &window);
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+// ---- popover height ---------------------------------------------------------
+//
+// The timesheet window sizes itself to the day. The entries list gets room for
+// its rows — never less than 3.5 rows (a short or empty day still has a
+// comfortable list), never more than 5.5, after which it scrolls. The half row
+// peeking out at the bottom is deliberate: it is what says "there is more".
+// The frontend measures what it actually rendered (the chrome around the
+// list, the average row height) and this side clamps and applies, so the
+// numbers stay honest whatever a locale or font does to a row.
+
+/// Logical width of the popover, matching tauri.conf.json.
+const MAIN_WIDTH: f64 = 380.0;
+/// The list is never shorter than this many rows…
+const MIN_ROWS: f64 = 3.5;
+/// …and never taller than this many; beyond that it scrolls.
+const MAX_ROWS: f64 = 5.5;
+
+/// Height of the entries list for `entries` rows of `row` px plus `extra` px
+/// of non-row content (the list's padding, a locked-week note), clamped to
+/// the row band.
+fn list_height(entries: usize, row: f64, extra: f64) -> f64 {
+    let content = entries as f64 * row + extra;
+    content.clamp(MIN_ROWS * row, MAX_ROWS * row)
+}
+
+/// The whole popover: the chrome (header, week strip, banners, footer) plus
+/// the list, but never taller than the display's work area — a short screen
+/// gets a shorter list rather than a window hanging off the bottom.
+fn popover_height(chrome: f64, list: f64, work_height: f64) -> f64 {
+    (chrome + list).min(work_height.max(chrome))
+}
+
+/// The frontend's measurements of the timesheet, in CSS pixels: everything
+/// around the list, one entry row, how many rows the day has, and what else
+/// sits inside the list. Resizes the window to fit; it stays hanging from the
+/// tray icon because growth keeps the top edge where it is.
+#[tauri::command]
+fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, extra: f64) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if row.is_nan() || row <= 0.0 {
+        return; // nothing measured yet
+    }
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let origin = window.outer_position().map(|p| (p.x as f64, p.y as f64)).unwrap_or((0.0, 0.0));
+    let work = work_area(&app, origin.0 + MAIN_WIDTH * scale / 2.0, origin.1 + 1.0);
+    let height = popover_height(chrome, list_height(entries, row, extra), work.height / scale).round();
+    let current = window.inner_size().map(|s| (s.height as f64 / scale).round()).unwrap_or(0.0);
+    if current == height {
+        return;
+    }
+    let _ = window.set_size(LogicalSize::new(MAIN_WIDTH, height));
+    if window.is_visible().unwrap_or(false) {
+        anchor_popover(&app, &window);
+    }
 }
 
 /// Open the popover, or put it away when it is already up. This is what a
@@ -156,7 +219,13 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
 const IDLE_LABEL: &str = "idle";
 /// Logical size of the prompt: the width is fixed, the height is what the
 /// webview measures once the (translated) text has been laid out.
-const IDLE_WIDTH: f64 = 260.0;
+///
+/// The width is set by the two side-by-side questions in `IdlePrompt.vue`:
+/// each column needs (330 - 14px padding ×2 - 1px border ×2 - 10px gap) / 2 =
+/// 145px, and the longest question in any locale measures ~136px (nl
+/// "Inactieve tijd verwijderen?", pt "Remover o tempo inativo?"), so every
+/// catalog keeps both questions and both Yes/No pairs on one line.
+const IDLE_WIDTH: f64 = 330.0;
 const IDLE_HEIGHT: f64 = 220.0;
 /// Breathing room between the anchor and the prompt, in logical pixels.
 const IDLE_GAP: f64 = 6.0;
@@ -607,39 +676,161 @@ fn apply_icon(tray: &TrayIcon, rendered: Option<(tauri::image::Image<'static>, b
     }
 }
 
-/// Update the menubar widget: a rendered pill showing play + "zzzz" when
-/// idle, or green pause bars + the elapsed time while a timer runs. `detail`
-/// (project · task) feeds the hover tooltip as a quick preview. `tooltip`
-/// carries the fully formatted, localized tooltip from the frontend (which
-/// owns the locale catalogs); the format! fallback below only covers older
-/// callers that don't send one.
-#[tauri::command]
-fn set_tray_title(app: tauri::AppHandle, title: String, detail: Option<String>, running: bool, tooltip: Option<String>) {
-    // Kept outside the tray lookup below: the click handler reads this even on
-    // platforms (or in the moments) where there is no tray to draw on.
-    TIMER_RUNNING.store(running, Ordering::SeqCst);
-    if let Some(tray) = app.tray_by_id("main") {
-        let elapsed = (!title.is_empty()).then_some(title.as_str());
+// ---- menubar pill ----------------------------------------------------------
+//
+// The pill used to be repainted by the webview on a setInterval, which macOS
+// throttles (or pauses outright) while the popover is hidden — so the elapsed
+// time froze until the icon was clicked and the window regained focus. Now the
+// frontend only describes *what* is on the clock (banked minutes, when the
+// running stretch started, project · task, the localized tooltip) whenever
+// that changes, and a native thread derives the elapsed time itself every
+// second, repainting only when the displayed minute rolls over.
 
-        #[cfg(not(target_os = "linux"))]
-        apply_icon(&tray, tray_icon::render(elapsed, running));
-        #[cfg(target_os = "macos")]
-        let _ = tray.set_title(None::<String>);
+/// The entry the pill shows, as the frontend last described it. None = idle.
+#[derive(Clone, Debug, Default, PartialEq, serde::Deserialize)]
+struct TrayEntry {
+    /// Minutes already banked on the entry, before any running stretch.
+    minutes: f64,
+    /// When the running stretch began (unix ms); None when the entry is stopped.
+    started_at_ms: Option<u64>,
+    /// "project · task", for the tooltip fallback.
+    detail: Option<String>,
+    /// Localized tooltip from the frontend (which owns the locale catalogs),
+    /// with a literal `{time}` where the clock goes.
+    tooltip: Option<String>,
+    /// Agentic work: an agent is being waited on right now.
+    agent_waiting: bool,
+}
 
-        let tip = tooltip.filter(|t| !t.is_empty()).unwrap_or_else(|| {
-            match (elapsed, detail.filter(|d| !d.is_empty())) {
-                (Some(t), Some(d)) if running => format!("{d} · {t}"),
-                (Some(t), Some(d)) => format!("{d} · {t} (stopped)"),
-                (Some(t), None) => format!("Zebu — {t}"),
-                _ => "Zebu".to_string(),
-            }
-        });
-        #[cfg(target_os = "linux")]
-        if let Some(item) = TRAY_STATUS_ITEM.get() {
-            let _ = item.set_text(&tip);
-        }
-        let _ = tray.set_tooltip(Some(tip));
+/// One rendered state of the pill; equal frames are not repainted.
+#[derive(Clone, Debug, PartialEq)]
+struct TrayFrame {
+    /// The clock text, "" when nothing is on the clock today.
+    title: String,
+    running: bool,
+    tooltip: String,
+}
+
+static TRAY_STATE: Mutex<Option<TrayEntry>> = Mutex::new(None);
+static TRAY_FRAME: Mutex<Option<TrayFrame>> = Mutex::new(None);
+
+/// How often the ticker asks the webview to re-fetch the timesheet, so a timer
+/// started or stopped from another client shows up here without a click. The
+/// nudge comes from this native thread rather than a webview interval because
+/// the webview's own timers stall while the popover is hidden.
+const REFRESH_NUDGE_S: u64 = 20;
+
+fn unix_ms(at: SystemTime) -> u64 {
+    at.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// Clock-style "h:mm", rounded to the nearest minute like the frontend's
+/// formatMinutes so the pill and the list agree.
+fn format_clock(minutes: f64) -> String {
+    let m = minutes.max(0.0).round() as u64;
+    format!("{}:{:02}", m / 60, m % 60)
+}
+
+/// Minutes on the clock right now: banked plus the running stretch.
+fn elapsed_minutes(entry: &TrayEntry, now_ms: u64) -> f64 {
+    match entry.started_at_ms {
+        Some(started) => entry.minutes + now_ms.saturating_sub(started) as f64 / 60_000.0,
+        None => entry.minutes,
     }
+}
+
+/// What the pill should show for `entry` at `now_ms`.
+fn tray_frame(entry: Option<&TrayEntry>, now_ms: u64) -> TrayFrame {
+    let Some(entry) = entry else {
+        return TrayFrame { title: String::new(), running: false, tooltip: "Zebu".to_string() };
+    };
+    let running = entry.started_at_ms.is_some();
+    let clock = format_clock(elapsed_minutes(entry, now_ms));
+    let detail = entry.detail.as_deref().filter(|d| !d.is_empty());
+    let tooltip = match entry.tooltip.as_deref().filter(|t| !t.is_empty()) {
+        Some(template) => template.replace("{time}", &clock),
+        None => match detail {
+            Some(d) if running => format!("{d} · {clock}"),
+            Some(d) => format!("{d} · {clock} (stopped)"),
+            None => format!("Zebu — {clock}"),
+        },
+    };
+    let title = if running && entry.agent_waiting { format!("{clock} ⏳") } else { clock };
+    TrayFrame { title, running, tooltip }
+}
+
+/// Paint a frame onto the tray: the rendered pill (green pause bars + elapsed
+/// while running, play + "zzzz" when idle) and the hover tooltip. Linux gets
+/// the tooltip as a disabled menu line instead (see TRAY_STATUS_ITEM).
+fn paint_tray(app: &tauri::AppHandle, frame: &TrayFrame) {
+    let Some(tray) = app.tray_by_id("main") else {
+        return;
+    };
+    let elapsed = (!frame.title.is_empty()).then_some(frame.title.as_str());
+
+    #[cfg(not(target_os = "linux"))]
+    apply_icon(&tray, tray_icon::render(elapsed, frame.running));
+    #[cfg(target_os = "linux")]
+    let _ = elapsed;
+    #[cfg(target_os = "macos")]
+    let _ = tray.set_title(None::<String>);
+
+    #[cfg(target_os = "linux")]
+    if let Some(item) = TRAY_STATUS_ITEM.get() {
+        let _ = item.set_text(&frame.tooltip);
+    }
+    let _ = tray.set_tooltip(Some(frame.tooltip.clone()));
+}
+
+/// Repaint the pill if what it should show has changed since the last paint.
+fn refresh_tray(app: &tauri::AppHandle) {
+    let frame = {
+        let state = TRAY_STATE.lock().ok();
+        tray_frame(state.as_ref().and_then(|s| s.as_ref()), unix_ms(SystemTime::now()))
+    };
+    let changed = TRAY_FRAME.lock().map(|mut last| {
+        if last.as_ref() == Some(&frame) {
+            false
+        } else {
+            *last = Some(frame.clone());
+            true
+        }
+    });
+    if changed.unwrap_or(true) {
+        paint_tray(app, &frame);
+    }
+}
+
+/// The frontend describing what is on the clock. Sent when the running entry,
+/// today's latest entry, the agent-waiting flag or the locale changes — never
+/// on a timer. `None` clears the pill back to idle (e.g. on disconnect).
+#[tauri::command]
+fn set_tray_state(app: tauri::AppHandle, entry: Option<TrayEntry>) {
+    // Kept outside the tray lookup: the click handler branches on this even
+    // on platforms (or in the moments) where there is no tray to draw on.
+    TIMER_RUNNING.store(entry.as_ref().is_some_and(|e| e.started_at_ms.is_some()), Ordering::SeqCst);
+    if let Ok(mut state) = TRAY_STATE.lock() {
+        *state = entry;
+    }
+    refresh_tray(&app);
+}
+
+/// Native clock for the pill: repaints on minute rollovers while the popover
+/// is hidden, and every REFRESH_NUDGE_S asks the webview to re-fetch the
+/// timesheet (`refresh-due`) so changes made elsewhere are picked up.
+fn spawn_tray_ticker(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let mut last_nudge = SystemTime::now();
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+            refresh_tray(&app);
+            let since = SystemTime::now().duration_since(last_nudge).unwrap_or_default().as_secs();
+            if since >= REFRESH_NUDGE_S {
+                last_nudge = SystemTime::now();
+                let _ = app.emit_to("main", "refresh-due", ());
+            }
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -658,12 +849,13 @@ pub fn run() {
 
     builder
         .invoke_handler(tauri::generate_handler![
-            set_tray_title,
+            set_tray_state,
             quit,
             idle_seconds,
             set_idle_threshold,
             set_dock_visible,
             set_hide_on_blur,
+            fit_popover,
             show_idle_prompt,
             idle_prompt_data,
             fit_idle_prompt,
@@ -779,11 +971,85 @@ pub fn run() {
             let _ = &tray;
 
             spawn_idle_watcher(app.handle().clone());
+            spawn_tray_ticker(app.handle().clone());
 
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tray_tests {
+    use super::{format_clock, tray_frame, TrayEntry, TrayFrame};
+
+    const T0: u64 = 1_800_000_000_000; // some unix ms
+
+    fn running(minutes: f64, started_ago_s: u64) -> TrayEntry {
+        TrayEntry {
+            minutes,
+            started_at_ms: Some(T0 - started_ago_s * 1000),
+            detail: Some("Acme · Design".into()),
+            tooltip: Some("Acme · Design · {time}".into()),
+            agent_waiting: false,
+        }
+    }
+
+    #[test]
+    fn the_clock_rounds_to_the_nearest_minute_like_the_list() {
+        assert_eq!(format_clock(0.0), "0:00");
+        assert_eq!(format_clock(0.4), "0:00");
+        assert_eq!(format_clock(0.6), "0:01");
+        assert_eq!(format_clock(95.0), "1:35");
+        assert_eq!(format_clock(-3.0), "0:00");
+    }
+
+    #[test]
+    fn a_running_entry_counts_from_its_start_without_the_webview() {
+        // 20 banked minutes, started 30 minutes ago: the pill says 0:50
+        let frame = tray_frame(Some(&running(20.0, 30 * 60)), T0);
+        assert_eq!(frame, TrayFrame { title: "0:50".into(), running: true, tooltip: "Acme · Design · 0:50".into() });
+        // …and a minute later, 0:51 — without anyone sending a new state
+        assert_eq!(tray_frame(Some(&running(20.0, 30 * 60)), T0 + 60_000).title, "0:51");
+    }
+
+    #[test]
+    fn equal_minutes_give_equal_frames_so_nothing_is_repainted_mid_minute() {
+        let entry = running(0.0, 600);
+        assert_eq!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 20_000));
+        assert_ne!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 40_000));
+    }
+
+    #[test]
+    fn a_stopped_entry_shows_its_banked_minutes_as_a_paused_pill() {
+        let entry = TrayEntry { minutes: 125.0, started_at_ms: None, detail: Some("Acme".into()), tooltip: None, agent_waiting: false };
+        let frame = tray_frame(Some(&entry), T0);
+        assert_eq!(frame.title, "2:05");
+        assert!(!frame.running);
+        assert_eq!(frame.tooltip, "Acme · 2:05 (stopped)");
+        // the clock never moves on a stopped entry
+        assert_eq!(tray_frame(Some(&entry), T0 + 3_600_000).title, "2:05");
+    }
+
+    #[test]
+    fn nothing_today_is_the_idle_pill() {
+        assert_eq!(tray_frame(None, T0), TrayFrame { title: String::new(), running: false, tooltip: "Zebu".into() });
+    }
+
+    #[test]
+    fn a_start_in_the_future_reads_as_zero_not_as_garbage() {
+        // a client clock behind the server: never a negative or wrapped elapsed
+        let entry = TrayEntry { started_at_ms: Some(T0 + 90_000), ..running(5.0, 0) };
+        assert_eq!(tray_frame(Some(&entry), T0).title, "0:05");
+    }
+
+    #[test]
+    fn waiting_on_an_agent_marks_the_running_clock() {
+        let entry = TrayEntry { agent_waiting: true, ..running(0.0, 120) };
+        assert_eq!(tray_frame(Some(&entry), T0).title, "0:02 ⏳");
+        let stopped = TrayEntry { started_at_ms: None, agent_waiting: true, ..running(7.0, 0) };
+        assert_eq!(tray_frame(Some(&stopped), T0).title, "0:07");
+    }
 }
 
 #[cfg(test)]
@@ -823,7 +1089,7 @@ mod prompt_position_tests {
 
     /// A 1440x900 display with a 25px menubar, as physical pixels.
     const WORK: ScreenRect = ScreenRect { x: 0.0, y: 25.0, width: 1440.0, height: 875.0 };
-    const SIZE: (f64, f64) = (260.0, 220.0);
+    const SIZE: (f64, f64) = (330.0, 220.0);
 
     fn anchor(x: f64, y: f64) -> ScreenRect {
         ScreenRect { x, y, width: 24.0, height: 24.0 }
@@ -832,20 +1098,20 @@ mod prompt_position_tests {
     #[test]
     fn hangs_centred_under_the_anchor_when_there_is_room() {
         // stop button at the top of the list, plenty of screen below it
-        assert_eq!(prompt_position(anchor(700.0, 200.0), SIZE, WORK, 6.0), (582.0, 230.0));
+        assert_eq!(prompt_position(anchor(700.0, 200.0), SIZE, WORK, 6.0), (547.0, 230.0));
     }
 
     #[test]
     fn flips_above_the_anchor_rather_than_off_the_bottom() {
         // the running entry sits near the bottom of a long list: below would
         // run past the screen edge, so the prompt goes above the button
-        assert_eq!(prompt_position(anchor(700.0, 800.0), SIZE, WORK, 6.0), (582.0, 574.0));
+        assert_eq!(prompt_position(anchor(700.0, 800.0), SIZE, WORK, 6.0), (547.0, 574.0));
     }
 
     #[test]
     fn stays_on_screen_at_the_left_and_right_edges() {
         assert_eq!(prompt_position(anchor(4.0, 200.0), SIZE, WORK, 6.0).0, 0.0);
-        assert_eq!(prompt_position(anchor(1420.0, 200.0), SIZE, WORK, 6.0).0, 1180.0);
+        assert_eq!(prompt_position(anchor(1420.0, 200.0), SIZE, WORK, 6.0).0, 1110.0);
     }
 
     #[test]
@@ -859,6 +1125,64 @@ mod prompt_position_tests {
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
         assert_eq!(prompt_position(anchor(1450.0, 100.0), SIZE, right, 6.0), (1440.0, 130.0));
+    }
+}
+
+#[cfg(test)]
+mod popover_height_tests {
+    use super::{list_height, popover_height};
+
+    /// An entry row with its project-stats line, and the list's bottom padding.
+    const ROW: f64 = 67.0;
+    const PAD: f64 = 8.0;
+    /// Header + week strip + footer, as rendered.
+    const CHROME: f64 = 136.0;
+
+    #[test]
+    fn a_short_or_empty_day_still_gets_three_and_a_half_rows() {
+        for entries in 0..=3 {
+            assert_eq!(list_height(entries, ROW, PAD), 3.5 * ROW, "{entries} entries");
+        }
+    }
+
+    #[test]
+    fn four_and_five_entries_fit_exactly_with_no_scrolling() {
+        assert_eq!(list_height(4, ROW, PAD), 4.0 * ROW + PAD);
+        assert_eq!(list_height(5, ROW, PAD), 5.0 * ROW + PAD);
+    }
+
+    #[test]
+    fn six_or_more_stop_at_five_and_a_half_rows_and_scroll() {
+        assert_eq!(list_height(6, ROW, PAD), 5.5 * ROW);
+        assert_eq!(list_height(10, ROW, PAD), 5.5 * ROW);
+    }
+
+    #[test]
+    fn a_locked_week_note_counts_as_list_content() {
+        // five rows plus a note would run past 5.5 rows, so the cap wins
+        assert_eq!(list_height(5, ROW, PAD + 30.0), 5.5 * ROW);
+        // three rows plus a note just outgrow 3.5 rows: the note stays visible
+        assert_eq!(list_height(3, ROW, PAD + 30.0), 3.0 * ROW + PAD + 30.0);
+        assert_eq!(list_height(2, ROW, PAD + 30.0), 3.5 * ROW);
+    }
+
+    #[test]
+    fn shorter_rows_make_a_shorter_window() {
+        // a day whose projects carry no stats line renders shorter rows
+        assert_eq!(list_height(6, 52.0, PAD), 5.5 * 52.0);
+    }
+
+    #[test]
+    fn the_window_is_the_chrome_plus_the_list() {
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 875.0), 370.5);
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 875.0), 504.5);
+    }
+
+    #[test]
+    fn a_short_screen_caps_the_window_at_its_work_area() {
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 400.0), 400.0);
+        // …but never below the chrome, which cannot shrink
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 100.0), CHROME);
     }
 }
 
