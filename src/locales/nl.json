@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Annuleren",
+        "close": "Sluiten",
         "loading": "Laden…",
         "no": "Nee",
         "system": "Systeem",
@@ -70,7 +71,7 @@
         "confirm": "Vandaag starten"
     },
     "idle": {
-        "title": "Je was {n} minuut inactief | Je was {n} minuten inactief",
+        "title": "Je was {duration} inactief",
         "timeQuestion": "Inactieve tijd verwijderen?",
         "timerQuestion": "Doorgaan met timen?",
         "ok": "OK"

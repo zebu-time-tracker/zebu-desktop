@@ -28,6 +28,16 @@ export function formatDurationHuman(minutes: number, units: DurationUnits = DEFA
     return `${m}${units.minute}`;
 }
 
+/**
+ * An entry's minutes as of `now`: the stored total, plus what a running timer
+ * has added since it started. Shared by the popover and the insights panel,
+ * which both count up between refreshes.
+ */
+export function elapsedMinutes(entry: { minutes: number; timer_started_at: string | null }, now: number): number {
+    if (!entry.timer_started_at) return entry.minutes;
+    return entry.minutes + Math.max(0, (now - new Date(entry.timer_started_at).getTime()) / 60000);
+}
+
 /** Clock-style "h:mm" — the timer pill, entry rows, week strip. */
 export function formatMinutes(minutes: number): string {
     const m = Math.max(0, Math.round(minutes));

@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Annuler",
+        "close": "Fermer",
         "loading": "Chargement…",
         "no": "Non",
         "system": "Système",
@@ -70,8 +71,8 @@
         "confirm": "Démarrer aujourd'hui"
     },
     "idle": {
-        "title": "Inactif pendant {n} minute | Inactif pendant {n} minutes",
-        "timeQuestion": "Retirer le temps d’inactivité ?",
+        "title": "Inactif pendant {duration}",
+        "timeQuestion": "Retirer l’inactivité ?",
         "timerQuestion": "Continuer le minuteur ?",
         "ok": "OK"
     },

@@ -1,6 +1,7 @@
 {
     "common": {
         "cancel": "Annulla",
+        "close": "Chiudi",
         "loading": "Caricamento…",
         "no": "No",
         "system": "Sistema",
@@ -70,8 +71,8 @@
         "confirm": "Avvia oggi"
     },
     "idle": {
-        "title": "Sei stato inattivo per {n} minuto | Sei stato inattivo per {n} minuti",
-        "timeQuestion": "Rimuovere il tempo di inattività?",
+        "title": "Sei stato inattivo per {duration}",
+        "timeQuestion": "Rimuovere l’inattività?",
         "timerQuestion": "Continuare a misurare?",
         "ok": "OK"
     },
