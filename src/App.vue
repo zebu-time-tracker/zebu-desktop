@@ -7,7 +7,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
@@ -401,10 +401,6 @@ const statsFor = (entry: Entry): ProjectStats | null => {
         uninvoiced_minutes: stats.uninvoiced_minutes + (r.is_billable ? runningExtra.value : 0),
     };
 };
-// pad hours so the h/m markers line up down the list
-const statHoursWidth = computed(() =>
-    hoursWidthFor(Object.values(sheet.value?.project_stats ?? {}).flatMap((s) => [s.total_minutes + runningExtra.value, s.uninvoiced_minutes + runningExtra.value])),
-);
 const budgetClass = (pct: number) => {
     if (pct > 100) return 'over';
     if (pct > 80) return 'high';
@@ -800,9 +796,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <span v-if="waitingLabel(entry)" class="entry-waiting" :class="{ live: entry.agent_waiting }">⏳ {{ waitingLabel(entry) }}</span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
+                        <!-- prose, not a column: plain "4h 5m", never padded (figure
+                             spaces read as stray gaps inside a sentence) -->
                         <span class="entry-stats-dim">
-                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes, { hoursWidth: statHoursWidth }) }} · {{ t('entry.uninvoiced') }}:
-                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes, { hoursWidth: statHoursWidth }) }}
+                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes) }} · {{ t('entry.uninvoiced') }}:
+                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes) }}
                         </span>
                         <!-- only projects with a budget get a budget line -->
                         <template v-if="statsFor(entry)!.budget_pct !== null">
@@ -1236,7 +1234,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .entry-stats {
     color: var(--muted);
     font-size: 10px;
-    font-variant-numeric: tabular-nums; /* figure-space padding lines the h/m markers up */
+    font-variant-numeric: tabular-nums; /* a ticking total must not jiggle the rest of the line */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

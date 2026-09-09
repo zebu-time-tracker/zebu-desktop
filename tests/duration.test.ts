@@ -2,9 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatDurationHuman, formatMinutes, hoursWidthFor, parseDuration } from '../src/duration.ts';
-
-const FS = ' '; // figure space
+import { formatDurationHuman, formatMinutes, parseDuration } from '../src/duration.ts';
 
 test('tracked totals are hours and minutes, never days', () => {
     assert.equal(formatDurationHuman(38 * 60 + 12), '38h 12m');
@@ -36,21 +34,13 @@ test('unit labels come from the caller', () => {
     assert.equal(formatDurationHuman(5, { hour: 'u', minute: 'm' }), '5m');
 });
 
-test('list mode pads hours with figure spaces and minutes to two digits so the markers align', () => {
-    assert.equal(formatDurationHuman(4 * 60 + 5, undefined, { hoursWidth: 2 }), `${FS}4h ${FS}5m`);
-    assert.equal(formatDurationHuman(38 * 60 + 12, undefined, { hoursWidth: 2 }), '38h 12m');
-    assert.equal(formatDurationHuman(0, undefined, { hoursWidth: 3 }), `${FS}${FS}0h ${FS}0m`);
-    assert.equal(formatDurationHuman(120 * 60, undefined, { hoursWidth: 3 }), `120h ${FS}0m`);
-    // every list-mode string of the same width has the same length
-    const widths = [5, 65, 38 * 60 + 12, 120 * 60].map((m) => formatDurationHuman(m, undefined, { hoursWidth: 3 }).length);
-    assert.deepEqual(widths, [8, 8, 8, 8]);
-});
-
-test('hoursWidthFor sizes the padding to the largest hour count', () => {
-    assert.equal(hoursWidthFor([]), 1);
-    assert.equal(hoursWidthFor([5, 45]), 1);
-    assert.equal(hoursWidthFor([38 * 60 + 12, 65]), 2);
-    assert.equal(hoursWidthFor([120 * 60, 4 * 60]), 3);
+test('inline totals are never padded: no figure spaces, double spaces or leading zeros', () => {
+    // "Total: 4h 5m · Uninvoiced: 1h 5m" has to read as prose even when another
+    // project on the same list is at 120h — padding shows up as stray gaps there
+    for (const s of [formatDurationHuman(4 * 60 + 5), formatDurationHuman(120 * 60), formatDurationHuman(9)]) {
+        assert.doesNotMatch(s, / | | {2}|\b0\d/, s);
+    }
+    assert.equal(formatDurationHuman(4 * 60 + 5), '4h 5m');
 });
 
 test('formatMinutes is clock style h:mm', () => {

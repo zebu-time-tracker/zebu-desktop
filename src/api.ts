@@ -5,12 +5,12 @@
 // app.zebu.work site. So there is no fixed server: every request goes to the
 // workspace the user connected on the connect screen.
 
-import { formatDurationHuman as formatDuration, type DurationOptions } from './duration';
+import { formatDurationHuman as formatDuration } from './duration';
 import { i18n } from './i18n';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
 export { CENTRAL_URL, DEFAULT_DOMAIN };
-export { elapsedMinutes, formatMinutes, hoursWidthFor, parseDuration } from './duration';
+export { elapsedMinutes, formatMinutes, parseDuration } from './duration';
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {});
 
@@ -247,8 +247,8 @@ export const api = {
  * Tracked / uninvoiced totals as hours and minutes ("38h 12m") with the
  * locale's unit labels. See src/duration.ts for the formatting rules.
  */
-export function formatDurationHuman(minutes: number, opts?: DurationOptions): string {
-    return formatDuration(minutes, { hour: t('units.hour'), minute: t('units.minute') }, opts);
+export function formatDurationHuman(minutes: number): string {
+    return formatDuration(minutes, { hour: t('units.hour'), minute: t('units.minute') });
 }
 
 export function toDateString(d: Date): string {
