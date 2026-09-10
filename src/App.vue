@@ -10,6 +10,7 @@ import ProjectPicker from './ProjectPicker.vue';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
+import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
@@ -28,13 +29,17 @@ interface Prefs {
     idleEnabled: boolean;
     idleMinutes: number;
     language: string; // 'system' or a locale code from SUPPORTED_LOCALES
+    shortcuts: Shortcuts; // system-wide hotkeys, one accelerator per action ('' = unbound)
 }
-const prefs = ref<Prefs>({ appearance: 'system', dock: false, hideOnBlur: true, idleEnabled: true, idleMinutes: 10, language: 'system' });
+const prefs = ref<Prefs>({ appearance: 'system', dock: false, hideOnBlur: true, idleEnabled: true, idleMinutes: 10, language: 'system', shortcuts: noShortcuts() });
 try {
     Object.assign(prefs.value, JSON.parse(localStorage.getItem('zebu.prefs') ?? '{}'));
 } catch {
     /* fresh defaults */
 }
+// the assign above is shallow, so an older build's prefs (or a hand-edited
+// file) could leave a row without an accelerator to render
+prefs.value.shortcuts = readShortcuts(prefs.value.shortcuts);
 watch(
     prefs,
     (p) => {
@@ -727,9 +732,101 @@ onMounted(() => {
 });
 onUnmounted(() => insightsUnlisten?.());
 
+// ---- keyboard shortcuts ----------------------------------------------------
+//
+// System-wide hotkeys for start/stop, the popover and insights. Rust owns the
+// registration (it is the side that can act while another app has focus, and
+// two of the three actions are its own windows); this side owns the bindings —
+// recording them, storing them with the other preferences, and handing each
+// one over through `set_shortcut`, which is also what replays them at launch.
+// See src/shortcuts.ts for the accelerator strings on the wire.
+
+/** The row being recorded right now, if any. */
+const recording = ref<ShortcutAction | null>(null);
+/** Rows whose combination the system refused, so the row can say so. */
+const shortcutTaken = ref<Partial<Record<ShortcutAction, boolean>>>({});
+
+const shortcutLabels: Record<ShortcutAction, string> = {
+    toggleTimer: 'settings.shortcutToggleTimer',
+    togglePopover: 'settings.shortcutTogglePopover',
+    toggleInsights: 'settings.shortcutToggleInsights',
+};
+
+/** Hand one binding (or '' to unbind) to Rust. False when it was refused. */
+const applyShortcut = async (action: ShortcutAction, accel: string): Promise<boolean> => {
+    let ok = false;
+    try {
+        await invoke('set_shortcut', { action, accelerator: accel || null });
+        ok = true;
+    } catch {
+        /* the system refused the combination — or there is no Tauri to ask (plain-browser dev) */
+    }
+    shortcutTaken.value = { ...shortcutTaken.value, [action]: !ok };
+    return ok;
+};
+
+/**
+ * Bind what was just recorded. A combination can only mean one thing, so the
+ * row that held it gives it up first — both because that is the rule and
+ * because the system would otherwise refuse the new binding as taken.
+ */
+const setShortcut = async (action: ShortcutAction, accel: string) => {
+    const next = assignShortcut(prefs.value.shortcuts, action, accel);
+    const displaced = SHORTCUT_ACTIONS.filter((a) => a !== action && prefs.value.shortcuts[a] && !next[a]);
+    for (const a of displaced) await applyShortcut(a, '');
+    if (await applyShortcut(action, accel)) {
+        prefs.value.shortcuts = next;
+        return;
+    }
+    // refused: leave every row exactly as it was, including the displaced one
+    for (const a of displaced) await applyShortcut(a, prefs.value.shortcuts[a]);
+};
+
+const clearShortcut = async (action: ShortcutAction) => {
+    await applyShortcut(action, '');
+    prefs.value.shortcuts = { ...prefs.value.shortcuts, [action]: '' };
+    shortcutTaken.value = { ...shortcutTaken.value, [action]: false };
+};
+
+const startRecording = (action: ShortcutAction) => {
+    recording.value = action;
+    shortcutTaken.value = { ...shortcutTaken.value, [action]: false };
+};
+
+// closing the popover (Escape, the backdrop, the insights button) abandons a
+// recording rather than leaving it swallowing every keypress
+watch(settingsOpen, (open) => {
+    if (!open) recording.value = null;
+});
+
+onMounted(() => {
+    // The system forgets our registrations when the app quits, so every launch
+    // hands the saved bindings back; one the machine has since given to
+    // another app comes back refused and says so in its row.
+    for (const action of SHORTCUT_ACTIONS) {
+        if (prefs.value.shortcuts[action]) applyShortcut(action, prefs.value.shortcuts[action]);
+    }
+});
+
 // Escape dismisses the settings popover (click-away is the backdrop); the
-// insights window handles its own Escape.
+// insights window handles its own Escape. While a row is recording, every
+// keypress belongs to the recorder instead — Escape included, which cancels
+// it rather than closing the settings underneath.
 const onKeydown = (e: KeyboardEvent) => {
+    const action = recording.value;
+    if (action) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.key === 'Escape') {
+            recording.value = null;
+            return;
+        }
+        const accel = accelerator(e);
+        if (!accel) return; // a modifier still on its own, or a combination we can't bind: keep listening
+        recording.value = null;
+        setShortcut(action, accel);
+        return;
+    }
     if (e.key !== 'Escape' || !settingsOpen.value) return;
     settingsOpen.value = false;
     e.preventDefault();
@@ -999,6 +1096,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     {{ t('settings.min') }}
                 </span>
             </label>
+            <hr class="sep" />
+            <!-- system-wide hotkeys; Rust registers them (src-tauri: set_shortcut) -->
+            <div class="pref-shortcuts">
+                <div class="pref-group">{{ t('settings.shortcuts') }}</div>
+                <div v-for="action in SHORTCUT_ACTIONS" :key="action" class="pref-shortcut">
+                    <div class="pref-row">
+                        <span class="pref-shortcut-label">{{ t(shortcutLabels[action]) }}</span>
+                        <span class="shortcut-field">
+                            <button
+                                class="shortcut-record"
+                                :class="{ recording: recording === action, set: !!prefs.shortcuts[action] }"
+                                :title="t('settings.recordShortcut')"
+                                @click="recording === action ? (recording = null) : startRecording(action)"
+                            >
+                                {{ recording === action ? t('settings.recording') : prefs.shortcuts[action] ? formatAccelerator(prefs.shortcuts[action]) : t('settings.recordShortcut') }}
+                            </button>
+                            <!-- always rendered so clearing a binding can't shift the row -->
+                            <button class="shortcut-clear" :class="{ empty: !prefs.shortcuts[action] }" :title="t('settings.clearShortcut')" @click="clearShortcut(action)">✕</button>
+                        </span>
+                    </div>
+                    <div v-if="shortcutTaken[action]" class="shortcut-taken">{{ t('settings.shortcutTaken') }}</div>
+                </div>
+            </div>
             <hr class="sep" />
             <button class="link" @click="openUrl(auth.workspace || CENTRAL_URL)">{{ t('settings.openInBrowser') }}</button>
             <button class="link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
@@ -1512,6 +1632,93 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     text-align: center;
     font-size: 12px;
 }
+
+/* ---- keyboard shortcuts (settings) ---- */
+/* one block, so the popout's 8px row gap is spent between sections rather
+   than three more times inside this one */
+.pref-shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.pref-group {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 2px;
+}
+.pref-shortcut .pref-row {
+    align-items: center;
+}
+/* The popover is 250px wide and must not grow for a long translation, so the
+   label wraps and the recorder keeps its size. */
+.pref-shortcut-label {
+    min-width: 0;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+/* A field of its own width, so a row does not resize as it goes from its
+   placeholder to a combination — and the clear control sits inside it, which
+   is also the only way both fit across 250px. */
+.shortcut-field {
+    position: relative;
+    flex: none;
+}
+.shortcut-record {
+    display: block;
+    width: 116px;
+    padding: 3px 8px;
+    font-size: 11px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+.shortcut-record:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+/* a bound combination is the row's value, not its placeholder */
+.shortcut-record.set {
+    color: var(--text);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+}
+.shortcut-record.recording,
+.shortcut-record.recording:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+.shortcut-clear {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px;
+}
+.shortcut-clear:hover {
+    color: var(--danger);
+}
+.shortcut-clear.empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+.shortcut-taken {
+    font-size: 10px;
+    line-height: 1.3;
+    color: var(--danger);
+    padding: 1px 2px 0;
+}
 .icon-chart {
     fill: currentColor;
     display: block;
@@ -1573,6 +1780,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     flex-direction: column;
     gap: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    /* The window is only as tall as the day's list (see fit_popover), and the
+       popout is anchored to the footer — so it scrolls rather than running off
+       the top edge on a short day. */
+    max-height: calc(100vh - 50px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* ---- shared buttons ---- */

@@ -20,6 +20,8 @@ tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
 # signed auto-updates from the GitHub release's latest.json, and relaunch after installing one
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# system-wide hotkeys for start/stop, the popover and insights (see set_shortcut)
+tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # menubar pill rendering (play/pause + elapsed time drawn as the tray icon)
