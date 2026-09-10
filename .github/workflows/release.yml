@@ -35,7 +35,7 @@ env:
 jobs:
   verify:
     name: Tag matches app version
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -64,15 +64,15 @@ jobs:
       matrix:
         include:
           - name: macOS (universal)
-            platform: macos-latest
+            platform: blacksmith-6vcpu-macos-15
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             args: --target universal-apple-darwin
           - name: Windows (x64)
-            platform: windows-latest
+            platform: blacksmith-4vcpu-windows-2025
             rust_targets: x86_64-pc-windows-msvc
             args: ''
           - name: Linux (x86_64)
-            platform: ubuntu-22.04
+            platform: blacksmith-4vcpu-ubuntu-2204
             rust_targets: x86_64-unknown-linux-gnu
             args: ''
     runs-on: ${{ matrix.platform }}
