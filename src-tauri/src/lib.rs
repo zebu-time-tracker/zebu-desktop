@@ -1,5 +1,6 @@
 mod tray_icon;
 
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -9,6 +10,7 @@ use tauri::{
 };
 #[cfg(target_os = "linux")]
 use tauri::menu::{Menu, MenuItem};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 /// Whether the app currently shows in the dock / app switcher.
@@ -577,19 +579,25 @@ fn show_insights(app: &tauri::AppHandle) {
     });
 }
 
-/// The insights button in the popover's header: open the panel, or put it
-/// away again. Returns whether it is now on screen, for the button's state.
-#[tauri::command]
-fn toggle_insights(app: tauri::AppHandle) -> bool {
+/// Open the panel, or put it away again. Returns whether it is now on screen.
+/// The popover's header button and the "show or hide Insights" hotkey both
+/// come through here.
+fn toggle_insights_window(app: &tauri::AppHandle) -> bool {
     // what was asked for, not what is on screen: a second click while the
     // panel is still measuring itself has to close it, not open it twice
     if insights_wanted() {
-        hide_insights(&app);
+        hide_insights(app);
         false
     } else {
-        show_insights(&app);
+        show_insights(app);
         true
     }
+}
+
+/// The insights button in the popover's header.
+#[tauri::command]
+fn toggle_insights(app: tauri::AppHandle) -> bool {
+    toggle_insights_window(&app)
 }
 
 /// Close the panel — its own close button, Escape, or signing out.
@@ -840,21 +848,33 @@ fn pill_zone(click_x: f64, rect_width: f64, pill_width: f64, scale: f64) -> Pill
     }
 }
 
-/// A left click on the pill. Nothing on the clock ("zzzz"): the whole pill
-/// is a play button and opens the popover on a new timer. Otherwise the
-/// press is placed: on the play/pause artwork it plays or pauses the entry
-/// the pill shows, on the clock it opens or closes the popover — so the week,
-/// insights and settings stay reachable without touching the timer. Rust
-/// can't act on a timer itself (auth and HTTP live in the frontend's api.ts),
-/// so the main window is told what was pressed and owns what it means, the
-/// same round-trip the idle prompt's answers take through `idle-choice`.
-fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>, rect: tauri::Rect) {
+/// Play or pause whatever the pill shows. Rust can't act on a timer itself
+/// (auth and HTTP live in the frontend's api.ts), so the main window is told
+/// what was pressed and owns what it means, the same round-trip the idle
+/// prompt's answers take through `idle-choice`. Nothing on the clock ("zzzz")
+/// means there is nothing to resume, so this lands in the new-entry sheet
+/// instead. Both the pill's play/pause artwork and the "start or stop the
+/// timer" hotkey come through here.
+fn toggle_timer(app: &tauri::AppHandle) {
     if !tray_has_entry() {
         // Show the popover first so the form opens into a window that is
         // already placed; the main webview runs whether or not the window is
         // visible, so the event needs no delay to be heard.
         show_popover(app);
         let _ = app.emit_to("main", "tray-open-new-timer", ());
+        return;
+    }
+    let _ = app.emit_to("main", "tray-toggle-timer", ());
+}
+
+/// A left click on the pill. Nothing on the clock ("zzzz"): the whole pill
+/// is a play button and opens the popover on a new timer. Otherwise the
+/// press is placed: on the play/pause artwork it plays or pauses the entry
+/// the pill shows, on the clock it opens or closes the popover — so the week,
+/// insights and settings stay reachable without touching the timer.
+fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>, rect: tauri::Rect) {
+    if !tray_has_entry() {
+        toggle_timer(app);
         return;
     }
     let scale = app
@@ -868,9 +888,7 @@ fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>,
     let rect_x = rect.position.to_physical::<f64>(1.0).x;
     let rect_width = rect.size.to_physical::<f64>(1.0).width;
     match pill_zone(position.x - rect_x, rect_width, PILL_WIDTH.load(Ordering::SeqCst) as f64, scale) {
-        PillZone::Button => {
-            let _ = app.emit_to("main", "tray-toggle-timer", ());
-        }
+        PillZone::Button => toggle_timer(app),
         PillZone::Clock => toggle_popover(app),
     }
 }
@@ -893,11 +911,125 @@ fn spawn_tray_ticker(app: tauri::AppHandle) {
     });
 }
 
+// ---- global shortcuts ------------------------------------------------------
+//
+// System-wide hotkeys for the three things the menubar can already do. They
+// are registered from here rather than from the webview because two of the
+// three actions (the popover's show/hide, the insights window) are Rust's own
+// and are not commands at all, and because a hotkey has to fire while another
+// app has focus — the same reason the tray ticker and the idle watcher are
+// native threads. The frontend only owns the *bindings*: it stores them with
+// the rest of the preferences and hands each one over through `set_shortcut`,
+// which is also what replays them at launch.
+//
+// Every action ends in the same call the tray click makes (`toggle_timer`,
+// `toggle_popover`, `toggle_insights_window`), so a hotkey and a click are
+// never two implementations of one behaviour.
+
+/// The three bindable actions. The names are the ones `src/shortcuts.ts`
+/// stores and sends.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ShortcutAction {
+    ToggleTimer,
+    TogglePopover,
+    ToggleInsights,
+}
+
+impl ShortcutAction {
+    fn parse(name: &str) -> Option<Self> {
+        match name {
+            "toggleTimer" => Some(Self::ToggleTimer),
+            "togglePopover" => Some(Self::TogglePopover),
+            "toggleInsights" => Some(Self::ToggleInsights),
+            _ => None,
+        }
+    }
+
+    /// This action's place in SHORTCUTS.
+    fn slot(self) -> usize {
+        self as usize
+    }
+
+    fn perform(self, app: &tauri::AppHandle) {
+        match self {
+            Self::ToggleTimer => toggle_timer(app),
+            Self::TogglePopover => toggle_popover(app),
+            Self::ToggleInsights => {
+                toggle_insights_window(app);
+            }
+        }
+    }
+}
+
+/// What each action is bound to right now, so a binding can be replaced or
+/// taken back. Indexed by `ShortcutAction::slot`; None = not bound.
+static SHORTCUTS: Mutex<[Option<Shortcut>; 3]> = Mutex::new([None, None, None]);
+
+/// Claim `shortcut` for `action` and remember it. Err when the shell refuses
+/// it — another app already owns the combination — in which case nothing is
+/// registered and nothing is remembered.
+fn register_shortcut(app: &tauri::AppHandle, action: ShortcutAction, shortcut: Shortcut) -> Result<(), ()> {
+    app.global_shortcut()
+        .on_shortcut(shortcut, move |app, _, event| {
+            // the release is reported too; a hotkey should act once, on the press
+            if event.state == ShortcutState::Pressed {
+                action.perform(app);
+            }
+        })
+        .map_err(|_| ())?;
+    if let Ok(mut bound) = SHORTCUTS.lock() {
+        bound[action.slot()] = Some(shortcut);
+    }
+    Ok(())
+}
+
+/// Bind one action, or (with no accelerator) unbind it. Takes effect at once,
+/// so recording, replacing and clearing all need no restart.
+///
+/// The error is a code the popover translates, never prose: "taken" when the
+/// system refused the combination, "invalid" when the accelerator could not be
+/// parsed at all (`src/shortcuts.ts` only produces ones that do parse, so that
+/// means hand-edited preferences).
+#[tauri::command]
+fn set_shortcut(app: tauri::AppHandle, action: String, accelerator: Option<String>) -> Result<(), String> {
+    let Some(action) = ShortcutAction::parse(&action) else {
+        return Err("invalid".into());
+    };
+    let wanted = match accelerator.as_deref().map(str::trim).filter(|a| !a.is_empty()) {
+        Some(accelerator) => Some(Shortcut::from_str(accelerator).map_err(|_| "invalid".to_string())?),
+        None => None,
+    };
+
+    // Let go of this row's old binding first: re-registering a combination
+    // that is still held — by this row, or by the row it is being moved off —
+    // would be refused as taken.
+    let previous = SHORTCUTS.lock().ok().and_then(|mut bound| bound[action.slot()].take());
+    if let Some(previous) = previous {
+        let _ = app.global_shortcut().unregister(previous);
+    }
+
+    let Some(shortcut) = wanted else {
+        return Ok(()); // cleared
+    };
+    if register_shortcut(&app, action, shortcut).is_ok() {
+        return Ok(());
+    }
+    // Something else on the machine owns it. Put the row back the way it was
+    // so a refused recording costs the user the binding they already had.
+    if let Some(previous) = previous {
+        let _ = register_shortcut(&app, action, previous);
+    }
+    Err("taken".into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_positioner::init());
+        .plugin(tauri_plugin_positioner::init())
+        // the plugin only provides the manager here; the bindings themselves
+        // are registered through `set_shortcut` (see the section above)
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     // Auto-update is a desktop concern: the updater fetches latest.json from
     // the GitHub release (endpoint + public key in tauri.conf.json) and the
@@ -922,7 +1054,8 @@ pub fn run() {
             resolve_idle_prompt,
             toggle_insights,
             close_insights,
-            fit_insights
+            fit_insights,
+            set_shortcut
         ])
         .on_window_event(|window, event| {
             // "Hide when changing focus": the popover hides itself when focus
@@ -1103,6 +1236,44 @@ mod tray_tests {
         assert_eq!(pill_zone(22.0, 68.0, 60.0, 1.0), PillZone::Clock);
         // a rect narrower than the pill (never seen, but never negative padding)
         assert_eq!(pill_zone(10.0, 40.0, 52.0, 1.0), PillZone::Button);
+    }
+}
+
+#[cfg(test)]
+mod shortcut_tests {
+    use super::{Shortcut, ShortcutAction, SHORTCUTS};
+    use std::str::FromStr;
+
+    #[test]
+    fn the_action_names_are_the_ones_the_frontend_sends() {
+        // src/shortcuts.ts stores these; a rename on either side breaks binding
+        assert_eq!(ShortcutAction::parse("toggleTimer"), Some(ShortcutAction::ToggleTimer));
+        assert_eq!(ShortcutAction::parse("togglePopover"), Some(ShortcutAction::TogglePopover));
+        assert_eq!(ShortcutAction::parse("toggleInsights"), Some(ShortcutAction::ToggleInsights));
+        assert_eq!(ShortcutAction::parse("toggleFavourite"), None);
+        assert_eq!(ShortcutAction::parse(""), None);
+    }
+
+    #[test]
+    fn every_action_has_a_slot_of_its_own_in_the_table() {
+        let slots: Vec<usize> = [ShortcutAction::ToggleTimer, ShortcutAction::TogglePopover, ShortcutAction::ToggleInsights]
+            .iter()
+            .map(|a| a.slot())
+            .collect();
+        assert_eq!(slots, vec![0, 1, 2]);
+        assert_eq!(SHORTCUTS.lock().unwrap().len(), slots.len());
+    }
+
+    #[test]
+    fn the_accelerators_the_recorder_writes_all_parse() {
+        // what src/shortcuts.ts produces: modifiers in ⌃⌥⇧⌘ order, then a
+        // KeyboardEvent code — the shapes global-hotkey's parser accepts
+        for accelerator in ["Shift+Super+KeyS", "Control+Alt+KeyT", "Control+Alt+Shift+Super+Slash", "Super+Digit1", "Alt+F5", "Super+ArrowUp", "Control+Space", "Super+Numpad7"] {
+            assert!(Shortcut::from_str(accelerator).is_ok(), "{accelerator}");
+        }
+        // …and a hand-edited preference that isn't one is refused, not panicked on
+        assert!(Shortcut::from_str("Hyper+KeyS").is_err());
+        assert!(Shortcut::from_str("Super+IntlBackslash").is_err());
     }
 }
 
