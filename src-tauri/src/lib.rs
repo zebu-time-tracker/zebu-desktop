@@ -62,14 +62,45 @@ fn anchor_popover(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
     }
 }
 
+/// Show or hide the popover, and tell the webview which it was.
+///
+/// The window is hidden, never closed, so the frontend is never torn down and
+/// has no way of knowing it went away — but it needs to know: an unfinished
+/// entry sheet left on screen is still there when the icon is next clicked
+/// (board card #141). Only the time between the two events separates "clicked
+/// another app for a second" from a real absence, so both are reported, and
+/// only when the visibility actually changes.
+fn set_popover_visible(app: &tauri::AppHandle, window: &tauri::WebviewWindow, visible: bool) {
+    let was = window.is_visible().unwrap_or(false);
+    let _ = if visible { window.show() } else { window.hide() };
+    if was != visible {
+        let _ = app.emit_to("main", "popover-visible", visible);
+    }
+}
+
 /// Show the popover hanging from the menubar icon.
 fn show_popover(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
     anchor_popover(app, &window);
-    let _ = window.show();
+    set_popover_visible(app, &window, true);
     let _ = window.set_focus();
+}
+
+/// Put the popover away. Every path that hides it goes through here, so the
+/// window always says it went away.
+fn hide_popover_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        set_popover_visible(app, &window, false);
+    }
+}
+
+/// The popover putting itself away: the idle prompt's answer has landed and
+/// the list was only opened for that question.
+#[tauri::command]
+fn hide_popover(app: tauri::AppHandle) {
+    hide_popover_window(&app);
 }
 
 // ---- popover height ---------------------------------------------------------
@@ -138,7 +169,7 @@ fn toggle_popover(app: &tauri::AppHandle) {
         return;
     };
     if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
+        set_popover_visible(app, &window, false);
         hide_insights(app); // the panel belongs to the popover
     } else {
         show_popover(app);
@@ -650,9 +681,7 @@ fn hide_popovers_when_focus_left(app: tauri::AppHandle) {
         if ours_focused {
             return;
         }
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.hide();
-        }
+        hide_popover_window(&app);
         hide_insights(&app);
     });
 }
@@ -1048,6 +1077,7 @@ pub fn run() {
             set_dock_visible,
             set_hide_on_blur,
             fit_popover,
+            hide_popover,
             show_idle_prompt,
             idle_prompt_data,
             fit_idle_prompt,

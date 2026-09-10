@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Editar entrada",
         "newTitle": "Nueva entrada",
+        "draftRestored": "Se ha restaurado la entrada que aún no habías guardado.",
         "addProject": "Elegir proyecto…",
         "addTask": "Elegir tarea…",
         "notes": "Notas (opcional)",

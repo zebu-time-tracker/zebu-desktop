@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "编辑时间条目",
         "newTitle": "新建时间条目",
+        "draftRestored": "已恢复尚未保存的记录。",
         "addProject": "选择项目…",
         "addTask": "选择任务…",
         "notes": "备注 (可选)",

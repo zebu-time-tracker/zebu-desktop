@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Eintrag bearbeiten",
         "newTitle": "Neuer Zeiteintrag",
+        "draftRestored": "Der noch nicht gespeicherte Eintrag wurde wiederhergestellt.",
         "addProject": "Projekt wählen…",
         "addTask": "Aufgabe wählen…",
         "notes": "Notizen (optional)",

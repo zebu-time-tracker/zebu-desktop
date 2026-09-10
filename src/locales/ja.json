@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "エントリを編集",
         "newTitle": "新規エントリ",
+        "draftRestored": "まだ保存していなかったエントリを復元しました。",
         "addProject": "プロジェクトを選択…",
         "addTask": "タスクを選択…",
         "notes": "メモ (任意)",

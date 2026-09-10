@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Edit Time Entry",
         "newTitle": "New Time Entry",
+        "draftRestored": "Restored the entry you hadn't saved yet.",
         "addProject": "Select project…",
         "addTask": "Select task…",
         "notes": "Notes (optional)",
