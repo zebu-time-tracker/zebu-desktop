@@ -89,6 +89,7 @@
         "start": "시작",
         "searchProject": "프로젝트 검색…",
         "noProjects": "일치하는 프로젝트가 없습니다.",
+        "noClient": "클라이언트 없음",
         "newProjectLink": "Zebu에서 새 프로젝트 ↗"
     },
     "footer": {

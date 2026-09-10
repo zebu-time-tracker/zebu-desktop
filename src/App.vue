@@ -921,6 +921,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :placeholder="t('form.addProject')"
                     :search-placeholder="t('form.searchProject')"
                     :empty="t('form.noProjects')"
+                    :no-client="t('form.noClient')"
                     :create-label="t('form.newProjectLink')"
                     @create="openUrl(`${auth.workspace}/projects/create`)"
                 />

@@ -89,6 +89,7 @@
         "start": "Start",
         "searchProject": "Search projects…",
         "noProjects": "No matching project.",
+        "noClient": "No client",
         "newProjectLink": "New project in Zebu ↗"
     },
     "footer": {
