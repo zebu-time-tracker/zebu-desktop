@@ -13,9 +13,12 @@ npm run lint              # vue-tsc
 npm run tauri dev         # run the app
 ```
 
-Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
-(needs `TAURI_SIGNING_PRIVATE_KEY`, `APPLE_*` secrets) and publishes
-`latest.json` for the in-app updater.
+Releases: `scripts/release.sh` (`--minor`/`--major`/`X.Y.Z`, `--dry-run` to
+rehearse) is the way to cut one — it checks the repo, runs the gate, sets the
+version in `package.json`, `tauri.conf.json` and `Cargo.toml` plus both
+lockfiles, then commits, tags and pushes. GitHub Actions then builds, signs
+and notarises (needs `TAURI_SIGNING_PRIVATE_KEY`, `APPLE_*` secrets) and
+publishes `latest.json` for the in-app updater. See `docs/release.md`.
 
 ## Conventions
 

@@ -138,6 +138,27 @@ Azure.
 
 ## Cutting a release
 
+Use the script — it does the whole of the manual sequence below in one go:
+
+```bash
+scripts/release.sh              # 0.1.4 -> 0.1.5; --minor, --major or an explicit 0.3.0 override it
+```
+
+It refuses to start if the tree is dirty, the branch is not `main`, `main` is
+behind or diverged from `origin/main`, the tag already exists locally or on
+origin, or the target version is not newer than the current one; then it runs
+`npm test`, `npm run lint` and `cargo test`, writes the version into all three
+files, brings `package-lock.json` and `Cargo.lock` along, and makes one
+commit, one tag and one push. `--dry-run` prints every step and every file
+change without touching anything; `--skip-checks` skips the gate (loudly —
+the workflow runs it anyway). `scripts/tests/release.test.sh` exercises all of
+it against throwaway repositories.
+
+It does **not** touch `zebu-public/downloads.html` — that lives in another
+repository and is still step 2 below.
+
+### By hand
+
 1. Bump the version — it must be identical in three places:
    `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`
    (then `cd src-tauri && cargo generate-lockfile --offline` or run
