@@ -671,6 +671,44 @@ const onTrayPlay = () => {
 
 const settingsOpen = ref(false);
 
+// The settings popout is two tabs over one panel (board card #145): the
+// preferences it has always held, and the five shortcut recorders that were
+// added underneath them. Everything else in the popout — who is signed in, the
+// links, the build line — is chrome for the whole thing and sits outside both.
+const SETTINGS_TABS = ['preferences', 'shortcuts'] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
+    preferences: 'settings.tabSettings',
+    shortcuts: 'settings.tabShortcuts',
+};
+/**
+ * The tab on show. It is reset every time the popout opens rather than
+ * remembered: the gear is labelled "Settings", so that is what it should
+ * open on, and the window's height follows the tab — a remembered one would
+ * have the popover open at a height decided by something the user did days
+ * ago.
+ */
+const settingsTab = ref<SettingsTab>('preferences');
+
+// Arrow keys move between tabs and take focus with them (WAI-ARIA's tabs
+// pattern); a tab switches as it is selected, which is free here because both
+// panels are already built. While a row is recording, every key belongs to the
+// recorder instead — see `onKeydown`.
+const onSettingsTabKeydown = (e: KeyboardEvent) => {
+    if (recording.value) return;
+    const at = SETTINGS_TABS.indexOf(settingsTab.value);
+    const last = SETTINGS_TABS.length - 1;
+    let next: number;
+    if (e.key === 'ArrowRight') next = at === last ? 0 : at + 1;
+    else if (e.key === 'ArrowLeft') next = at === 0 ? last : at - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else return;
+    e.preventDefault();
+    settingsTab.value = SETTINGS_TABS[next];
+    (((e.currentTarget as HTMLElement).children[next] as HTMLElement | undefined) ?? null)?.focus();
+};
+
 // Window height per state. The connect screen is a compact fixed card. The
 // timesheet sizes itself to the day (fitPopover): the entries list gets room
 // for 3.5 to 5.5 rows and only scrolls past that — the half row peeking out at
@@ -695,6 +733,11 @@ const outerHeight = (el: Element) => {
  * scrolling, or 0 when it is closed (board card #145). The popout is anchored
  * 42px above the window's foot and keeps 8px above itself, and its border is
  * outside the scrollHeight — hence the 52.
+ *
+ * This is a measurement, not a constant, so splitting the popout into tabs
+ * lowered it by itself: what is asked for is the tab on show, not the two
+ * stacked. `settingsTab` is watched alongside `settingsOpen` so switching tabs
+ * re-measures.
  *
  * Only the settings popout asks for this. The presets list is a list: it is
  * meant to scroll past a few rows, and resizing the window on every keystroke
@@ -759,8 +802,9 @@ watch(
 // timer starting or stopping, the running-elsewhere and resume banners, a
 // locked week and the stats lines; the rest changes the chrome or row text.
 // `settingsOpen` is in there because that popout sets a floor under the
-// window's height while it is up, and gives it back on the way out.
-watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen], fitPopover, { flush: 'post' });
+// window's height while it is up, and gives it back on the way out;
+// `settingsTab` because its two tabs are not the same height.
+watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen, settingsTab], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
 const me = ref<{ name: string; email: string } | null>(null);
@@ -992,11 +1036,15 @@ const startRecording = (action: ShortcutAction) => {
     shortcutTaken.value = { ...shortcutTaken.value, [action]: false };
 };
 
-// closing the popover (Escape, the backdrop, the insights button) abandons a
-// recording rather than leaving it swallowing every keypress
+// Closing the popover (Escape, the backdrop, the insights button) abandons a
+// recording rather than leaving it swallowing every keypress — and so does
+// leaving the tab the recorder is on. Opening the popout always lands on
+// Settings (see `settingsTab`).
 watch(settingsOpen, (open) => {
-    if (!open) recording.value = null;
+    recording.value = null;
+    if (open) settingsTab.value = 'preferences';
 });
+watch(settingsTab, () => (recording.value = null));
 
 onMounted(() => {
     // The system forgets our registrations when the app quits, so every launch
@@ -1384,40 +1432,62 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <span class="muted">{{ me.email }}</span>
             </div>
             <hr v-if="me" class="sep" />
-            <label class="pref-row">
-                <span>{{ t('settings.appearance') }}</span>
-                <select v-model="prefs.appearance" class="pref-select">
-                    <option value="system">{{ t('common.system') }}</option>
-                    <option value="dark">{{ t('settings.dark') }}</option>
-                    <option value="light">{{ t('settings.light') }}</option>
-                </select>
-            </label>
-            <label class="pref-row">
-                <span>{{ t('settings.language') }}</span>
-                <select v-model="prefs.language" class="pref-select">
-                    <option value="system">{{ t('common.system') }}</option>
-                    <option v-for="l in SUPPORTED_LOCALES" :key="l" :value="l">{{ LOCALE_NAMES[l] ?? l }}</option>
-                </select>
-            </label>
-            <label class="pref-row">
-                <span>{{ t('settings.dock') }}</span>
-                <input v-model="prefs.dock" type="checkbox" />
-            </label>
-            <label class="pref-row">
-                <span>{{ t('settings.hideOnBlur') }}</span>
-                <input v-model="prefs.hideOnBlur" type="checkbox" />
-            </label>
-            <label class="pref-row">
-                <span class="pref-idle-label"><input v-model="prefs.idleEnabled" type="checkbox" /> {{ t('settings.idleAfter') }}</span>
-                <span class="pref-idle">
-                    <input v-model.number="prefs.idleMinutes" type="number" min="1" max="120" class="pref-num" :disabled="!prefs.idleEnabled" />
-                    {{ t('settings.min') }}
-                </span>
-            </label>
-            <hr class="sep" />
+            <!-- Two tabs over one panel (board card #145). Only the preferences
+                 are split; who is signed in, the links and the build line below
+                 belong to neither tab and stay put. -->
+            <div class="pref-tabs" role="tablist" :aria-label="t('footer.settings')" @keydown="onSettingsTabKeydown">
+                <button
+                    v-for="tab in SETTINGS_TABS"
+                    :id="`settings-tab-${tab}`"
+                    :key="tab"
+                    class="pref-tab"
+                    :class="{ selected: settingsTab === tab }"
+                    type="button"
+                    role="tab"
+                    :aria-selected="settingsTab === tab"
+                    :aria-controls="`settings-panel-${tab}`"
+                    :tabindex="settingsTab === tab ? 0 : -1"
+                    @click="settingsTab = tab"
+                >
+                    {{ t(SETTINGS_TAB_LABELS[tab]) }}
+                </button>
+            </div>
+
+            <div v-if="settingsTab === 'preferences'" id="settings-panel-preferences" class="pref-panel" role="tabpanel" aria-labelledby="settings-tab-preferences">
+                <label class="pref-row">
+                    <span>{{ t('settings.appearance') }}</span>
+                    <select v-model="prefs.appearance" class="pref-select">
+                        <option value="system">{{ t('common.system') }}</option>
+                        <option value="dark">{{ t('settings.dark') }}</option>
+                        <option value="light">{{ t('settings.light') }}</option>
+                    </select>
+                </label>
+                <label class="pref-row">
+                    <span>{{ t('settings.language') }}</span>
+                    <select v-model="prefs.language" class="pref-select">
+                        <option value="system">{{ t('common.system') }}</option>
+                        <option v-for="l in SUPPORTED_LOCALES" :key="l" :value="l">{{ LOCALE_NAMES[l] ?? l }}</option>
+                    </select>
+                </label>
+                <label class="pref-row">
+                    <span>{{ t('settings.dock') }}</span>
+                    <input v-model="prefs.dock" type="checkbox" />
+                </label>
+                <label class="pref-row">
+                    <span>{{ t('settings.hideOnBlur') }}</span>
+                    <input v-model="prefs.hideOnBlur" type="checkbox" />
+                </label>
+                <label class="pref-row">
+                    <span class="pref-idle-label"><input v-model="prefs.idleEnabled" type="checkbox" /> {{ t('settings.idleAfter') }}</span>
+                    <span class="pref-idle">
+                        <input v-model.number="prefs.idleMinutes" type="number" min="1" max="120" class="pref-num" :disabled="!prefs.idleEnabled" />
+                        {{ t('settings.min') }}
+                    </span>
+                </label>
+            </div>
+
             <!-- system-wide hotkeys; Rust registers them (src-tauri: set_shortcut) -->
-            <div class="pref-shortcuts">
-                <div class="pref-group">{{ t('settings.shortcuts') }}</div>
+            <div v-else id="settings-panel-shortcuts" class="pref-panel pref-shortcuts" role="tabpanel" aria-labelledby="settings-tab-shortcuts">
                 <div v-for="action in SHORTCUT_ACTIONS" :key="action" class="pref-shortcut">
                     <div class="pref-row">
                         <span class="pref-shortcut-label">{{ t(shortcutLabels[action]) }}</span>
@@ -1437,6 +1507,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <div v-if="shortcutTaken[action]" class="shortcut-taken">{{ t('settings.shortcutTaken') }}</div>
                 </div>
             </div>
+
             <hr class="sep" />
             <button class="link" @click="openUrl(auth.workspace || CENTRAL_URL)">{{ t('settings.openInBrowser') }}</button>
             <button class="link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
@@ -1920,6 +1991,52 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     border-top: 1px solid var(--border);
     margin: 2px 0;
 }
+/* ---- settings tabs ---- */
+/* The week strip's selected-day treatment, borrowed rather than reinvented:
+   muted labels, an accent underline on the one showing, accent-soft on hover.
+   Two equal halves of the popout's width — 173px each, which fits all ten
+   locales on one line at 12px, the longest being "Scorciatoie da tastiera" and
+   "キーボードショートカット". Nothing is truncated: a label longer than any of
+   the ten wraps onto a second line (both tabs stretch together), because a tab
+   that cannot be read is worse than a tab that is two lines tall. */
+.pref-tabs {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    margin: -2px -4px 0;
+}
+.pref-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 6px 6px;
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+.pref-tab:hover {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+.pref-tab.selected {
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom-color: var(--accent);
+}
+.pref-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 6px;
+}
+/* the popout's own 8px gap separates the sections; inside a panel the rows are
+   their own rhythm */
+.pref-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 .pref-row {
     display: flex;
     align-items: center;
@@ -1952,13 +2069,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 
 /* ---- keyboard shortcuts (settings) ---- */
-/* one block, so the popout's 8px row gap is spent between sections rather
-   than three more times inside this one */
+/* Tighter than the other panel: these are five rows of one kind, and the 8px
+   the preferences use between unlike rows only makes the list longer. The tab
+   above is the heading the section used to carry inside it. */
 .pref-shortcuts {
-    display: flex;
-    flex-direction: column;
     gap: 3px;
 }
+/* the presets popout's title */
 .pref-group {
     font-size: 10px;
     font-weight: 600;
