@@ -21,6 +21,15 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
 
 - Keep the timer focused: anything that is not start/stop/switch/edit-today
   opens the web app instead of growing the popover.
+- **Which entry the menubar is about is the server's answer, not ours.**
+  `GET /api/timesheet` returns `active` (the running entry, else the one
+  touched most recently on the latest day of work) and `active_as_of`. Read
+  `active`; never re-derive it from `entries`, which is ordered by
+  `created_at`. `src/active.ts` reads the answer, orders two replies so a slow
+  one cannot overwrite a fresher one, and falls back to the old guess on a
+  workspace that predates board #49. Everything that needs "the current
+  timer" — the pill, `running`, Resume, the pill's ▶ — reads `activeEntry`,
+  so the app cannot disagree with itself.
 - Idle detection lives in Rust (`spawn_idle_watcher`); the frontend only sets
   the threshold and renders the prompt. Webview timers are throttled while
   hidden, so never rely on `setInterval` for anything time-critical: the tray

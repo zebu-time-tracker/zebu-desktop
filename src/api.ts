@@ -50,6 +50,12 @@ export interface Entry {
     is_billable: boolean;
     locked: boolean;
     timer_started_at: string | null;
+    /**
+     * When the row was last touched — started, stopped, created or edited.
+     * What the server decides `active` on. Optional: workspaces older than
+     * board #49 do not send it.
+     */
+    updated_at?: string | null;
     /** Agentic work: minutes spent waiting on an AI agent, and whether one is being waited on now. */
     waiting_minutes?: number;
     waiting_subtracted?: boolean;
@@ -74,6 +80,16 @@ export interface Timesheet {
     week_start: string;
     entries: Entry[];
     running: Entry | null;
+    /**
+     * The entry the menubar is about, decided by the server (board #49): the
+     * running one when a timer runs, else the entry touched most recently on
+     * the user's latest day of work. Read it, never derive it — see
+     * src/active.ts. Absent (not null) on a workspace older than #49; `null`
+     * means the user has never tracked anything.
+     */
+    active?: Entry | null;
+    /** `active`'s `updated_at` (ISO 8601): how two replies are ordered. */
+    active_as_of?: string | null;
     projects: ProjectOption[];
     week_locked: boolean;
     project_stats: Record<string, ProjectStats>;
