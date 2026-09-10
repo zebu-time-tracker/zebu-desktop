@@ -137,6 +137,13 @@ fn list_height(entries: usize, row: f64, extra: f64) -> f64 {
 /// The floor is what board card #145 asked for. The settings popout is taller
 /// than a day's timesheet, and sizing the window to the day left it scrolling
 /// inside a window that had room to spare on the screen.
+///
+/// It is a measurement the frontend takes of the popout as rendered, not a
+/// number kept here, so splitting that popout into two tabs lowered it without
+/// anything on this side changing: it asks for the tab on show (~409–429 px
+/// across the ten locales) instead of the whole stack (~550–569 px). It still
+/// earns its keep — an empty day is shorter than either tab — it just no
+/// longer holds the window open on a day that has entries in it.
 fn popover_height(chrome: f64, list: f64, floor: f64, work_height: f64) -> f64 {
     let floor = if floor.is_finite() { floor.max(0.0) } else { 0.0 };
     (chrome + list).max(floor).min(work_height.max(chrome))
@@ -1482,10 +1489,12 @@ mod popover_height_tests {
 
     #[test]
     fn an_open_popout_taller_than_the_day_grows_the_window_to_it() {
-        // board #145: the settings popout is ~567 tall; a 3.5-row day is not
-        assert_eq!(popover_height(CHROME, 3.5 * ROW, 567.0, 875.0), 567.0);
-        // a day taller than the popout keeps its own height
-        assert_eq!(popover_height(CHROME, 5.5 * ROW, 400.0, 875.0), 504.5);
+        // board #145: one tab of the settings popout is ~416 tall (429 in
+        // Japanese, the tallest of the ten); a 3.5-row day is not
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 416.0, 875.0), 416.0);
+        // a day taller than the popout keeps its own height — which is now the
+        // common case, since the tabs ask for less than a day of four rows
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 416.0, 875.0), 504.5);
         // and no popout open changes nothing
         assert_eq!(popover_height(CHROME, 3.5 * ROW, 0.0, 875.0), 370.5);
     }
@@ -1493,7 +1502,7 @@ mod popover_height_tests {
     #[test]
     fn the_screen_still_wins_over_an_open_popout() {
         // a short screen gets a popout that scrolls, not a window off the bottom
-        assert_eq!(popover_height(CHROME, 3.5 * ROW, 567.0, 420.0), 420.0);
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 416.0, 400.0), 400.0);
         // a nonsense measurement is no floor at all rather than a huge window
         assert_eq!(popover_height(CHROME, 3.5 * ROW, f64::NAN, 875.0), 370.5);
         assert_eq!(popover_height(CHROME, 3.5 * ROW, f64::INFINITY, 875.0), 370.5);

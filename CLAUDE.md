@@ -50,6 +50,13 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   day. Rust still clamps everything to the display's work area, so a short
   screen scrolls. Anything that changes the window's height belongs in that
   one path, not in a `setSize` of its own.
+- The settings popout is two tabs over one panel — Settings and Keyboard
+  shortcuts (`settingsTab`) — with the account line, the links and the build
+  row outside both, because they belong to the popout rather than to either
+  tab. It always opens on Settings. Each tab is its own height, so
+  `settingsTab` is watched alongside `settingsOpen` and the floor above
+  follows whichever one is showing; a new section goes in a tab, not under
+  the links.
 - Presets (a saved project + task) are a list and a picker, not a management
   screen: they live in `localStorage` under `zebu.presets`, filed by
   workspace, and every rule worth testing is in `src/presets.ts`. The ☆ in the
