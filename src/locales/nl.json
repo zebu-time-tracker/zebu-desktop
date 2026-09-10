@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Registratie bewerken",
         "newTitle": "Nieuwe registratie",
+        "draftRestored": "De invoer die je nog niet had opgeslagen, is hersteld.",
         "addProject": "Project kiezen…",
         "addTask": "Taak kiezen…",
         "notes": "Notities (optioneel)",

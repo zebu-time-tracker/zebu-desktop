@@ -10,6 +10,7 @@ import ProjectPicker from './ProjectPicker.vue';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
+import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
@@ -153,6 +154,7 @@ const disconnect = (message = '') => {
     connectError.value = message;
     settingsOpen.value = false;
     formOpen.value = false;
+    stashedDraft.value = null; // a draft only means something on the workspace it was typed for
     closeInsights();
     me.value = null;
     sheet.value = null;
@@ -455,6 +457,11 @@ const onIdleReturn = async (payload: { started_at_ms: number; seconds: number })
     const minutes = idleMinutes(payload.seconds);
     idlePrompt.value = { startedAt: payload.started_at_ms, minutes };
     if (view.value !== 'main') view.value = 'main';
+    // The user has been away from the machine, so nothing laid over the
+    // timesheet is still what they are doing — and an open sheet would cover
+    // the ■ the prompt is about to be anchored to. Rust's `popover-visible`
+    // covers the popover having been hidden; this covers it having been up.
+    settleAfterAbsence(Number.POSITIVE_INFINITY);
     // the prompt hangs from the running entry, so show the day it lives on
     // (a timer left running overnight sits on yesterday) and bring it into view
     if (running.value.date !== selectedDate.value) goDate(running.value.date);
@@ -477,8 +484,9 @@ const applyIdleChoice = async (choice: { remove: boolean; stop: boolean }) => {
 const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
     const prompt = idlePrompt.value;
     idlePrompt.value = null;
-    // the popover only opened for this question: tuck it away again
-    getCurrentWindow().hide().catch(() => {});
+    // the popover only opened for this question: tuck it away again — through
+    // Rust, so it is one hide like any other and the window says it went away
+    invoke('hide_popover').catch(() => {});
     if (!prompt || action === 'keep') return;
     try {
         await api.idleTimer({ idle_started_at: new Date(prompt.startedAt).toISOString(), action });
@@ -522,14 +530,29 @@ const autosizeNotes = () => {
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
 };
-const form = ref({ project_id: '', task_id: '' as string | '', notes: '', duration: '', date: '' });
+const form = ref<EntryDraft>({ project_id: '', task_id: '', notes: '', duration: '', date: '' });
 const formProject = computed(() => sheet.value?.projects.find((p) => p.id === form.value.project_id));
 let openedDuration = ''; // the prefill — only a changed duration rebases a live timer
+// The whole sheet as it was prefilled, so "did the user type anything?" is a
+// comparison rather than a guess (see popover.ts).
+let openedForm: EntryDraft = { project_id: '', task_id: '', notes: '', duration: '', date: '' };
+/** A new entry the user had started when the popover went away for good; the next ＋ hands it back. */
+const stashedDraft = ref<StashedDraft | null>(null);
+/** Whether the sheet on screen is that draft, so it can say where it came from. */
+const draftRestored = ref(false);
+watch(formOpen, (open) => {
+    if (!open) draftRestored.value = false;
+});
 
 const openForm = () => {
     editingEntry.value = null;
     openedDuration = '';
-    form.value = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value };
+    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value };
+    // work typed before the popover was put away comes back rather than being lost
+    const draft = takeDraft(stashedDraft.value, Date.now());
+    stashedDraft.value = null;
+    draftRestored.value = !!draft;
+    form.value = { ...(draft ?? openedForm) };
     formOpen.value = true;
     nextTick(autosizeNotes);
 };
@@ -538,13 +561,15 @@ const openEdit = (entry: Entry) => {
     if (entry.locked || sheet.value?.week_locked) return;
     editingEntry.value = entry;
     openedDuration = formatMinutes(elapsed(entry));
-    form.value = {
+    openedForm = {
         project_id: entry.project_id,
         task_id: entry.task_id ?? '',
         notes: entry.notes ?? '',
         duration: openedDuration,
         date: entry.date,
     };
+    draftRestored.value = false;
+    form.value = { ...openedForm };
     formOpen.value = true;
     nextTick(autosizeNotes);
 };
@@ -808,6 +833,53 @@ onMounted(() => {
     }
 });
 
+// ---- coming back to the popover -------------------------------------------
+//
+// The window is hidden, not closed, so this component is never torn down: an
+// unfinished sheet, the settings popout and a half-recorded shortcut are all
+// still on screen the next time the menubar icon is clicked — which is board
+// card #141. Rust says when the window goes away and when it comes back
+// (there is no window event for visibility, and a blur is not a hide when
+// "hide when changing focus" is off), and the interval between the two is the
+// only thing that can tell a glance at another app from a real absence.
+// src/popover.ts holds the rule.
+
+let hiddenAt = 0;
+let popoverUnlisten: UnlistenFn | null = null;
+
+const sheetKind = (): SheetKind => (!formOpen.value ? 'none' : editingEntry.value ? 'edit' : 'new');
+
+/** Back to the plain timesheet, keeping a started entry if there is one to keep. */
+const clearOverlays = (stash: boolean) => {
+    if (stash) stashedDraft.value = { draft: { ...form.value }, at: Date.now() };
+    formOpen.value = false;
+    editingEntry.value = null;
+    settingsOpen.value = false;
+    confirmNewDay.value = false;
+    recording.value = null;
+};
+
+/** Decide what an absence of `awayMs` does to what is on screen. `Infinity` = the user was away from the machine. */
+const settleAfterAbsence = (awayMs: number) => {
+    const plan = planReopen({ awayMs, sheet: sheetKind(), dirty: draftTouched(form.value, openedForm) });
+    if (plan.clear) clearOverlays(plan.stash);
+};
+
+const onPopoverVisible = (visible: boolean) => {
+    if (!visible) {
+        hiddenAt = Date.now();
+        return;
+    }
+    const away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    settleAfterAbsence(away);
+};
+
+onMounted(() => {
+    listen<boolean>('popover-visible', (e) => onPopoverVisible(e.payload)).then((off) => (popoverUnlisten = off));
+});
+onUnmounted(() => popoverUnlisten?.());
+
 // Escape dismisses the settings popover (click-away is the backdrop); the
 // insights window handles its own Escape. While a row is recording, every
 // keypress belongs to the recorder instead — Escape included, which cancels
@@ -1012,6 +1084,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
             <div class="sheet">
                 <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
+                <!-- the popover was put away mid-entry: this is what was typed then, not a fresh sheet -->
+                <p v-if="draftRestored" class="muted">{{ t('form.draftRestored') }}</p>
                 <ProjectPicker
                     v-model="form.project_id"
                     :projects="sheet?.projects ?? []"

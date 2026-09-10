@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Modifica voce",
         "newTitle": "Nuova voce",
+        "draftRestored": "È stata ripristinata la voce che non avevi ancora salvato.",
         "addProject": "Scegli progetto…",
         "addTask": "Scegli attività…",
         "notes": "Note (facoltative)",

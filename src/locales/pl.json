@@ -79,6 +79,7 @@
     "form": {
         "editTitle": "Edytuj wpis",
         "newTitle": "Nowy wpis",
+        "draftRestored": "Przywrócono wpis, który nie został jeszcze zapisany.",
         "addProject": "Wybierz projekt…",
         "addTask": "Wybierz zadanie…",
         "notes": "Notatki (opcjonalne)",
