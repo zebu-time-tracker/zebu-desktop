@@ -7,6 +7,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
+import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
@@ -175,6 +176,8 @@ const disconnect = (message = '') => {
     closeInsights();
     me.value = null;
     sheet.value = null;
+    // a reply still in flight for the old workspace must not repopulate the pill
+    resetActive();
     forgetLastTimer();
     invoke('set_tray_state', { entry: null }).catch(() => {});
 };
@@ -195,12 +198,35 @@ const errorMessage = ref('');
 const todayStr = () => toDateString(new Date());
 const isToday = computed(() => selectedDate.value === todayStr());
 
+// Which entry the menubar is about, as the server last told us (src/active.ts).
+// Held apart from the sheet because it is the thing two replies are ordered on:
+// fetches are numbered as they start, and a reply that lost the race is thrown
+// away whole rather than being allowed to put a stale week — and a stale pill —
+// back on screen.
+const activeAnswer = ref<ActiveAnswer<Entry> | null>(null);
+let fetchSeq = 0;
+/** Replies from a fetch below this belong to a session that is over. */
+let fetchFloor = 0;
+const resetActive = () => {
+    activeAnswer.value = null;
+    fetchFloor = ++fetchSeq;
+};
+
 const refresh = async () => {
     if (view.value !== 'main') return;
+    const seq = ++fetchSeq;
     loading.value = true;
     try {
         // the insights panel keeps itself in step, in its own window
-        sheet.value = await api.timesheet(selectedDate.value);
+        const reply = await api.timesheet(selectedDate.value);
+        // a disconnect since this went out: the reply is for a workspace nobody
+        // is looking at any more, and must not repopulate the pill
+        if (seq < fetchFloor) return;
+        const answer = readActive<Entry>(reply, seq, todayStr());
+        // a reply that was overtaken changes nothing: the one on screen is newer
+        if (!supersedes(answer, activeAnswer.value)) return;
+        activeAnswer.value = answer;
+        sheet.value = reply;
         errorMessage.value = '';
     } catch (e: any) {
         if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
@@ -228,7 +254,12 @@ const weekDays = computed(() => {
 });
 
 const dayEntries = computed(() => (sheet.value?.entries ?? []).filter((e) => e.date === selectedDate.value));
-const running = computed(() => sheet.value?.running ?? null);
+
+// The entry the menubar is about, and — the same row, by the server's rule —
+// whatever is running. Everything downstream reads these two, so the pill, the
+// ticking, the idle threshold and the banners cannot disagree with each other.
+const activeEntry = computed(() => activeAnswer.value?.entry ?? null);
+const running = computed(() => runningOf(activeEntry.value));
 
 const headerLabel = computed(() => {
     const d = new Date(selectedDate.value + 'T00:00:00');
@@ -263,13 +294,10 @@ let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
 let refreshUnlisten: UnlistenFn | null = null;
 
-// the pill falls back to today's most recent entry, so a timer stopped
-// elsewhere leaves the day's total on screen rather than "zzzz"
-const todaysLatest = computed(() => {
-    const todays = (sheet.value?.entries ?? []).filter((e) => e.date === todayStr());
-    return todays.length ? todays[todays.length - 1] : null;
-});
-const trayEntry = computed(() => running.value ?? todaysLatest.value);
+// The pill is the server's `active` entry: the running timer, or — so a timer
+// stopped elsewhere leaves the work on screen rather than "zzzz" — the entry
+// touched most recently. Not a guess made here: see src/active.ts.
+const trayEntry = computed(() => activeEntry.value);
 
 // The pill itself is painted by Rust, which ticks the elapsed time on its own
 // thread (webview timers stall while the popover is hidden, so the old
@@ -366,13 +394,12 @@ const rememberTimer = (e: Entry) => {
         /* fine */
     }
 };
-// whatever is (or was last seen) running is the freshest candidate;
-// this also flips the menubar pill as soon as the first timesheet loads
-watch([running, todaysLatest], ([r, latest]) => {
-    // remember whatever is running; failing that, today's most recent entry —
-    // so Resume continues today's work instead of an older day's
-    if (r) rememberTimer(r);
-    else if (latest) rememberTimer(latest);
+// The entry the pill shows is also the one Resume offers — the same answer, so
+// the two cannot point at different work. This also flips the menubar pill as
+// soon as the first timesheet loads. (Resume still refuses to back-date onto an
+// older day: see resumeLast.)
+watch(activeEntry, (entry) => {
+    if (entry) rememberTimer(entry);
     updateTray();
 });
 
@@ -653,7 +680,8 @@ const onTrayToggle = () => {
         stopTimer();
         return;
     }
-    const paused = todaysLatest.value;
+    // the pill's ▶ acts on the entry the pill is showing — the same `active`
+    const paused = activeEntry.value;
     if (!paused || paused.locked || sheet.value?.week_locked || view.value !== 'main') return;
     resumeEntry(paused.id, paused.project_id);
 };
