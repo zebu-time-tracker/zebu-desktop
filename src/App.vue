@@ -544,6 +544,7 @@ const deleteFromSheet = () => {
 const formOpen = ref(false);
 const editingEntry = ref<Entry | null>(null);
 const notesEl = ref<HTMLTextAreaElement | null>(null);
+const projectPicker = ref<InstanceType<typeof ProjectPicker> | null>(null);
 const autosizeNotes = () => {
     const el = notesEl.value;
     if (!el) return;
@@ -574,7 +575,14 @@ const openForm = () => {
     draftRestored.value = !!draft;
     form.value = { ...(draft ?? openedForm) };
     formOpen.value = true;
-    nextTick(autosizeNotes);
+    nextTick(() => {
+        autosizeNotes();
+        // Land in the project search, so a new timer is "＋, type, Enter" with
+        // no click in between (board card #146). Not for a restored draft:
+        // that sheet already holds a project the user picked, and covering it
+        // with an empty search box would read as having lost it.
+        if (!draftRestored.value) projectPicker.value?.open();
+    });
 };
 
 const openEdit = (entry: Entry) => {
@@ -683,10 +691,27 @@ const outerHeight = (el: Element) => {
 };
 
 /**
+ * The height the window would need for the settings popout to be read without
+ * scrolling, or 0 when it is closed (board card #145). The popout is anchored
+ * 42px above the window's foot and keeps 8px above itself, and its border is
+ * outside the scrollHeight — hence the 52.
+ *
+ * Only the settings popout asks for this. The presets list is a list: it is
+ * meant to scroll past a few rows, and resizing the window on every keystroke
+ * in its search box would be worse than the scrollbar.
+ */
+const POPOUT_MARGIN = 52;
+const settingsFloor = (): number => {
+    const popout = mainEl.value?.querySelector<HTMLElement>('.settings');
+    return popout ? popout.scrollHeight + POPOUT_MARGIN : 0;
+};
+
+/**
  * Measure what is on screen and let Rust size the window: the chrome around
  * the list (header, week strip, banners, footer — whatever is there right now),
- * the average entry row, how many rows the day has and what else sits in the
- * list. Rust owns the 3.5–5.5 row clamp and the screen fit (`fit_popover`).
+ * the average entry row, how many rows the day has, what else sits in the
+ * list, and the floor an open popout sets. Rust owns the 3.5–5.5 row clamp and
+ * the screen fit (`fit_popover`).
  */
 const fitPopover = async () => {
     await nextTick();
@@ -706,10 +731,11 @@ const fitPopover = async () => {
         Array.from(list.children)
             .filter((el) => !el.classList.contains('entry') && !el.classList.contains('empty'))
             .reduce((sum, el) => sum + outerHeight(el), 0) + parseFloat(getComputedStyle(list).paddingBottom);
-    const key = [chrome, rowHeight, rows.length, extra].map((n) => Math.round(n * 10)).join('|');
+    const floor = settingsFloor();
+    const key = [chrome, rowHeight, rows.length, extra, floor].map((n) => Math.round(n * 10)).join('|');
     if (key === lastFit) return; // nothing that affects the height has changed
     lastFit = key;
-    invoke('fit_popover', { chrome, row: rowHeight, entries: rows.length, extra }).catch(() => {});
+    invoke('fit_popover', { chrome, row: rowHeight, entries: rows.length, extra, floor }).catch(() => {});
 };
 
 watch(
@@ -732,7 +758,9 @@ watch(
 // Every refresh replaces `sheet`, so this covers entries coming and going, a
 // timer starting or stopping, the running-elsewhere and resume banners, a
 // locked week and the stats lines; the rest changes the chrome or row text.
-watch([sheet, lastTimer, errorMessage, loading, intlLocale], fitPopover, { flush: 'post' });
+// `settingsOpen` is in there because that popout sets a floor under the
+// window's height while it is up, and gives it back on the way out.
+watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
 const me = ref<{ name: string; email: string } | null>(null);
@@ -1238,6 +1266,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <!-- the popover was put away mid-entry: this is what was typed then, not a fresh sheet -->
                 <p v-if="draftRestored" class="muted">{{ t('form.draftRestored') }}</p>
                 <ProjectPicker
+                    ref="projectPicker"
                     v-model="form.project_id"
                     :projects="sheet?.projects ?? []"
                     :placeholder="t('form.addProject')"
@@ -1941,8 +1970,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .pref-shortcut .pref-row {
     align-items: center;
 }
-/* The popover is 250px wide and must not grow for a long translation, so the
-   label wraps and the recorder keeps its size. */
+/* The popout now spans the window, which is enough for every locale's label on
+   one line (board card #145). Wrapping is left in as the safety valve — a
+   longer translation than any of the ten should still break rather than push
+   the recorder off the edge — but nothing shipped reaches it. */
 .pref-shortcut-label {
     min-width: 0;
     line-height: 1.3;
@@ -2214,23 +2245,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     background: var(--accent-soft);
     color: var(--text);
 }
+/* Spans the popover's width rather than the 250px column it used to be (board
+   card #145). At 250 the shortcut labels wrapped onto two lines in every
+   locale, which is what made the popout tall enough to need scrolling in the
+   first place; the width the window already has costs nothing and buys back
+   about five lines. It cannot be wider than this — a webview cannot paint
+   outside its window, and widening the window would widen the timesheet with
+   it. */
 .settings {
     position: absolute;
     bottom: 42px;
+    left: 8px;
     right: 8px;
     z-index: 30;
     background: var(--bg-raised);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px;
-    width: 250px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     /* The window is only as tall as the day's list (see fit_popover), and the
-       popout is anchored to the footer — so it scrolls rather than running off
-       the top edge on a short day. */
+       popout is anchored to the footer — so on a genuinely short day it still
+       scrolls rather than running off the top edge. */
     max-height: calc(100vh - 50px);
     overflow-y: auto;
     overscroll-behavior: contain;

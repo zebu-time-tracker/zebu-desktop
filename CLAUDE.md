@@ -44,6 +44,12 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   `PILL_WIDTH`, the button's edge at `tray_icon::BUTTON_END`) and branches on
   `TRAY_STATE`; App.vue owns what the two events do, the same split as
   `idle-choice`.
+- The window's height is `fit_popover`'s decision, from the frontend's
+  measurements: the chrome, the day's rows, and a *floor* an open popout sets
+  so the settings panel is not made to scroll inside a window sized for the
+  day. Rust still clamps everything to the display's work area, so a short
+  screen scrolls. Anything that changes the window's height belongs in that
+  one path, not in a `setSize` of its own.
 - Presets (a saved project + task) are a list and a picker, not a management
   screen: they live in `localStorage` under `zebu.presets`, filed by
   workspace, and every rule worth testing is in `src/presets.ts`. The ☆ in the

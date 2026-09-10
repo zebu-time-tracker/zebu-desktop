@@ -129,18 +129,26 @@ fn list_height(entries: usize, row: f64, extra: f64) -> f64 {
 }
 
 /// The whole popover: the chrome (header, week strip, banners, footer) plus
-/// the list, but never taller than the display's work area — a short screen
-/// gets a shorter list rather than a window hanging off the bottom.
-fn popover_height(chrome: f64, list: f64, work_height: f64) -> f64 {
-    (chrome + list).min(work_height.max(chrome))
+/// the list — or, when a popout is open over it, whatever height that popout
+/// needs to be read without scrolling, whichever is taller. Never taller than
+/// the display's work area: a short screen gets a shorter list (and a popout
+/// that does scroll) rather than a window hanging off the bottom.
+///
+/// The floor is what board card #145 asked for. The settings popout is taller
+/// than a day's timesheet, and sizing the window to the day left it scrolling
+/// inside a window that had room to spare on the screen.
+fn popover_height(chrome: f64, list: f64, floor: f64, work_height: f64) -> f64 {
+    let floor = if floor.is_finite() { floor.max(0.0) } else { 0.0 };
+    (chrome + list).max(floor).min(work_height.max(chrome))
 }
 
 /// The frontend's measurements of the timesheet, in CSS pixels: everything
-/// around the list, one entry row, how many rows the day has, and what else
-/// sits inside the list. Resizes the window to fit; it stays hanging from the
-/// tray icon because growth keeps the top edge where it is.
+/// around the list, one entry row, how many rows the day has, what else sits
+/// inside the list, and the height an open popout needs (0 when none is open).
+/// Resizes the window to fit; it stays hanging from the tray icon because
+/// growth keeps the top edge where it is.
 #[tauri::command]
-fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, extra: f64) {
+fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, extra: f64, floor: f64) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
@@ -150,7 +158,7 @@ fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, ext
     let scale = window.scale_factor().unwrap_or(1.0);
     let origin = window.outer_position().map(|p| (p.x as f64, p.y as f64)).unwrap_or((0.0, 0.0));
     let work = work_area(&app, origin.0 + MAIN_WIDTH * scale / 2.0, origin.1 + 1.0);
-    let height = popover_height(chrome, list_height(entries, row, extra), work.height / scale).round();
+    let height = popover_height(chrome, list_height(entries, row, extra), floor, work.height / scale).round();
     let current = window.inner_size().map(|s| (s.height as f64 / scale).round()).unwrap_or(0.0);
     if current == height {
         return;
@@ -1461,15 +1469,35 @@ mod popover_height_tests {
 
     #[test]
     fn the_window_is_the_chrome_plus_the_list() {
-        assert_eq!(popover_height(CHROME, 3.5 * ROW, 875.0), 370.5);
-        assert_eq!(popover_height(CHROME, 5.5 * ROW, 875.0), 504.5);
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 0.0, 875.0), 370.5);
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 0.0, 875.0), 504.5);
     }
 
     #[test]
     fn a_short_screen_caps_the_window_at_its_work_area() {
-        assert_eq!(popover_height(CHROME, 5.5 * ROW, 400.0), 400.0);
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 0.0, 400.0), 400.0);
         // …but never below the chrome, which cannot shrink
-        assert_eq!(popover_height(CHROME, 5.5 * ROW, 100.0), CHROME);
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 0.0, 100.0), CHROME);
+    }
+
+    #[test]
+    fn an_open_popout_taller_than_the_day_grows_the_window_to_it() {
+        // board #145: the settings popout is ~567 tall; a 3.5-row day is not
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 567.0, 875.0), 567.0);
+        // a day taller than the popout keeps its own height
+        assert_eq!(popover_height(CHROME, 5.5 * ROW, 400.0, 875.0), 504.5);
+        // and no popout open changes nothing
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 0.0, 875.0), 370.5);
+    }
+
+    #[test]
+    fn the_screen_still_wins_over_an_open_popout() {
+        // a short screen gets a popout that scrolls, not a window off the bottom
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, 567.0, 420.0), 420.0);
+        // a nonsense measurement is no floor at all rather than a huge window
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, f64::NAN, 875.0), 370.5);
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, f64::INFINITY, 875.0), 370.5);
+        assert_eq!(popover_height(CHROME, 3.5 * ROW, -50.0, 875.0), 370.5);
     }
 }
 
