@@ -44,6 +44,14 @@ Releases: push a `v*` tag; GitHub Actions builds, signs and notarises
   `PILL_WIDTH`, the button's edge at `tray_icon::BUTTON_END`) and branches on
   `TRAY_STATE`; App.vue owns what the two events do, the same split as
   `idle-choice`.
+- Presets (a saved project + task) are a list and a picker, not a management
+  screen: they live in `localStorage` under `zebu.presets`, filed by
+  workspace, and every rule worth testing is in `src/presets.ts`. The ☆ in the
+  footer and the "show presets" hotkey open the same popout.
+- Global hotkeys are registered in Rust (`set_shortcut`, `ShortcutAction`) and
+  each one ends in the call a click already makes; the frontend only owns the
+  bindings (`src/shortcuts.ts`). Adding an action means a name in both lists
+  and a slot in `SHORTCUTS`.
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

@@ -93,8 +93,23 @@
         "noClient": "Sem cliente",
         "newProjectLink": "Novo projeto no Zebu ↗"
     },
+    "presets": {
+        "title": "Modelos",
+        "search": "Procurar modelos…",
+        "none": "Ainda não há modelos. Salve um a partir de uma nova entrada.",
+        "noMatch": "Nenhum modelo correspondente.",
+        "save": "Salvar como modelo",
+        "saved": "Salvo como modelo",
+        "start": "Iniciar {name}",
+        "rename": "Renomear",
+        "done": "Pronto",
+        "delete": "Excluir",
+        "confirmDelete": "Excluir?",
+        "missing": "Esse projeto não está mais neste espaço de trabalho."
+    },
     "footer": {
         "newEntry": "Nova entrada",
+        "presets": "Modelos",
         "settings": "Configurações"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Idioma",
         "shortcuts": "Atalhos de teclado",
         "shortcutToggleTimer": "Iniciar ou parar o timer",
+        "shortcutNewTimer": "Iniciar um novo timer",
         "shortcutTogglePopover": "Mostrar ou ocultar o Zebu",
         "shortcutToggleInsights": "Mostrar ou ocultar as estatísticas",
+        "shortcutShowPresets": "Mostrar modelos",
         "recordShortcut": "Gravar",
         "recording": "Pressione…",
         "clearShortcut": "Limpar atalho",

@@ -11,6 +11,20 @@ import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, 
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
+import {
+    defaultPresetName,
+    filterPresets,
+    hasPreset,
+    presetRows,
+    presetsFor,
+    PRESETS_KEY,
+    readPresets,
+    removePreset,
+    renamePreset,
+    savePreset,
+    type Preset,
+    type PresetRow,
+} from './presets';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
@@ -154,6 +168,9 @@ const disconnect = (message = '') => {
     connectError.value = message;
     settingsOpen.value = false;
     formOpen.value = false;
+    // the presets themselves are kept: they are filed by workspace and come
+    // back when this one is reconnected
+    closePresets();
     stashedDraft.value = null; // a draft only means something on the workspace it was typed for
     closeInsights();
     me.value = null;
@@ -281,6 +298,8 @@ onMounted(() => {
     // was last handed and sends whichever press this was (see below)
     listen('tray-toggle-timer', () => onTrayToggle()).then((off) => (trayPauseUnlisten = off));
     listen('tray-open-new-timer', () => onTrayPlay()).then((off) => (trayPlayUnlisten = off));
+    // the presets hotkey, once Rust has the popover on screen (src-tauri: show_presets)
+    listen('open-presets', () => openPresets()).then((off) => (presetsUnlisten = off));
     syncIdleThreshold();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
@@ -294,6 +313,7 @@ onUnmounted(() => {
     idleChoiceUnlisten?.();
     trayPauseUnlisten?.();
     trayPlayUnlisten?.();
+    presetsUnlisten?.();
 });
 
 // ---- running-timer awareness ----------------------------------------------
@@ -610,6 +630,8 @@ const submitForm = () =>
 
 let trayPauseUnlisten: UnlistenFn | null = null;
 let trayPlayUnlisten: UnlistenFn | null = null;
+/** The presets hotkey's event; the list itself lives in the presets section below. */
+let presetsUnlisten: UnlistenFn | null = null;
 
 /**
  * The pill's play/pause button, opening nothing: the stop the running entry's
@@ -744,6 +766,7 @@ let insightsUnlisten: UnlistenFn | null = null;
 
 const toggleInsights = async () => {
     settingsOpen.value = false;
+    closePresets();
     insightsOpen.value = await invoke<boolean>('toggle_insights').catch(() => false);
 };
 
@@ -757,14 +780,135 @@ onMounted(() => {
 });
 onUnmounted(() => insightsUnlisten?.());
 
+// ---- presets ---------------------------------------------------------------
+//
+// A preset is a saved starting point for a timer — a project and a task, the
+// client coming along with the project the way the picker already groups it.
+// The ☆ beside ＋ opens the list, the entry sheet saves what it is showing
+// into it, and a row starts that timer in one press.
+//
+// They live in localStorage next to the preferences (src/presets.ts says why,
+// and holds every rule worth testing); this file only wires the list up to the
+// popover. A preset belongs to the workspace it was saved on, so the list is
+// `presetsFor(auth.workspace)` and never offers a project this workspace has
+// never heard of.
+
+const presets = ref<Preset[]>([]);
+try {
+    presets.value = readPresets(JSON.parse(localStorage.getItem(PRESETS_KEY) ?? '[]'));
+} catch {
+    /* none saved, or storage we can't read */
+}
+watch(
+    presets,
+    (list) => {
+        try {
+            localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
+        } catch {
+            /* private mode */
+        }
+    },
+    { deep: true },
+);
+
+const presetsOpen = ref(false);
+const presetQuery = ref('');
+const presetSearchEl = ref<HTMLInputElement | null>(null);
+/** The row being renamed, and the name being typed into it. */
+const renamingPreset = ref<string | null>(null);
+const renameDraft = ref('');
+/** The row whose ✕ has been pressed once; a second press deletes it. */
+const confirmingDelete = ref<string | null>(null);
+
+/** This workspace's presets, resolved against the project list the sheet is showing. */
+const presetList = computed(() => presetRows(presetsFor(presets.value, auth.workspace), sheet.value?.projects ?? []));
+const visiblePresets = computed(() => filterPresets(presetList.value, presetQuery.value));
+
+const openPresets = () => {
+    // a locked week has nothing to start, the same reason ＋ is not offered
+    if (view.value !== 'main' || sheet.value?.week_locked) return;
+    // both popouts hang off the footer and share one backdrop, so only one is
+    // ever up: a click on ☆ with the settings open never gets past the
+    // backdrop, but the hotkey does
+    settingsOpen.value = false;
+    presetQuery.value = '';
+    renamingPreset.value = null;
+    confirmingDelete.value = null;
+    presetsOpen.value = true;
+    nextTick(() => presetSearchEl.value?.focus());
+};
+
+const closePresets = () => {
+    presetsOpen.value = false;
+    renamingPreset.value = null;
+    confirmingDelete.value = null;
+};
+
+const togglePresets = () => (presetsOpen.value ? closePresets() : openPresets());
+
+/** One press: the list goes away and the timer is running. */
+const startFromPreset = (row: PresetRow) => {
+    if (row.missing) return;
+    closePresets();
+    act(() => showEntry(api.startTimer({ project_id: row.preset.project_id, task_id: row.preset.task_id || null })));
+};
+
+const beginRename = (row: PresetRow) => {
+    confirmingDelete.value = null;
+    renamingPreset.value = row.preset.id;
+    renameDraft.value = row.preset.name;
+    nextTick(() => document.querySelector<HTMLInputElement>('.preset-rename')?.select());
+};
+
+/** Enter, the ✓, or the field losing focus — all the same thing. An empty name is refused by renamePreset. */
+const commitRename = () => {
+    const id = renamingPreset.value;
+    renamingPreset.value = null;
+    if (id) presets.value = renamePreset(presets.value, id, renameDraft.value);
+};
+
+/** Two presses, because there is no undo: the first arms the row, the second removes it. */
+const deletePreset = (row: PresetRow) => {
+    if (confirmingDelete.value !== row.preset.id) {
+        confirmingDelete.value = row.preset.id;
+        return;
+    }
+    confirmingDelete.value = null;
+    presets.value = removePreset(presets.value, row.preset.id);
+};
+
+/** The starting point the new-entry sheet describes right now, or null until it has a project. */
+const formPreset = computed(() =>
+    form.value.project_id
+        ? {
+              name: defaultPresetName(formProject.value, form.value.task_id),
+              project_id: form.value.project_id,
+              task_id: form.value.task_id,
+              workspace: auth.workspace,
+          }
+        : null,
+);
+/** Already in the list — so the control says so rather than offering a duplicate. */
+const formPresetSaved = computed(() => !!formPreset.value && hasPreset(presets.value, formPreset.value));
+
+const savePresetFromForm = () => {
+    const draft = formPreset.value;
+    if (draft) presets.value = savePreset(presets.value, draft);
+};
+
 // ---- keyboard shortcuts ----------------------------------------------------
 //
-// System-wide hotkeys for start/stop, the popover and insights. Rust owns the
-// registration (it is the side that can act while another app has focus, and
-// two of the three actions are its own windows); this side owns the bindings —
-// recording them, storing them with the other preferences, and handing each
-// one over through `set_shortcut`, which is also what replays them at launch.
-// See src/shortcuts.ts for the accelerator strings on the wire.
+// System-wide hotkeys for start/stop, a new timer, the popover, insights and
+// the presets list. Rust owns the registration (it is the side that can act
+// while another app has focus, and several of the actions are its own
+// windows); this side owns the bindings — recording them, storing them with
+// the other preferences, and handing each one over through `set_shortcut`,
+// which is also what replays them at launch. See src/shortcuts.ts for the
+// accelerator strings on the wire.
+//
+// The two that open something in this window (a new timer, the presets list)
+// arrive as events Rust emits after it has shown the popover, so a hotkey and
+// the ＋ / ☆ buttons end in the same call.
 
 /** The row being recorded right now, if any. */
 const recording = ref<ShortcutAction | null>(null);
@@ -773,8 +917,10 @@ const shortcutTaken = ref<Partial<Record<ShortcutAction, boolean>>>({});
 
 const shortcutLabels: Record<ShortcutAction, string> = {
     toggleTimer: 'settings.shortcutToggleTimer',
+    newTimer: 'settings.shortcutNewTimer',
     togglePopover: 'settings.shortcutTogglePopover',
     toggleInsights: 'settings.shortcutToggleInsights',
+    showPresets: 'settings.shortcutShowPresets',
 };
 
 /** Hand one binding (or '' to unbind) to Rust. False when it was refused. */
@@ -857,6 +1003,7 @@ const clearOverlays = (stash: boolean) => {
     settingsOpen.value = false;
     confirmNewDay.value = false;
     recording.value = null;
+    closePresets();
 };
 
 /** Decide what an absence of `awayMs` does to what is on screen. `Infinity` = the user was away from the machine. */
@@ -880,10 +1027,12 @@ onMounted(() => {
 });
 onUnmounted(() => popoverUnlisten?.());
 
-// Escape dismisses the settings popover (click-away is the backdrop); the
-// insights window handles its own Escape. While a row is recording, every
-// keypress belongs to the recorder instead — Escape included, which cancels
-// it rather than closing the settings underneath.
+// Escape dismisses the settings and presets popovers (click-away is the
+// backdrop); the insights window handles its own Escape. While a row is
+// recording, every keypress belongs to the recorder instead — Escape included,
+// which cancels it rather than closing the settings underneath. A preset being
+// renamed swallows its own Escape too, so the field is abandoned without the
+// list going with it.
 const onKeydown = (e: KeyboardEvent) => {
     const action = recording.value;
     if (action) {
@@ -899,8 +1048,10 @@ const onKeydown = (e: KeyboardEvent) => {
         setShortcut(action, accel);
         return;
     }
-    if (e.key !== 'Escape' || !settingsOpen.value) return;
-    settingsOpen.value = false;
+    if (e.key !== 'Escape') return;
+    if (presetsOpen.value) closePresets();
+    else if (settingsOpen.value) settingsOpen.value = false;
+    else return;
     e.preventDefault();
 };
 onMounted(() => window.addEventListener('keydown', onKeydown));
@@ -1100,6 +1251,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <option value="">{{ t('form.addTask') }}</option>
                     <option v-for="task in formProject?.tasks ?? []" :key="task.id" :value="task.id">{{ task.name }}</option>
                 </select>
+                <!-- keep this project and task for next time; the ☆ in the footer is where it lands -->
+                <button v-if="!editingEntry" class="link preset-save" :disabled="!form.project_id || formPresetSaved" @click="savePresetFromForm">
+                    {{ formPresetSaved ? `★ ${t('presets.saved')}` : `☆ ${t('presets.save')}` }}
+                </button>
                 <div class="sheet-row">
                     <input v-model="form.date" type="date" class="sheet-date" />
                     <span v-if="editingEntry?.timer_started_at" class="sheet-dot" :title="t('form.timerRunning')"></span>
@@ -1127,11 +1282,71 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- footer -->
         <footer class="footer">
-            <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm">＋</button>
+            <div class="footer-left">
+                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm">＋</button>
+                <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
+                <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
+            </div>
             <div class="footer-right">
                 <button :title="t('footer.settings')" :class="{ active: settingsOpen }" @click="settingsOpen = !settingsOpen">⚙</button>
             </div>
         </footer>
+
+        <!-- presets: search, start, rename, delete — anchored to the ☆ it opened from -->
+        <div v-if="presetsOpen" class="popover-backdrop" @click="closePresets"></div>
+        <div v-if="presetsOpen" class="presets">
+            <div class="pref-group presets-title">{{ t('presets.title') }}</div>
+            <input
+                ref="presetSearchEl"
+                v-model="presetQuery"
+                type="text"
+                class="preset-search"
+                :placeholder="t('presets.search')"
+                autocomplete="off"
+                spellcheck="false"
+            />
+            <div class="preset-rows">
+                <div v-for="row in visiblePresets" :key="row.preset.id" class="preset-row" :class="{ missing: row.missing }">
+                    <template v-if="renamingPreset === row.preset.id">
+                        <input
+                            v-model="renameDraft"
+                            class="preset-rename"
+                            :aria-label="t('presets.rename')"
+                            spellcheck="false"
+                            @keydown.enter.prevent="commitRename"
+                            @keydown.esc.stop.prevent="renamingPreset = null"
+                            @blur="commitRename"
+                        />
+                        <button class="preset-icon" :title="t('presets.done')" @mousedown.prevent="commitRename">✓</button>
+                    </template>
+                    <template v-else>
+                        <button
+                            class="preset-start"
+                            :disabled="row.missing"
+                            :title="row.missing ? t('presets.missing') : t('presets.start', { name: row.preset.name })"
+                            @click="startFromPreset(row)"
+                        >
+                            <span class="preset-name">{{ row.preset.name }}</span>
+                            <span class="preset-sub">{{ row.missing ? t('presets.missing') : row.subtitle }}</span>
+                        </button>
+                        <button v-if="confirmingDelete === row.preset.id" class="preset-confirm" @click="deletePreset(row)">
+                            {{ t('presets.confirmDelete') }}
+                        </button>
+                        <template v-else>
+                            <button class="preset-icon" :title="t('presets.rename')" @click="beginRename(row)">
+                                <!-- drawn rather than a glyph: ✎ picks up an emoji face in the webview -->
+                                <svg class="icon-pencil" viewBox="0 0 14 14" width="11" height="11" aria-hidden="true">
+                                    <path d="M9.55 1.35a1.35 1.35 0 0 1 1.9 1.9l-.62.62-1.9-1.9.62-.62ZM8.22 2.68l1.9 1.9-5.26 5.26-2.4.5.5-2.4 5.26-5.26Z" />
+                                </svg>
+                            </button>
+                            <button class="preset-icon danger" :title="t('presets.delete')" @click="deletePreset(row)">✕</button>
+                        </template>
+                    </template>
+                </div>
+                <p v-if="!presetList.length" class="preset-empty">{{ t('presets.none') }}</p>
+                <p v-else-if="!visiblePresets.length" class="preset-empty">{{ t('presets.noMatch') }}</p>
+            </div>
+        </div>
 
         <div v-if="settingsOpen" class="popover-backdrop" @click="settingsOpen = false"></div>
         <div v-if="settingsOpen" class="settings">
@@ -1819,6 +2034,160 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     flex: none;
 }
 
+/* ---- presets popout ---- */
+/* Anchored to the ☆ it opens from, and absolute like the settings popout so
+   neither the list nor a long project name can push the footer around. It
+   spans the popover's width (minus the same 8px the settings popout keeps)
+   because a row carries a client, a project and a task on one line. */
+.presets {
+    position: absolute;
+    bottom: 42px;
+    left: 8px;
+    right: 8px;
+    z-index: 30;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    /* the window is only as tall as the day's list (see fit_popover), so the
+       rows scroll rather than the popout running off the top edge */
+    max-height: calc(100vh - 50px);
+}
+.presets-title {
+    padding: 0 2px;
+}
+.preset-search {
+    font-size: 12px;
+    padding: 5px 9px;
+    flex: none;
+}
+/* only the rows scroll: the search field stays put while filtering */
+.preset-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.preset-row {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    border-radius: 8px;
+}
+.preset-row:hover {
+    background: var(--accent-soft);
+}
+.preset-start {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    text-align: left;
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+.preset-start:disabled {
+    cursor: default;
+}
+.preset-name,
+.preset-sub {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.preset-name {
+    font-size: 12px;
+    font-weight: 600;
+}
+.preset-sub {
+    color: var(--muted);
+    font-size: 10px;
+}
+/* the project has gone from this workspace: the row says so and starts nothing */
+.preset-row.missing .preset-name {
+    color: var(--muted);
+}
+.preset-row.missing .preset-sub {
+    color: var(--danger);
+}
+/* dim until the row is under the pointer, so a list of presets reads as names
+   rather than as a column of controls */
+.preset-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1;
+    opacity: 0.5;
+}
+.icon-pencil {
+    fill: currentColor;
+    display: block;
+}
+.preset-row:hover .preset-icon {
+    opacity: 1;
+}
+.preset-icon:hover {
+    background: var(--bg-input);
+    color: var(--text);
+}
+.preset-icon.danger:hover {
+    color: var(--danger);
+    background: none;
+}
+/* there is no undo, so ✕ arms the row and this is the second press */
+.preset-confirm {
+    flex: none;
+    margin-right: 2px;
+    padding: 3px 7px;
+    border: 1px solid var(--danger);
+    border-radius: 6px;
+    color: var(--danger);
+    font-size: 10px;
+    white-space: nowrap;
+}
+.preset-confirm:hover {
+    background: var(--danger);
+    color: #fff;
+}
+.preset-rename {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 5px 8px;
+}
+.preset-empty {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    padding: 14px 10px;
+}
+/* the entry sheet's "save this as a preset" control */
+.preset-save {
+    align-self: flex-start;
+    font-size: 11px;
+    margin-top: -2px;
+}
+.preset-save:disabled {
+    color: var(--muted);
+    cursor: default;
+}
+
 /* ---- footer ---- */
 .footer {
     display: flex;
@@ -1828,6 +2197,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     border-top: 1px solid var(--border);
     background: var(--bg-raised);
     flex: none;
+}
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 .footer button {
     color: var(--muted);

@@ -93,8 +93,23 @@
         "noClient": "Bez klienta",
         "newProjectLink": "Nowy projekt w Zebu ↗"
     },
+    "presets": {
+        "title": "Szablony",
+        "search": "Szukaj szablonów…",
+        "none": "Nie ma jeszcze szablonów. Zapisz jeden z nowego wpisu.",
+        "noMatch": "Brak pasującego szablonu.",
+        "save": "Zapisz jako szablon",
+        "saved": "Zapisano jako szablon",
+        "start": "Uruchom {name}",
+        "rename": "Zmień nazwę",
+        "done": "Gotowe",
+        "delete": "Usuń",
+        "confirmDelete": "Usunąć?",
+        "missing": "Tego projektu już nie ma w tej przestrzeni roboczej."
+    },
     "footer": {
         "newEntry": "Nowy wpis",
+        "presets": "Szablony",
         "settings": "Ustawienia"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Język",
         "shortcuts": "Skróty klawiszowe",
         "shortcutToggleTimer": "Uruchom lub zatrzymaj stoper",
+        "shortcutNewTimer": "Uruchom nowy stoper",
         "shortcutTogglePopover": "Pokaż lub ukryj Zebu",
         "shortcutToggleInsights": "Pokaż lub ukryj statystyki",
+        "shortcutShowPresets": "Pokaż szablony",
         "recordShortcut": "Nagraj",
         "recording": "Naciśnij…",
         "clearShortcut": "Wyczyść skrót",

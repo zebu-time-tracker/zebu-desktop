@@ -93,8 +93,23 @@
         "noClient": "Sans client",
         "newProjectLink": "Nouveau projet dans Zebu ↗"
     },
+    "presets": {
+        "title": "Modèles",
+        "search": "Rechercher un modèle…",
+        "none": "Aucun modèle pour l’instant. Enregistrez-en un depuis une nouvelle entrée.",
+        "noMatch": "Aucun modèle correspondant.",
+        "save": "Enregistrer comme modèle",
+        "saved": "Enregistré comme modèle",
+        "start": "Démarrer {name}",
+        "rename": "Renommer",
+        "done": "Terminé",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer ?",
+        "missing": "Ce projet n’est plus dans cet espace de travail."
+    },
     "footer": {
         "newEntry": "Nouvelle entrée",
+        "presets": "Modèles",
         "settings": "Réglages"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Langue",
         "shortcuts": "Raccourcis clavier",
         "shortcutToggleTimer": "Démarrer ou arrêter le minuteur",
+        "shortcutNewTimer": "Démarrer un nouveau minuteur",
         "shortcutTogglePopover": "Afficher ou masquer Zebu",
         "shortcutToggleInsights": "Afficher ou masquer les aperçus",
+        "shortcutShowPresets": "Afficher les modèles",
         "recordShortcut": "Enregistrer",
         "recording": "Appuyez…",
         "clearShortcut": "Effacer le raccourci",

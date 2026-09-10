@@ -886,14 +886,28 @@ fn pill_zone(click_x: f64, rect_width: f64, pill_width: f64, scale: f64) -> Pill
 /// timer" hotkey come through here.
 fn toggle_timer(app: &tauri::AppHandle) {
     if !tray_has_entry() {
-        // Show the popover first so the form opens into a window that is
-        // already placed; the main webview runs whether or not the window is
-        // visible, so the event needs no delay to be heard.
-        show_popover(app);
-        let _ = app.emit_to("main", "tray-open-new-timer", ());
+        open_new_timer(app);
         return;
     }
     let _ = app.emit_to("main", "tray-toggle-timer", ());
+}
+
+/// The new-entry sheet: what the idle ("zzzz") pill lands on when there is no
+/// timer to resume, and what the "start a new timer" hotkey does outright.
+/// Show the popover first so the sheet opens into a window that is already
+/// placed; the main webview runs whether or not the window is visible, so the
+/// event needs no delay to be heard.
+fn open_new_timer(app: &tauri::AppHandle) {
+    show_popover(app);
+    let _ = app.emit_to("main", "tray-open-new-timer", ());
+}
+
+/// The presets list, from its hotkey. Same round-trip as the sheet above: Rust
+/// places the window, App.vue owns what opens inside it — the ☆ button in the
+/// footer takes exactly the same path.
+fn show_presets(app: &tauri::AppHandle) {
+    show_popover(app);
+    let _ = app.emit_to("main", "open-presets", ());
 }
 
 /// A left click on the pill. Nothing on the clock ("zzzz"): the whole pill
@@ -942,34 +956,40 @@ fn spawn_tray_ticker(app: tauri::AppHandle) {
 
 // ---- global shortcuts ------------------------------------------------------
 //
-// System-wide hotkeys for the three things the menubar can already do. They
-// are registered from here rather than from the webview because two of the
-// three actions (the popover's show/hide, the insights window) are Rust's own
-// and are not commands at all, and because a hotkey has to fire while another
-// app has focus — the same reason the tray ticker and the idle watcher are
-// native threads. The frontend only owns the *bindings*: it stores them with
-// the rest of the preferences and hands each one over through `set_shortcut`,
-// which is also what replays them at launch.
+// System-wide hotkeys for the things the menubar can already do. They are
+// registered from here rather than from the webview because several of the
+// actions (the popover's show/hide, the insights window, placing the popover
+// before a sheet opens in it) are Rust's own and are not commands at all, and
+// because a hotkey has to fire while another app has focus — the same reason
+// the tray ticker and the idle watcher are native threads. The frontend only
+// owns the *bindings*: it stores them with the rest of the preferences and
+// hands each one over through `set_shortcut`, which is also what replays them
+// at launch.
 //
-// Every action ends in the same call the tray click makes (`toggle_timer`,
-// `toggle_popover`, `toggle_insights_window`), so a hotkey and a click are
-// never two implementations of one behaviour.
+// Every action ends in the same call a click already makes (`toggle_timer`,
+// `open_new_timer`, `toggle_popover`, `toggle_insights_window`,
+// `show_presets`), so a hotkey and a click are never two implementations of
+// one behaviour.
 
-/// The three bindable actions. The names are the ones `src/shortcuts.ts`
-/// stores and sends.
+/// The bindable actions. The names are the ones `src/shortcuts.ts` stores and
+/// sends, in the order that file lists them.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum ShortcutAction {
     ToggleTimer,
+    NewTimer,
     TogglePopover,
     ToggleInsights,
+    ShowPresets,
 }
 
 impl ShortcutAction {
     fn parse(name: &str) -> Option<Self> {
         match name {
             "toggleTimer" => Some(Self::ToggleTimer),
+            "newTimer" => Some(Self::NewTimer),
             "togglePopover" => Some(Self::TogglePopover),
             "toggleInsights" => Some(Self::ToggleInsights),
+            "showPresets" => Some(Self::ShowPresets),
             _ => None,
         }
     }
@@ -982,17 +1002,19 @@ impl ShortcutAction {
     fn perform(self, app: &tauri::AppHandle) {
         match self {
             Self::ToggleTimer => toggle_timer(app),
+            Self::NewTimer => open_new_timer(app),
             Self::TogglePopover => toggle_popover(app),
             Self::ToggleInsights => {
                 toggle_insights_window(app);
             }
+            Self::ShowPresets => show_presets(app),
         }
     }
 }
 
 /// What each action is bound to right now, so a binding can be replaced or
 /// taken back. Indexed by `ShortcutAction::slot`; None = not bound.
-static SHORTCUTS: Mutex<[Option<Shortcut>; 3]> = Mutex::new([None, None, None]);
+static SHORTCUTS: Mutex<[Option<Shortcut>; 5]> = Mutex::new([None, None, None, None, None]);
 
 /// Claim `shortcut` for `action` and remember it. Err when the shell refuses
 /// it — another app already owns the combination — in which case nothing is
@@ -1278,19 +1300,29 @@ mod shortcut_tests {
     fn the_action_names_are_the_ones_the_frontend_sends() {
         // src/shortcuts.ts stores these; a rename on either side breaks binding
         assert_eq!(ShortcutAction::parse("toggleTimer"), Some(ShortcutAction::ToggleTimer));
+        assert_eq!(ShortcutAction::parse("newTimer"), Some(ShortcutAction::NewTimer));
         assert_eq!(ShortcutAction::parse("togglePopover"), Some(ShortcutAction::TogglePopover));
         assert_eq!(ShortcutAction::parse("toggleInsights"), Some(ShortcutAction::ToggleInsights));
+        assert_eq!(ShortcutAction::parse("showPresets"), Some(ShortcutAction::ShowPresets));
         assert_eq!(ShortcutAction::parse("toggleFavourite"), None);
+        assert_eq!(ShortcutAction::parse("presets"), None);
         assert_eq!(ShortcutAction::parse(""), None);
     }
 
     #[test]
     fn every_action_has_a_slot_of_its_own_in_the_table() {
-        let slots: Vec<usize> = [ShortcutAction::ToggleTimer, ShortcutAction::TogglePopover, ShortcutAction::ToggleInsights]
-            .iter()
-            .map(|a| a.slot())
-            .collect();
-        assert_eq!(slots, vec![0, 1, 2]);
+        let slots: Vec<usize> = [
+            ShortcutAction::ToggleTimer,
+            ShortcutAction::NewTimer,
+            ShortcutAction::TogglePopover,
+            ShortcutAction::ToggleInsights,
+            ShortcutAction::ShowPresets,
+        ]
+        .iter()
+        .map(|a| a.slot())
+        .collect();
+        assert_eq!(slots, vec![0, 1, 2, 3, 4]);
+        // a slot per action, so binding one can never overwrite another's
         assert_eq!(SHORTCUTS.lock().unwrap().len(), slots.len());
     }
 

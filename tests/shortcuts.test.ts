@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts } from '../src/shortcuts.ts';
+import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS } from '../src/shortcuts.ts';
 
 /** A keydown as the recorder sees it; only the fields accelerator() reads. */
 const press = (code: string, mods: { meta?: boolean; ctrl?: boolean; alt?: boolean; shift?: boolean } = {}) =>
@@ -63,12 +63,26 @@ test('what was recorded reads back as what is shown', () => {
     assert.equal(formatAccelerator(recorded!), '⌥⌘Z');
 });
 
+test('every action the settings popover lists has a row of its own', () => {
+    // the catalogue Rust matches on; a rename on either side stops a hotkey binding
+    assert.deepEqual(SHORTCUT_ACTIONS, ['toggleTimer', 'newTimer', 'togglePopover', 'toggleInsights', 'showPresets']);
+    assert.equal(new Set(SHORTCUT_ACTIONS).size, SHORTCUT_ACTIONS.length);
+    assert.deepEqual(Object.keys(noShortcuts()), SHORTCUT_ACTIONS);
+    assert.ok(Object.values(noShortcuts()).every((accel) => accel === ''));
+});
+
 test('a combination can only mean one thing: the newest binding wins', () => {
-    const bound = { toggleTimer: 'Shift+Super+KeyS', togglePopover: 'Shift+Super+KeyZ', toggleInsights: '' };
+    const bound = { ...noShortcuts(), toggleTimer: 'Shift+Super+KeyS', togglePopover: 'Shift+Super+KeyZ' };
     assert.deepEqual(assignShortcut(bound, 'toggleInsights', 'Shift+Super+KeyS'), {
-        toggleTimer: '',
+        ...noShortcuts(),
         togglePopover: 'Shift+Super+KeyZ',
         toggleInsights: 'Shift+Super+KeyS',
+    });
+    // the two rows added for presets play by the same rule
+    assert.deepEqual(assignShortcut(bound, 'showPresets', 'Shift+Super+KeyZ'), {
+        ...noShortcuts(),
+        toggleTimer: 'Shift+Super+KeyS',
+        showPresets: 'Shift+Super+KeyZ',
     });
     // re-recording the same combination on the row that already holds it is a no-op
     assert.deepEqual(assignShortcut(bound, 'toggleTimer', 'Shift+Super+KeyS'), bound);

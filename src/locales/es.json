@@ -93,8 +93,23 @@
         "noClient": "Sin cliente",
         "newProjectLink": "Nuevo proyecto en Zebu ↗"
     },
+    "presets": {
+        "title": "Plantillas",
+        "search": "Buscar plantillas…",
+        "none": "Aún no hay plantillas. Guarda una desde una nueva entrada.",
+        "noMatch": "Ninguna plantilla coincide.",
+        "save": "Guardar como plantilla",
+        "saved": "Guardada como plantilla",
+        "start": "Iniciar {name}",
+        "rename": "Cambiar nombre",
+        "done": "Listo",
+        "delete": "Eliminar",
+        "confirmDelete": "¿Eliminar?",
+        "missing": "Ese proyecto ya no está en este espacio de trabajo."
+    },
     "footer": {
         "newEntry": "Nueva entrada",
+        "presets": "Plantillas",
         "settings": "Ajustes"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Idioma",
         "shortcuts": "Atajos de teclado",
         "shortcutToggleTimer": "Iniciar o detener el temporizador",
+        "shortcutNewTimer": "Iniciar un temporizador nuevo",
         "shortcutTogglePopover": "Mostrar u ocultar Zebu",
         "shortcutToggleInsights": "Mostrar u ocultar Estadísticas",
+        "shortcutShowPresets": "Mostrar plantillas",
         "recordShortcut": "Grabar",
         "recording": "Pulsa teclas…",
         "clearShortcut": "Borrar atajo",

@@ -93,8 +93,23 @@
         "noClient": "클라이언트 없음",
         "newProjectLink": "Zebu에서 새 프로젝트 ↗"
     },
+    "presets": {
+        "title": "프리셋",
+        "search": "프리셋 검색…",
+        "none": "아직 프리셋이 없습니다. 새 시간 항목에서 저장하세요.",
+        "noMatch": "일치하는 프리셋이 없습니다.",
+        "save": "프리셋으로 저장",
+        "saved": "프리셋으로 저장됨",
+        "start": "{name} 시작",
+        "rename": "이름 변경",
+        "done": "완료",
+        "delete": "삭제",
+        "confirmDelete": "삭제할까요?",
+        "missing": "그 프로젝트는 이 워크스페이스에 더 이상 없습니다."
+    },
     "footer": {
         "newEntry": "새 시간 항목",
+        "presets": "프리셋",
         "settings": "설정"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "언어",
         "shortcuts": "키보드 단축키",
         "shortcutToggleTimer": "타이머 시작 또는 정지",
+        "shortcutNewTimer": "새 타이머 시작",
         "shortcutTogglePopover": "Zebu 표시 또는 숨기기",
         "shortcutToggleInsights": "통계 표시 또는 숨기기",
+        "shortcutShowPresets": "프리셋 표시",
         "recordShortcut": "기록",
         "recording": "키 입력…",
         "clearShortcut": "단축키 지우기",
