@@ -93,8 +93,23 @@
         "noClient": "Geen klant",
         "newProjectLink": "Nieuw project in Zebu ↗"
     },
+    "presets": {
+        "title": "Sjablonen",
+        "search": "Sjablonen zoeken…",
+        "none": "Nog geen sjablonen. Sla er een op vanuit een nieuwe registratie.",
+        "noMatch": "Geen passend sjabloon.",
+        "save": "Opslaan als sjabloon",
+        "saved": "Opgeslagen als sjabloon",
+        "start": "{name} starten",
+        "rename": "Naam wijzigen",
+        "done": "Klaar",
+        "delete": "Verwijderen",
+        "confirmDelete": "Verwijderen?",
+        "missing": "Dat project staat niet meer in deze werkruimte."
+    },
     "footer": {
         "newEntry": "Nieuwe registratie",
+        "presets": "Sjablonen",
         "settings": "Instellingen"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Taal",
         "shortcuts": "Sneltoetsen",
         "shortcutToggleTimer": "Timer starten of stoppen",
+        "shortcutNewTimer": "Nieuwe timer starten",
         "shortcutTogglePopover": "Zebu tonen of verbergen",
         "shortcutToggleInsights": "Inzichten tonen of verbergen",
+        "shortcutShowPresets": "Sjablonen tonen",
         "recordShortcut": "Opnemen",
         "recording": "Druk op toetsen…",
         "clearShortcut": "Sneltoets wissen",

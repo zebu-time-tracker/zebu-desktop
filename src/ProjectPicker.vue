@@ -44,6 +44,10 @@ const show = () => {
     query.value = '';
     nextTick(() => input.value?.focus());
 };
+// The new-entry sheet opens straight into the search, so the first keystroke
+// is already a project name (board card #146). Exposed rather than made a
+// prop: opening the list is an action taken once, not a state to keep in sync.
+defineExpose({ open: show });
 const choose = (p: ProjectOption) => {
     emit('update:modelValue', p.id);
     open.value = false;

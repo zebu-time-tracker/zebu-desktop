@@ -93,8 +93,23 @@
         "noClient": "クライアントなし",
         "newProjectLink": "Zebu で新しいプロジェクト ↗"
     },
+    "presets": {
+        "title": "プリセット",
+        "search": "プリセットを検索…",
+        "none": "プリセットはまだありません。新規エントリから保存できます。",
+        "noMatch": "一致するプリセットがありません。",
+        "save": "プリセットとして保存",
+        "saved": "プリセットに保存済み",
+        "start": "{name} を開始",
+        "rename": "名前を変更",
+        "done": "完了",
+        "delete": "削除",
+        "confirmDelete": "削除しますか？",
+        "missing": "そのプロジェクトはこのワークスペースにありません。"
+    },
     "footer": {
         "newEntry": "新規エントリ",
+        "presets": "プリセット",
         "settings": "設定"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "言語",
         "shortcuts": "キーボードショートカット",
         "shortcutToggleTimer": "タイマーを開始・停止",
+        "shortcutNewTimer": "新しいタイマーを開始",
         "shortcutTogglePopover": "Zebu を表示・非表示",
         "shortcutToggleInsights": "統計を表示・非表示",
+        "shortcutShowPresets": "プリセットを表示",
         "recordShortcut": "記録",
         "recording": "キーを押す…",
         "clearShortcut": "ショートカットを消去",

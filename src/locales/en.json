@@ -93,8 +93,23 @@
         "noClient": "No client",
         "newProjectLink": "New project in Zebu ↗"
     },
+    "presets": {
+        "title": "Presets",
+        "search": "Search presets…",
+        "none": "No presets yet. Save one from a new time entry.",
+        "noMatch": "No matching preset.",
+        "save": "Save as preset",
+        "saved": "Saved as preset",
+        "start": "Start {name}",
+        "rename": "Rename",
+        "done": "Done",
+        "delete": "Delete",
+        "confirmDelete": "Delete?",
+        "missing": "That project is no longer in this workspace."
+    },
     "footer": {
         "newEntry": "New time entry",
+        "presets": "Presets",
         "settings": "Settings"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Language",
         "shortcuts": "Keyboard shortcuts",
         "shortcutToggleTimer": "Start or stop the timer",
+        "shortcutNewTimer": "Start a new timer",
         "shortcutTogglePopover": "Show or hide Zebu",
         "shortcutToggleInsights": "Show or hide Insights",
+        "shortcutShowPresets": "Show presets",
         "recordShortcut": "Record Shortcut",
         "recording": "Press keys…",
         "clearShortcut": "Clear shortcut",

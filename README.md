@@ -8,7 +8,9 @@ A tiny cross-platform **menubar/tray app** for [Zebu](../zebu): see today's time
 - Week strip with per-day totals, ‹ › week navigation, **Jump to Today**
 - Day view listing entries with resume ▶ / stop ■ / delete; running entry ticks live
 - Running timer shown **next to the menubar icon** (macOS) / tray tooltip elsewhere
-- **New Time Entry** sheet: project + task + notes; leave duration empty to start a live timer, or enter `1:30` to log it directly
+- **New Time Entry** sheet: project + task + notes; leave duration empty to start a live timer, or enter `1:30` to log it directly. It opens with the cursor already in the project search, so a new timer is ＋, type, Enter
+- ☆ **Presets**: save a project + task you start often from the entry sheet, then start that timer in one press from the searchable list beside ＋; rename or delete them there. Presets are personal and stay on this machine (`localStorage`), filed by workspace
+- **Global hotkeys** for five things — start/stop the timer, start a new timer, show/hide the popover, show Insights, show presets — recorded in Settings and registered system-wide
 - ⓘ **Time Summary** popover: hours today / yesterday / this week / last week / this month + billable % (served by your own server's widgets)
 - Respects invoiced-entry locks and approved-week locks from the server
 - Localized into 11 languages (see [docs/i18n.md](docs/i18n.md)); follows the system language, overridable in Settings

@@ -12,16 +12,17 @@
 // Kept out of App.vue (like idle.ts) because the mapping is fiddly enough to be
 // worth testing on its own.
 
-/** The three things a hotkey can do. Rust matches on these names. */
-export type ShortcutAction = 'toggleTimer' | 'togglePopover' | 'toggleInsights';
+/** The things a hotkey can do. Rust matches on these names. */
+export type ShortcutAction = 'toggleTimer' | 'newTimer' | 'togglePopover' | 'toggleInsights' | 'showPresets';
 
 /** Row order in the settings popover, and the order they are registered in. */
-export const SHORTCUT_ACTIONS: ShortcutAction[] = ['toggleTimer', 'togglePopover', 'toggleInsights'];
+export const SHORTCUT_ACTIONS: ShortcutAction[] = ['toggleTimer', 'newTimer', 'togglePopover', 'toggleInsights', 'showPresets'];
 
 /** One accelerator per action; '' is "not bound". */
 export type Shortcuts = Record<ShortcutAction, string>;
 
-export const noShortcuts = (): Shortcuts => ({ toggleTimer: '', togglePopover: '', toggleInsights: '' });
+/** Every action unbound. Built from the catalogue so the two can't drift apart. */
+export const noShortcuts = (): Shortcuts => Object.fromEntries(SHORTCUT_ACTIONS.map((action) => [action, ''])) as Shortcuts;
 
 /**
  * Whatever came out of localStorage, made safe to render: unknown actions are

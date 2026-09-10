@@ -93,8 +93,23 @@
         "noClient": "Kein Kunde",
         "newProjectLink": "Neues Projekt in Zebu ↗"
     },
+    "presets": {
+        "title": "Vorlagen",
+        "search": "Vorlagen suchen…",
+        "none": "Noch keine Vorlagen. Speichere eine aus einem neuen Zeiteintrag.",
+        "noMatch": "Keine passende Vorlage.",
+        "save": "Als Vorlage speichern",
+        "saved": "Als Vorlage gespeichert",
+        "start": "{name} starten",
+        "rename": "Umbenennen",
+        "done": "Fertig",
+        "delete": "Löschen",
+        "confirmDelete": "Löschen?",
+        "missing": "Dieses Projekt gibt es in diesem Workspace nicht mehr."
+    },
     "footer": {
         "newEntry": "Neuer Zeiteintrag",
+        "presets": "Vorlagen",
         "settings": "Einstellungen"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "Sprache",
         "shortcuts": "Tastaturkurzbefehle",
         "shortcutToggleTimer": "Timer starten oder stoppen",
+        "shortcutNewTimer": "Neuen Timer starten",
         "shortcutTogglePopover": "Zebu ein- oder ausblenden",
         "shortcutToggleInsights": "Einblicke ein- oder ausblenden",
+        "shortcutShowPresets": "Vorlagen anzeigen",
         "recordShortcut": "Aufnehmen",
         "recording": "Tasten drücken…",
         "clearShortcut": "Kurzbefehl löschen",

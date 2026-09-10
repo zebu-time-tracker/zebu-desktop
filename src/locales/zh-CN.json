@@ -93,8 +93,23 @@
         "noClient": "无客户",
         "newProjectLink": "在 Zebu 中新建项目 ↗"
     },
+    "presets": {
+        "title": "预设",
+        "search": "搜索预设…",
+        "none": "还没有预设。可从新建时间条目中保存一个。",
+        "noMatch": "没有匹配的预设。",
+        "save": "保存为预设",
+        "saved": "已保存为预设",
+        "start": "开始 {name}",
+        "rename": "重命名",
+        "done": "完成",
+        "delete": "删除",
+        "confirmDelete": "删除？",
+        "missing": "该项目已不在此工作区中。"
+    },
     "footer": {
         "newEntry": "新建时间条目",
+        "presets": "预设",
         "settings": "设置"
     },
     "settings": {
@@ -108,8 +123,10 @@
         "language": "语言",
         "shortcuts": "键盘快捷键",
         "shortcutToggleTimer": "开始或停止计时",
+        "shortcutNewTimer": "开始新的计时",
         "shortcutTogglePopover": "显示或隐藏 Zebu",
         "shortcutToggleInsights": "显示或隐藏统计",
+        "shortcutShowPresets": "显示预设",
         "recordShortcut": "录制",
         "recording": "请按下按键…",
         "clearShortcut": "清除快捷键",
