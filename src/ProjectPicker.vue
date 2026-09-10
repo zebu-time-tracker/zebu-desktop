@@ -1,10 +1,14 @@
 <script setup lang="ts">
 // Fuzzy project picker for the entry sheet: type to filter, arrows + Enter to
-// choose. Each row reads "CODE: Project title (Client)"; only the title
-// truncates, so the code and client always stay visible.
+// choose. The list groups the matches by client, with the client as a small
+// heading above its projects, so each row is just "CODE: Project title" and a
+// long client name can never crowd the project out of the narrow popover.
+// Headings are inert: only the project rows take part in keyboard navigation,
+// which walks the flattened list in the order the groups are rendered.
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProjectOption } from './api';
 import { fuzzyFilter } from './fuzzy';
+import { groupByClient } from './picker';
 
 const props = defineProps<{
     modelValue: string;
@@ -12,6 +16,8 @@ const props = defineProps<{
     placeholder: string;
     searchPlaceholder: string;
     empty: string;
+    /** Heading for the group of projects that have no client. */
+    noClient: string;
     /** Footer link; the timer stays a timer, so new projects are created in the web app. */
     createLabel: string;
 }>();
@@ -27,6 +33,9 @@ const selected = computed(() => props.projects.find((p) => p.id === props.modelV
 const label = (p: ProjectOption) => `${p.code ? `${p.code}: ` : ''}${p.name}${p.client ? ` (${p.client})` : ''}`;
 
 const filtered = computed(() => fuzzyFilter(props.projects, query.value, (p) => `${p.code ?? ''} ${p.name} ${p.client ?? ''}`));
+const groups = computed(() => groupByClient(filtered.value));
+/** The rows as they are rendered, top to bottom: what `active` indexes into. */
+const rows = computed(() => groups.value.flatMap((g) => g.projects));
 
 watch(filtered, () => (active.value = 0));
 
@@ -42,13 +51,13 @@ const choose = (p: ProjectOption) => {
 const onKey = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
         e.preventDefault();
-        active.value = Math.min(active.value + 1, filtered.value.length - 1);
+        active.value = Math.min(active.value + 1, rows.value.length - 1);
     } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         active.value = Math.max(active.value - 1, 0);
     } else if (e.key === 'Enter') {
         e.preventDefault();
-        const p = filtered.value[active.value];
+        const p = rows.value[active.value];
         if (p) choose(p);
     } else if (e.key === 'Escape') {
         open.value = false;
@@ -70,23 +79,25 @@ const onKey = (e: KeyboardEvent) => {
         <input v-else ref="input" v-model="query" type="text" :placeholder="searchPlaceholder" autocomplete="off" spellcheck="false" @keydown="onKey" />
 
         <div v-if="open" ref="list" class="picker-list" role="listbox">
-            <button
-                v-for="(p, i) in filtered"
-                :key="p.id"
-                type="button"
-                class="picker-row"
-                :class="{ active: i === active, current: p.id === modelValue }"
-                role="option"
-                :aria-selected="p.id === modelValue"
-                :title="label(p)"
-                @mousedown.prevent="choose(p)"
-                @mouseenter="active = i"
-            >
-                <span v-if="p.code" class="picker-code">{{ p.code }}:</span>
-                <span class="picker-title">{{ p.name }}</span>
-                <span v-if="p.client" class="picker-client">({{ p.client }})</span>
-            </button>
-            <p v-if="!filtered.length" class="picker-empty">{{ empty }}</p>
+            <div v-for="g in groups" :key="g.client" class="picker-group" role="group" :aria-label="g.client || noClient">
+                <p class="picker-group-name" aria-hidden="true">{{ g.client || noClient }}</p>
+                <button
+                    v-for="(p, i) in g.projects"
+                    :key="p.id"
+                    type="button"
+                    class="picker-row"
+                    :class="{ active: g.offset + i === active, current: p.id === modelValue }"
+                    role="option"
+                    :aria-selected="p.id === modelValue"
+                    :title="label(p)"
+                    @mousedown.prevent="choose(p)"
+                    @mouseenter="active = g.offset + i"
+                >
+                    <span v-if="p.code" class="picker-code">{{ p.code }}:</span>
+                    <span class="picker-title">{{ p.name }}</span>
+                </button>
+            </div>
+            <p v-if="!rows.length" class="picker-empty">{{ empty }}</p>
             <button type="button" class="picker-row picker-create" @mousedown.prevent="emit('create')">{{ createLabel }}</button>
         </div>
     </div>

@@ -89,6 +89,7 @@
         "start": "开始",
         "searchProject": "搜索项目…",
         "noProjects": "没有匹配的项目。",
+        "noClient": "无客户",
         "newProjectLink": "在 Zebu 中新建项目 ↗"
     },
     "footer": {
