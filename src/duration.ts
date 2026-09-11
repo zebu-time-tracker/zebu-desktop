@@ -31,7 +31,7 @@ const WEEK = 7 * DAY;
  * the web app's figure-space padding would show up as stray gaps in the text.
  */
 export function formatDurationHuman(minutes: number, units: DurationUnits = DEFAULT_UNITS): string {
-    const total = Math.max(0, Math.round(minutes));
+    const total = wholeMinutes(minutes);
 
     if (total >= WEEK) return pair(Math.floor(total / WEEK), units.week, Math.floor((total % WEEK) / DAY), units.day);
     if (total >= DAY) return pair(Math.floor(total / DAY), units.day, Math.floor((total % DAY) / HOUR), units.hour);
@@ -54,9 +54,27 @@ export function elapsedMinutes(entry: { minutes: number; timer_started_at: strin
     return entry.minutes + Math.max(0, (now - new Date(entry.timer_started_at).getTime()) / 60000);
 }
 
+/**
+ * Minutes on a clock that is still running, as a whole number.
+ *
+ * Always down, never to the nearest — a timer forty seconds old reads 0:00,
+ * not 0:01. That is the same answer the server gives (`currentMinutes()`
+ * floors), and therefore the same one the web app and the terminal client
+ * show; this app used to round, so the same live timer read a minute higher
+ * here than in a browser beside it. The minute appears when it has actually
+ * been worked.
+ *
+ * Stopping is a separate question and still rounds, with a one-minute
+ * minimum, on the server: the figure that gets billed is decided once, there,
+ * and no client has an opinion about it.
+ */
+function wholeMinutes(minutes: number): number {
+    return Math.max(0, Math.floor(minutes));
+}
+
 /** Clock-style "h:mm" — the timer pill, entry rows, week strip. */
 export function formatMinutes(minutes: number): string {
-    const m = Math.max(0, Math.round(minutes));
+    const m = wholeMinutes(minutes);
     return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 }
 

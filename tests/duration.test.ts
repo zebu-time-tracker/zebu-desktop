@@ -33,9 +33,25 @@ test('under an hour is minutes only, zero is 0m', () => {
     assert.equal(formatDurationHuman(-30), '0m');
 });
 
-test('fractional minutes (a ticking timer) round to whole minutes', () => {
-    assert.equal(formatDurationHuman(59.6), '1h');
+test('fractional minutes (a ticking timer) count down to whole minutes', () => {
+    assert.equal(formatDurationHuman(59.6), '59m');
     assert.equal(formatDurationHuman(90.4), '1h 30m');
+    assert.equal(formatDurationHuman(59.99), '59m');
+});
+
+test('a running timer reads the same here as it does on the server', () => {
+    // The server floors a running entry (`currentMinutes()`), so the web app
+    // and the terminal client do too. This app used to round, which put the
+    // menubar a minute ahead of a browser showing the same timer.
+    const serverWouldSay = (minutes: number) => Math.floor(minutes);
+
+    for (const live of [0.1, 0.6, 0.99, 1.0, 1.5, 41.4, 41.6, 59.9, 120.75]) {
+        const m = serverWouldSay(live);
+        assert.equal(formatMinutes(live), `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`, `${live} minutes`);
+    }
+
+    // The case that gave the bug its name: forty seconds.
+    assert.equal(formatMinutes(40 / 60), '0:00');
 });
 
 test('unit labels come from the caller', () => {
@@ -60,7 +76,7 @@ test('formatMinutes is clock style h:mm', () => {
     assert.equal(formatMinutes(5), '0:05');
     assert.equal(formatMinutes(90), '1:30');
     assert.equal(formatMinutes(38 * 60 + 12), '38:12');
-    assert.equal(formatMinutes(89.7), '1:30');
+    assert.equal(formatMinutes(89.7), '1:29');
 });
 
 test('parseDuration accepts h:mm, decimal hours and Nm', () => {
