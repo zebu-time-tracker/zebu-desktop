@@ -28,6 +28,7 @@ import {
     type PresetRow,
 } from './presets';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
+import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 
@@ -223,6 +224,8 @@ const refresh = async () => {
         // a disconnect since this went out: the reply is for a workspace nobody
         // is looking at any more, and must not repopulate the pill
         if (seq < fetchFloor) return;
+        // The server's clock at this reply, before anything counts against it.
+        noteServerTime(reply.server_time);
         const answer = readActive<Entry>(reply, seq, todayStr());
         // a reply that was overtaken changes nothing: the one on screen is newer
         if (!supersedes(answer, activeAnswer.value)) return;
@@ -292,7 +295,13 @@ const waitingLabel = (entry: { waiting_minutes?: number; agent_waiting?: boolean
     return '';
 };
 
-const elapsed = (entry: { minutes: number; timer_started_at: string | null }) => elapsedMinutes(entry, now.value);
+// `now` ticks off this machine's clock; what a running timer is measured
+// against is the server's. Reading `now` is what makes this recompute each
+// second; `serverNow()` is what makes the answer right.
+const elapsed = (entry: { minutes: number; timer_started_at: string | null }) => {
+    void now.value;
+    return elapsedMinutes(entry, serverNow());
+};
 
 let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
@@ -329,7 +338,7 @@ const trayEntry = computed(() => activeEntry.value);
 // only hands over what is on the clock, whenever that changes; the tooltip is
 // rendered here so it follows the app's locale, with `{time}` left for Rust.
 const updateTray = () => {
-    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t) }).catch(() => {});
+    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t, clockSkewMs()) }).catch(() => {});
 };
 
 onMounted(() => {
