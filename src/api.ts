@@ -7,6 +7,7 @@
 
 import { formatDurationHuman as formatDuration } from './duration';
 import { i18n } from './i18n';
+import { type Pulse } from './pulse';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
 export { CENTRAL_URL, DEFAULT_DOMAIN };
@@ -246,6 +247,24 @@ export const api = {
 
     me: () => request<{ name: string; email: string }>('GET', '/me'),
     timesheet: (date: string) => request<Timesheet>('GET', `/timesheet?date=${date}`),
+    /**
+     * "Has the active timer changed?" — a version token and a running flag,
+     * about forty bytes and one query, asked every couple of seconds in place
+     * of refetching the whole timesheet.
+     *
+     * Null rather than throwing when it cannot be read: a workspace that
+     * predates the endpoint answers 404, and the caller's job is then to carry
+     * on refetching the old way rather than to treat it as an error.
+     */
+    pulse: async (): Promise<Pulse | null> => {
+        try {
+            const body = await request<Partial<Pulse>>('GET', '/timer/pulse');
+
+            return typeof body?.token === 'string' ? { token: body.token, running: Boolean(body.running) } : null;
+        } catch {
+            return null;
+        }
+    },
     summary: () => request<Summary>('GET', '/summary'),
     startTimer: (payload: { project_id: string; task_id?: string | null; notes?: string | null; entry_id?: string }) =>
         request<{ entry: Entry }>('POST', '/timer/start', payload),

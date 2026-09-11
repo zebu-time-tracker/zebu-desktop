@@ -38,7 +38,18 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   hidden, so never rely on `setInterval` for anything time-critical: the tray
   pill ticks from `spawn_tray_ticker` (the frontend only describes what is on
   the clock via `set_tray_state`, see `src/tray.ts`), and the same thread
-  emits `refresh-due` every 20 s for the timesheet re-fetch.
+  drives both refresh beats.
+- **The app asks "did anything change?", not "give me everything".** Rust
+  emits `pulse-due` — every 2 s while a clock runs, every 30 s while none
+  does, chosen from the frame it is already painting — and the frontend reads
+  `GET /api/timer/pulse`, a version token and a running flag. It refetches the
+  timesheet only when that token moves. `refresh-due` still fires, but at five
+  minutes, as the backstop for a pulse that cannot be reached or a workspace
+  too old to serve it. Every rule is in `src/pulse.ts` and none of it performs
+  a fetch, so it is all testable without a webview. The cadences match the web
+  app's (`resources/js/lib/timer.ts` there) on purpose: one person watching
+  the same timer in a tab and in the menubar should not see one notice a stop
+  long before the other.
 - The idle prompt is its own always-on-top window (`show_idle_prompt`, label
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers
