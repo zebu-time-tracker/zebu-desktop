@@ -2,13 +2,23 @@
 #
 # Trigger: push a tag `vX.Y.Z` (see docs/release.md). The tag must match the
 # version in src-tauri/tauri.conf.json. Every platform build attaches its
-# installers and signed updater artifacts to one draft GitHub Release, and
-# tauri-action writes the updater manifest (latest.json) the app polls.
-# Publish the draft to make it the "latest" release the downloads page and
-# the in-app updater point at.
+# installers and signed updater artifacts to one draft GitHub Release; the
+# `publish` job then puts the same files in the Cloudflare R2 bucket behind
+# https://app-downloads.zebu.work, which is where the in-app updater and the
+# downloads page actually read from. (The repository is private, so a GitHub
+# release asset is a 404 for an installed copy of the app — which is why the
+# updater has never worked. Signing, not the host, is what protects an
+# update: the app verifies a minisign signature before installing, so serving
+# the files publicly gives nothing away.)
 #
-# `workflow_dispatch` runs the same build without creating a release — handy
-# for checking the pipeline (and code signing) before cutting a version.
+# `workflow_dispatch` runs the same build and the same publish without
+# creating a release and without touching anything real: it writes to
+# `desktop/_dryrun/<run id>/` instead of `desktop/`. One variable is the only
+# difference, so the rehearsal exercises the credentials, the endpoint, the
+# bucket permissions, the upload ordering and the public URLs.
+#
+# Nothing in this workflow deletes anything from the bucket. Scratch objects
+# under `desktop/_dryrun/` are expired by a bucket lifecycle rule.
 #
 # Code signing is optional and switched on purely by which secrets exist:
 #   macOS   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
@@ -17,6 +27,9 @@
 #           AZURE_TRUSTED_SIGNING_ENDPOINT, AZURE_CODE_SIGNING_NAME,
 #           AZURE_CERT_PROFILE_NAME                        → Azure Trusted Signing
 #   updater TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD (required)
+#
+# Publishing needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY
+# (an R2 API token scoped to the `app-downloads` bucket, Object Read & Write).
 
 name: Release
 
@@ -31,19 +44,35 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # Where the built files are served from. The updater endpoint in
+  # src-tauri/tauri.conf.json must agree with this.
+  R2_BUCKET: app-downloads
+  PUBLIC_BASE: https://app-downloads.zebu.work
 
 jobs:
   verify:
-    name: Tag matches app version
+    name: Version and release scripts
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The manifest builder and the R2 publisher decide what every installed
+      # copy of the app is told to download. Neither can be rehearsed by
+      # cutting a release, so they are tested here, before anything builds.
+      - name: Test the release scripts
+        run: bash scripts/tests/publish-r2.test.sh
 
       - name: Compare tag with tauri.conf.json and package.json
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           TAG: ${{ github.ref_name }}
         run: |
+          # shellcheck disable=SC2016  # the JS below is deliberately unexpanded
           node -e '
             const fs = require("fs");
             const tag = process.env.TAG.replace(/^v/, "");
@@ -209,16 +238,26 @@ jobs:
             Existing installs update themselves via `latest.json`.
           releaseDraft: true
           prerelease: false
+          # NOTE: this attaches a latest.json to the GitHub release whose URLs
+          # point at GitHub release assets. The app does NOT read it — its
+          # endpoint is app-downloads.zebu.work, and on a private repository
+          # those URLs are a 404 anyway. The one the app reads is built by
+          # scripts/updater-manifest.mjs in the `publish` job below. Left on
+          # only because turning it off is a change to the tauri-action call
+          # that a release cannot rehearse; it is dead weight, not a fallback.
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }} ${{ (runner.os == 'Windows' && env.HAS_AZURE_SIGNING == 'true') && '--config src-tauri/tauri.windows-signing.conf.json' || '' }}
 
+      # Always, now: the publish job downloads these rather than reading the
+      # GitHub release, so the same handful of files reaches R2 on a real
+      # release and on a dry run. `if-no-files-found: error` because a build
+      # that produced nothing must not quietly become a publish of nothing.
       - name: Upload bundles as workflow artifacts
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         uses: actions/upload-artifact@v4
         with:
           name: zebu-desktop-${{ runner.os }}
-          if-no-files-found: ignore
+          if-no-files-found: error
           path: |
             src-tauri/target/**/release/bundle/dmg/*.dmg
             src-tauri/target/**/release/bundle/macos/*.tar.gz*
@@ -227,3 +266,144 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage*
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
+
+  # ---------------------------------------------------------------------------
+  # Publish to Cloudflare R2
+  # ---------------------------------------------------------------------------
+  # This is what installed copies of the app read. It runs on both paths; the
+  # only difference is DEST_BASE:
+  #
+  #   tag              desktop/            -> desktop/<version>/…,
+  #                                          desktop/latest/…, desktop/latest.json
+  #   workflow_dispatch  desktop/_dryrun/<run id>/  -> the same three, under there
+  #
+  # Everything else — credentials, endpoint, ordering, read-back, the public
+  # HTTPS check — is one code path, so a dry run proves the route a release
+  # will take. A dry run cannot write desktop/latest.json, desktop/latest/* or
+  # a real version folder; scripts/publish-r2.sh refuses any other --base and
+  # scripts/tests/publish-r2.test.sh holds it to that.
+  publish:
+    name: Publish to R2
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    env:
+      # The one variable that separates a release from a rehearsal.
+      DEST_BASE: ${{ startsWith(github.ref, 'refs/tags/v') && 'desktop' || format('desktop/_dryrun/{0}', github.run_id) }}
+      # Pinned: the AWS CLI decides how every object is written (checksums,
+      # multipart thresholds, metadata), and an unannounced change there is a
+      # broken release found at the worst moment. The versioned installer URL
+      # is immutable, so the checksum below pins the exact bytes.
+      AWS_CLI_VERSION: 2.36.43
+      AWS_CLI_SHA256: ef606eb55f9a93ac404cc4a6869c0a791c234b898d93ec6af3bba8c491b391e9
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check the R2 credentials are present
+        env:
+          HAS_R2: ${{ secrets.R2_ACCOUNT_ID != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' }}
+        run: |
+          if [ "$HAS_R2" != "true" ]; then
+            echo "::error::R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY are not set on $GITHUB_REPOSITORY. The updater reads $PUBLIC_BASE, so a release that cannot publish there is not a release. See docs/release.md."
+            exit 1
+          fi
+
+      - name: Install the AWS CLI (pinned)
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip"
+          echo "${AWS_CLI_SHA256}  awscliv2.zip" | sha256sum -c -
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zebu-desktop-*
+          path: artifacts
+
+      # One flat directory: the bucket layout is flat under the version, and
+      # the manifest builder reads a directory rather than a bundle tree. Two
+      # platforms producing the same file name would silently overwrite one
+      # another, so that is an error rather than a coin toss.
+      - name: Collect the bundles into one directory
+        run: |
+          mkdir -p upload
+          count=0
+          while IFS= read -r file; do
+            name=$(basename -- "$file")
+            if [ -e "upload/$name" ]; then
+              echo "::error::two builds produced a file called $name"
+              exit 1
+            fi
+            cp -- "$file" "upload/$name"
+            count=$((count + 1))
+          done < <(find artifacts -type f | sort)
+          if [ "$count" = 0 ]; then
+            echo "::error::no bundles were downloaded — nothing to publish"
+            exit 1
+          fi
+          echo "$count files to publish:"
+          ls -l upload
+
+      - name: Build the updater manifest
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          node scripts/updater-manifest.mjs \
+            --version "$VERSION" \
+            --dir upload \
+            --base-url "$PUBLIC_BASE/$DEST_BASE/$VERSION" \
+            --notes "Zebu Desktop $VERSION" \
+            --aliases-out aliases.tsv \
+            > latest.json
+          echo "latest.json:"
+          cat latest.json
+          echo "aliases:"
+          cat aliases.tsv
+
+      # Versioned files, then the aliases, then the manifest — see
+      # scripts/publish-r2.sh. The endpoint carries the account id and is
+      # passed through the environment, never on a command line; no `set -x`
+      # anywhere on this path.
+      - name: Publish to R2 and read it back
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          # R2 rejects the trailing checksum headers the CLI adds by default
+          # on some paths; "when_required" is the S3-compatible behaviour.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          scripts/publish-r2.sh publish \
+            --bucket "$R2_BUCKET" \
+            --base "$DEST_BASE" \
+            --version "$VERSION" \
+            --dir upload \
+            --manifest latest.json \
+            --aliases aliases.tsv \
+            --public-base "$PUBLIC_BASE"
+
+      - name: Summarise
+        run: |
+          {
+            if [ "$DEST_BASE" = desktop ]; then
+              echo "### Published Zebu Desktop $VERSION"
+              echo
+              echo "- manifest: \`$PUBLIC_BASE/desktop/latest.json\`"
+              echo "- this build: \`$PUBLIC_BASE/desktop/$VERSION/\` (kept forever)"
+              echo "- download aliases: \`$PUBLIC_BASE/desktop/latest/\`"
+            else
+              echo "### Dry run — nothing real was written"
+              echo
+              echo "Everything went to \`$DEST_BASE/\`: the same code, credentials and ordering as a release."
+              echo
+              echo "- manifest: \`$PUBLIC_BASE/$DEST_BASE/latest.json\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

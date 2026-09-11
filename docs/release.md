@@ -3,19 +3,22 @@
 Releases are built by GitHub Actions (`.github/workflows/release.yml`) with
 [tauri-action](https://github.com/tauri-apps/tauri-action): pushing a tag
 `vX.Y.Z` produces a **draft GitHub Release** carrying the macOS, Windows and
-Linux installers, their signatures, and the updater manifest `latest.json`
-that installed copies poll. Publishing the draft makes it the *latest*
-release — the one the downloads page links to and the in-app updater installs.
+Linux installers and their signatures, and then publishes the same files to
+the Cloudflare R2 bucket served at **https://app-downloads.zebu.work**, which
+is where the in-app updater and the downloads page actually read from.
+
+See [Where builds land](#where-builds-land) for the bucket layout and how to
+roll a release back.
 
 ## One-time setup
 
 ### 1. Repository
 
-Create the GitHub repository (the placeholders assume `OWNER/zebu-desktop`)
-and replace `OWNER` in:
-
-- `src-tauri/tauri.conf.json` → `plugins.updater.endpoints`
-- `zebu-public/downloads.html` → every `github.com/OWNER/zebu-desktop` link
+Create the GitHub repository (the placeholders assume `OWNER/zebu-desktop`).
+Nothing the app fetches lives on GitHub — see
+[Where builds land](#where-builds-land) — so the only link to keep current is
+`zebu-public/downloads.html`, which should point at
+`https://app-downloads.zebu.work/desktop/latest/…`.
 
 ### 2. Updater keypair (required)
 
@@ -123,10 +126,32 @@ import the `.pfx` on the runner in a step before tauri-action and set
 `timestampUrl` via a `--config` overlay the same way the workflow does for
 Azure.
 
-### 5. Secrets checklist
+### 5. The download bucket (required)
+
+Builds are served from a Cloudflare R2 bucket, `app-downloads`, with a public
+custom domain of `app-downloads.zebu.work`. Create an R2 **API token** scoped
+to that one bucket with *Object Read & Write*, and add three secrets:
+
+| Secret | Value |
+| --- | --- |
+| `R2_ACCOUNT_ID` | the Cloudflare account id (the `<id>` in `https://<id>.r2.cloudflarestorage.com`) |
+| `R2_ACCESS_KEY_ID` | the token's access key id |
+| `R2_SECRET_ACCESS_KEY` | the token's secret access key |
+
+The workflow talks to R2 through the S3-compatible API with a pinned AWS CLI
+v2 (version and SHA-256 in the `publish` job), `region = auto` and the
+endpoint passed in `AWS_ENDPOINT_URL` so the account id never reaches a
+command line or a log. It performs **no delete of any kind** — no `s3 rm`, no
+`s3 sync` (which mirrors, and would remove old releases to match the build
+directory), only individual `put-object` calls. Scratch objects from dry runs
+accumulate under `desktop/_dryrun/` until a bucket **lifecycle rule** expires
+them; that rule is the bucket owner's to configure and is not part of CI.
+
+### 6. Secrets checklist
 
 | Secret | Required | Purpose |
 | --- | --- | --- |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | yes | publishing to app-downloads.zebu.work |
 | `TAURI_SIGNING_PRIVATE_KEY` | yes | signs updater artifacts (`.sig` files) |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | yes (may be empty) | password of that key |
 | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | for signed macOS builds | Developer ID signing |
@@ -152,7 +177,9 @@ files, brings `package-lock.json` and `Cargo.lock` along, and makes one
 commit, one tag and one push. `--dry-run` prints every step and every file
 change without touching anything; `--skip-checks` skips the gate (loudly —
 the workflow runs it anyway). `scripts/tests/release.test.sh` exercises all of
-it against throwaway repositories.
+it against throwaway repositories, and `scripts/tests/publish-r2.test.sh`
+(`npm run test:publish`, which the workflow's first job runs before anything
+builds) does the same for the manifest builder and the R2 publisher.
 
 It does **not** touch `zebu-public/downloads.html` — that lives in another
 repository and is still step 2 below.
@@ -165,23 +192,29 @@ repository and is still step 2 below.
    `cargo check` so `Cargo.lock` follows). The workflow's first job fails if
    the tag disagrees with `tauri.conf.json`/`package.json`.
 2. Update the release history and the current version/asset names in
-   `zebu-public/downloads.html` (see below).
+   `zebu-public/downloads.html` (see [Where builds land](#where-builds-land) —
+   the stable `desktop/latest/…` names mean only the history needs touching).
 3. Commit, tag and push:
    ```bash
    git commit -am "Release 0.2.0"
    git tag v0.2.0
    git push origin main v0.2.0
    ```
-4. Watch the *Release* workflow. Three jobs (macOS universal, Windows x64,
-   Linux x86_64) attach to the same **draft** release; the last one to finish
-   also uploads `latest.json`.
-5. Open the draft on GitHub, check the assets and notes, and **Publish**.
-   From that moment `…/releases/latest/download/<asset>` resolves to the new
-   files and running apps offer the update on their next launch.
+4. Watch the *Release* workflow. Three build jobs (macOS universal, Windows
+   x64, Linux x86_64) attach to the same **draft** release, and the
+   `publish` job then puts every built file in R2 and reads it back.
+5. Once `publish` is green the update is live: running apps offer it on their
+   next launch. Open the draft release on GitHub, check the assets and notes,
+   and **Publish** it — that step is now only for the record and for people
+   who want the installers from GitHub.
 
-A `workflow_dispatch` run (Actions → Release → Run workflow) builds all
-three platforms without creating a release and uploads the bundles as
-workflow artifacts — use it to validate signing before tagging.
+A `workflow_dispatch` run (Actions → Release → Run workflow) is a **dry run**:
+it builds all three platforms, uploads the bundles as workflow artifacts, and
+publishes them to `desktop/_dryrun/<run id>/` with the same code, credentials
+and ordering a release uses — then reads them back, including fetching the
+generated manifest over HTTPS and HEADing every URL in it. It never writes
+`desktop/latest.json`, `desktop/latest/*` or a real version folder. Use it to
+validate signing *and* the whole publishing path before tagging.
 
 ### Asset names
 
@@ -196,19 +229,90 @@ tauri-action names assets from `productName` (`Zebu`) and the version:
 
 `latest.json` lists one entry per updater target (`darwin-aarch64`,
 `darwin-x86_64`, `windows-x86_64`, `linux-x86_64`) with the download URL
-and signature; `updaterJsonPreferNsis` makes Windows installs update through
-the NSIS installer rather than the MSI.
+and signature; Windows installs update through the NSIS installer rather
+than the MSI.
 
-## How the downloads page picks up a release
+## Where builds land
 
-`zebu-public/downloads.html` links to
-`https://github.com/OWNER/zebu-desktop/releases/latest/download/<asset>`.
-GitHub redirects `releases/latest/download/…` to the asset of that name on
-the most recently **published, non-prerelease** release — so the page needs
-no deployment step, but because the version is part of every asset name the
-file names on the page must be bumped with each release (step 2 above). A
-draft release is not "latest", which is what lets you inspect the build
-before the links flip.
+Everything the app and the downloads page fetch lives in the `app-downloads`
+R2 bucket, served at `https://app-downloads.zebu.work`:
+
+```
+desktop/
+  0.2.0/                          every artifact of that build, beside its .sig
+    Zebu_0.2.0_universal.dmg
+    Zebu_universal.app.tar.gz     Zebu_universal.app.tar.gz.sig
+    Zebu_0.2.0_x64-setup.exe      Zebu_0.2.0_x64-setup.exe.sig
+    Zebu_0.2.0_x64_en-US.msi      Zebu_0.2.0_x64_en-US.msi.sig
+    Zebu_0.2.0_amd64.AppImage     Zebu_0.2.0_amd64.AppImage.sig
+    Zebu_0.2.0_amd64.deb
+    Zebu-0.2.0-1.x86_64.rpm
+  0.1.9/  …                       older releases, kept forever
+  latest/                         stable names for a download button
+    mac.dmg  windows.exe  linux.AppImage
+  latest.json                     the updater manifest
+  _dryrun/<run id>/…              workflow_dispatch rehearsals
+```
+
+Three things about it are deliberate.
+
+**A version folder is written once and never touched again.** Storage is
+negligible next to being able to hand someone the exact build that worked
+when a release goes wrong. Nothing in the workflow deletes; `scripts/publish-r2.sh`
+contains no delete call at all, which is checked by
+`scripts/tests/publish-r2.test.sh`.
+
+**`latest.json` points at the versioned URLs, never at `latest/`.** The
+updater verifies a minisign signature against the exact bytes it downloads.
+If the manifest named `latest/mac.dmg` and that alias were being overwritten
+at the moment an app fetched it — or had already moved on to the next release
+— the download would not fail as a 404, it would fail as a *signature error*,
+which looks like a compromised update rather than a race. A versioned URL
+cannot drift. The aliases exist only for a human clicking a download button;
+`scripts/updater-manifest.mjs` refuses a `--base-url` that does not end in the
+version being released.
+
+**Upload order is versioned files → aliases → manifest, and the manifest is
+last.** An installed copy must never learn about a version before its files
+are there.
+
+### Rolling back by hand
+
+The manifest is the only thing that decides what installs offer. To put
+everyone back on 0.1.9, rewrite `desktop/latest.json` from the copy that
+0.1.9's release produced — its version folder is still there, so the URLs and
+signatures are still valid. With the same credentials the workflow uses
+(`AWS_ENDPOINT_URL=https://<account id>.r2.cloudflarestorage.com`,
+`AWS_DEFAULT_REGION=auto`):
+
+```bash
+# Rebuild 0.1.9's manifest from its own files, then put it back in place.
+aws s3 cp --recursive s3://app-downloads/desktop/0.1.9/ ./rollback/
+node scripts/updater-manifest.mjs \
+  --version 0.1.9 --dir ./rollback \
+  --base-url https://app-downloads.zebu.work/desktop/0.1.9 \
+  > latest.json
+aws s3api put-object --bucket app-downloads --key desktop/latest.json \
+  --body latest.json --content-type application/json --cache-control no-cache
+```
+
+Then point the download aliases back too, if the page matters as much as the
+updater:
+
+```bash
+aws s3api put-object --bucket app-downloads --key desktop/latest/mac.dmg \
+  --body ./rollback/Zebu_0.1.9_universal.dmg \
+  --content-type application/x-apple-diskimage --cache-control 'public, max-age=300'
+```
+
+Two caveats. Apps already on 0.2.0 will **not** downgrade — the updater only
+moves forward — so a rollback stops the spread rather than undoing it; fixing
+those needs a 0.2.1. And `latest.json` is served with `Cache-Control: no-cache`
+so a rollback is visible immediately, but the aliases are cached for five
+minutes.
+
+Do not delete the bad version's folder. Leaving it costs nothing and means
+the build is still there to diagnose.
 
 ## Testing an update locally (0.1.0 → 0.2.0)
 
@@ -247,6 +351,22 @@ before the links flip.
    it. Settings → the build line shows "Check for updates" / progress. After
    the relaunch the settings popout reads *Zebu Desktop v0.2.0*.
 
-To test against the real pipeline instead, publish a `v0.2.0` release on
-GitHub and launch an installed 0.1.0 whose `tauri.conf.json` already
-carried the production endpoint and public key.
+To test against the real pipeline instead, run the workflow manually
+(Actions → Release → Run workflow) and point an installed build at the dry
+run's manifest — `https://app-downloads.zebu.work/desktop/_dryrun/<run id>/latest.json`
+— which is a real signed release in every respect except its prefix.
+
+### Where the manifest's shape comes from
+
+`scripts/updater-manifest.mjs` writes the *static* format read by
+`tauri-plugin-updater`'s `RemoteRelease` deserializer: `version` (semver, a
+leading `v` is tolerated), optional `notes`, optional `pub_date` that **must**
+parse as RFC 3339 or the whole manifest is rejected, and `platforms` keyed by
+`<os>-<arch>` with `signature` and `url`. The targets come from that crate's
+`updater_os()`/`updater_arch()` (`darwin`/`windows`/`linux` × `aarch64`/
+`x86_64`), and lookup tries `<os>-<arch>-<installer>` before falling back to
+`<os>-<arch>`, so the plain keys serve both. Confirmed by reading
+`tauri-plugin-updater-2.11.0/src/updater.rs` — `ReleaseManifestPlatform` and
+`RemoteReleaseInner` near the top of the file, `impl Deserialize for
+RemoteRelease`, `get_urls()` and `target()` — at the version pinned in
+`src-tauri/Cargo.lock`.

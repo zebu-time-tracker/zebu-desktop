@@ -1,0 +1,9 @@
+# Blacksmith's runner labels are not in actionlint's built-in list, so
+# declaring them here is what makes `actionlint` usable as a check on these
+# workflows instead of five false positives.
+self-hosted-runner:
+  labels:
+    - blacksmith-4vcpu-ubuntu-2404
+    - blacksmith-4vcpu-ubuntu-2204
+    - blacksmith-6vcpu-macos-15
+    - blacksmith-4vcpu-windows-2025
