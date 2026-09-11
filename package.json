@@ -9,6 +9,7 @@
         "test": "node --experimental-strip-types --no-warnings --test \"tests/**/*.test.ts\" && npm run i18n:check",
         "lint": "vue-tsc --noEmit -p tsconfig.json",
         "i18n:check": "node scripts/i18n-check.mjs",
+        "test:publish": "bash scripts/tests/publish-r2.test.sh",
         "preview": "vite preview",
         "tauri": "tauri"
     },

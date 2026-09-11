@@ -1,6 +1,8 @@
-// Auto-update: the Tauri updater plugin fetches latest.json from the GitHub
-// release (endpoint + public key in tauri.conf.json), verifies the signature,
-// and swaps the binary; the process plugin relaunches into the new build.
+// Auto-update: the Tauri updater plugin fetches latest.json from
+// app-downloads.zebu.work (endpoint + public key in tauri.conf.json),
+// verifies the signature, and swaps the binary; the process plugin relaunches
+// into the new build. The manifest names per-version URLs that never change,
+// so the bytes downloaded are always the ones the signature was made for.
 // Everything here is best-effort — an update check must never break the app.
 
 import { relaunch } from '@tauri-apps/plugin-process';
