@@ -8,11 +8,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
-import { initialPulseState, onPulse, PULSE, refetched } from './pulse';
+import { initialPulseState, onPulse, onUnavailable, PULSE, refetched } from './pulse';
 import {
     defaultPresetName,
     filterPresets,
@@ -234,7 +234,9 @@ const refresh = async () => {
         pulseState = refetched(pulseState, Date.now());
     } catch (e: any) {
         if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
-        errorMessage.value = e.message;
+        // A planned outage is not a failure to report as one: "Service
+        // Unavailable" tells nobody anything.
+        errorMessage.value = e instanceof Unavailable ? t('errors.maintenance') : e.message;
     } finally {
         loading.value = false;
     }
@@ -311,8 +313,19 @@ let pulseState = initialPulseState();
  */
 const onPulseBeat = async () => {
     if (view.value !== 'main') return;
-    const decision = onPulse(await api.pulse(), pulseState, Date.now());
+
+    const beat = await api.pulse();
+    const down = beat instanceof Unavailable;
+    // Down for the announced window is its own answer: wait as long as the
+    // server asked, and do not refetch — the full payload would be refused
+    // too, and asking for it is the hammering Retry-After exists to stop
+    // (board #216).
+    const decision = down
+        ? onUnavailable(beat.retryAfter === null ? null : beat.retryAfter * 1_000, pulseState, Date.now())
+        : onPulse(beat, pulseState, Date.now());
+
     pulseState = decision.state;
+    if (down) errorMessage.value = t('errors.maintenance');
     if (decision.refetch) await refresh();
 
     return decision.nextIn;

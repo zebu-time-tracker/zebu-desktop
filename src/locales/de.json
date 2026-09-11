@@ -26,7 +26,8 @@
         "requestFailed": "Anfrage fehlgeschlagen ({status})",
         "workspaceNotFound": "Kein Arbeitsbereich unter {host}. Prüfe den Namen und versuche es erneut.",
         "notAWorkspaceHost": "{host} ist kein Zebu-Arbeitsbereich.",
-        "workspacePaused": "{host} ist pausiert. Öffne die Abrechnungsseite im Browser, um weiterzumachen."
+        "workspacePaused": "{host} ist pausiert. Öffne die Abrechnungsseite im Browser, um weiterzumachen.",
+        "maintenance": "Geplante Wartung – bald wieder da."
     },
     "header": {
         "todayWithDate": "Heute, {date}",

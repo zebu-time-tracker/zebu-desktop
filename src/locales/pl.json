@@ -26,7 +26,8 @@
         "requestFailed": "Żądanie nie powiodło się ({status})",
         "workspaceNotFound": "Brak przestrzeni roboczej pod adresem {host}. Sprawdź nazwę i spróbuj ponownie.",
         "notAWorkspaceHost": "{host} nie jest przestrzenią roboczą Zebu.",
-        "workspacePaused": "{host} jest wstrzymany. Otwórz stronę rozliczeń w przeglądarce, aby kontynuować."
+        "workspacePaused": "{host} jest wstrzymany. Otwórz stronę rozliczeń w przeglądarce, aby kontynuować.",
+        "maintenance": "Planowana konserwacja, wkrótce dostępne."
     },
     "header": {
         "todayWithDate": "Dziś, {date}",

@@ -26,7 +26,8 @@
         "requestFailed": "Falha na solicitação ({status})",
         "workspaceNotFound": "Nenhum espaço de trabalho em {host}. Verifique o nome e tente novamente.",
         "notAWorkspaceHost": "{host} não é um espaço de trabalho do Zebu.",
-        "workspacePaused": "{host} está em pausa. Abra a página de faturação no navegador para continuar."
+        "workspacePaused": "{host} está em pausa. Abra a página de faturação no navegador para continuar.",
+        "maintenance": "Manutenção programada, de volta em breve."
     },
     "header": {
         "todayWithDate": "Hoje, {date}",
