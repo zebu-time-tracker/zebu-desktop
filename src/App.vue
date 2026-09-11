@@ -12,6 +12,7 @@ import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, 
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
+import { initialPulseState, onPulse, PULSE, refetched } from './pulse';
 import {
     defaultPresetName,
     filterPresets,
@@ -228,6 +229,9 @@ const refresh = async () => {
         activeAnswer.value = answer;
         sheet.value = reply;
         errorMessage.value = '';
+        // A fetch is a fetch, whoever asked for it: opening the popover or
+        // starting a timer pushes the five-minute backstop out too.
+        pulseState = refetched(pulseState, Date.now());
     } catch (e: any) {
         if (e.message === 'unauthenticated') return; // session.onExpired already moved to the connect screen
         errorMessage.value = e.message;
@@ -293,6 +297,26 @@ const elapsed = (entry: { minutes: number; timer_started_at: string | null }) =>
 let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
 let refreshUnlisten: UnlistenFn | null = null;
+let pulseUnlisten: UnlistenFn | null = null;
+let pulseLoop: ReturnType<typeof setTimeout> | null = null;
+
+// What the pulse knows between beats (src/pulse.ts owns every rule; this only
+// carries the answer). Not a ref: nothing renders from it.
+let pulseState = initialPulseState();
+
+/**
+ * One beat: ask whether the active timer changed, and refetch only if it did.
+ * The old behaviour — refetch everything, every twenty seconds — is now what
+ * happens when the answer moves, or once every five minutes regardless.
+ */
+const onPulseBeat = async () => {
+    if (view.value !== 'main') return;
+    const decision = onPulse(await api.pulse(), pulseState, Date.now());
+    pulseState = decision.state;
+    if (decision.refetch) await refresh();
+
+    return decision.nextIn;
+};
 
 // The pill is the server's `active` entry: the running timer, or — so a timer
 // stopped elsewhere leaves the work on screen rather than "zzzz" — the entry
@@ -315,7 +339,20 @@ onMounted(() => {
     // dev) fall back to a webview interval.
     listen('refresh-due', () => refresh())
         .then((off) => (refreshUnlisten = off))
-        .catch(() => (refreshLoop = setInterval(refresh, 20000)));
+        .catch(() => (refreshLoop = setInterval(refresh, PULSE.fallback)));
+    // Rust decides the pulse cadence from the clock it is already painting —
+    // two seconds while something runs, thirty while nothing does — because its
+    // thread keeps time while the popover is hidden and the webview's does not.
+    // Outside Tauri (plain-browser dev) the beat schedules itself instead.
+    listen('pulse-due', () => onPulseBeat())
+        .then((off) => (pulseUnlisten = off))
+        .catch(() => {
+            const beat = async () => {
+                const next = (await onPulseBeat()) ?? PULSE.idle;
+                pulseLoop = setTimeout(beat, next);
+            };
+            pulseLoop = setTimeout(beat, PULSE.idle);
+        });
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
@@ -336,6 +373,8 @@ onUnmounted(() => {
     if (tick) clearInterval(tick);
     if (refreshLoop) clearInterval(refreshLoop);
     refreshUnlisten?.();
+    if (pulseLoop) clearTimeout(pulseLoop);
+    pulseUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();

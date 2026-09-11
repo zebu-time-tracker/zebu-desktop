@@ -766,11 +766,31 @@ struct TrayFrame {
 static TRAY_STATE: Mutex<Option<TrayEntry>> = Mutex::new(None);
 static TRAY_FRAME: Mutex<Option<TrayFrame>> = Mutex::new(None);
 
-/// How often the ticker asks the webview to re-fetch the timesheet, so a timer
-/// started or stopped from another client shows up here without a click. The
-/// nudge comes from this native thread rather than a webview interval because
-/// the webview's own timers stall while the popover is hidden.
-const REFRESH_NUDGE_S: u64 = 20;
+/// How often the ticker asks the webview to re-fetch the whole timesheet. This
+/// is now only the backstop: `pulse-due` below is what actually notices a timer
+/// started or stopped elsewhere, and this catches whatever that misses — the
+/// endpoint being unreachable, or an old workspace that does not serve it.
+///
+/// The beat comes from this native thread rather than a webview interval
+/// because the webview's own timers stall while the popover is hidden, which
+/// is most of the time for a menubar app.
+const REFRESH_NUDGE_S: u64 = 5 * 60;
+
+/// How often the ticker asks the webview to read the pulse — the cheap "has
+/// the active timer changed?" question — while a timer is running, and while
+/// none is.
+///
+/// Two numbers rather than one because this app is open from login to
+/// shutdown: asking every two seconds around the clock would be a cost nobody
+/// ever goes looking for, since it never spikes. Nothing can change the answer
+/// while no clock is running except somebody starting one, and thirty seconds
+/// is no more often than this app already polled.
+///
+/// They match the web app's (resources/js/lib/timer.ts there) on purpose: the
+/// same person watching the same timer in a browser tab and in the menubar
+/// should not see one of them notice a stop long before the other.
+const PULSE_RUNNING_S: u64 = 2;
+const PULSE_IDLE_S: u64 = 30;
 
 fn unix_ms(at: SystemTime) -> u64 {
     at.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
@@ -951,18 +971,42 @@ fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>,
     }
 }
 
-/// Native clock for the pill: repaints on minute rollovers while the popover
-/// is hidden, and every REFRESH_NUDGE_S asks the webview to re-fetch the
-/// timesheet (`refresh-due`) so changes made elsewhere are picked up.
+/// How long to wait before the next pulse, given whether a clock is running.
+/// Split out so the choice is a plain function over a bool and can be tested.
+fn pulse_interval_s(running: bool) -> u64 {
+    if running {
+        PULSE_RUNNING_S
+    } else {
+        PULSE_IDLE_S
+    }
+}
+
+/// Native clock for the pill: repaints on minute rollovers while the popover is
+/// hidden, asks the webview to read the pulse (`pulse-due`) at whichever
+/// cadence the running state calls for, and every REFRESH_NUDGE_S asks it to
+/// re-fetch the whole timesheet (`refresh-due`) as a backstop.
+///
+/// The running state is read from the frame this thread already paints, so the
+/// cadence follows the clock the user can see rather than a second copy of the
+/// fact that could drift from it.
 fn spawn_tray_ticker(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut last_nudge = SystemTime::now();
+        let mut last_pulse = SystemTime::now();
         loop {
             std::thread::sleep(Duration::from_secs(1));
             refresh_tray(&app);
-            let since = SystemTime::now().duration_since(last_nudge).unwrap_or_default().as_secs();
-            if since >= REFRESH_NUDGE_S {
-                last_nudge = SystemTime::now();
+
+            let now = SystemTime::now();
+            let running = TRAY_FRAME.lock().map(|f| f.as_ref().is_some_and(|f| f.running)).unwrap_or(false);
+
+            if now.duration_since(last_pulse).unwrap_or_default().as_secs() >= pulse_interval_s(running) {
+                last_pulse = now;
+                let _ = app.emit_to("main", "pulse-due", ());
+            }
+
+            if now.duration_since(last_nudge).unwrap_or_default().as_secs() >= REFRESH_NUDGE_S {
+                last_nudge = now;
                 let _ = app.emit_to("main", "refresh-due", ());
             }
         }
@@ -1590,5 +1634,27 @@ mod beside_position_tests {
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
         assert_eq!(beside_position(popover(1450.0), SIZE, right, 8.0), (1838.0, 25.0));
+    }
+}
+
+#[cfg(test)]
+mod pulse_cadence_tests {
+    use crate::{pulse_interval_s, REFRESH_NUDGE_S};
+
+    #[test]
+    fn the_pulse_is_asked_for_far_less_often_while_nothing_is_running() {
+        // A menubar app is open from login to shutdown, so the idle cadence is
+        // what it costs the server for most of the day.
+        assert_eq!(pulse_interval_s(true), 2);
+        assert_eq!(pulse_interval_s(false), 30);
+        assert!(pulse_interval_s(false) > pulse_interval_s(true));
+    }
+
+    #[test]
+    fn the_full_refetch_is_only_a_backstop_now() {
+        // It used to be how a timer started elsewhere got noticed at all. The
+        // pulse does that now, and this only catches what the pulse misses, so
+        // it has to be far rarer than the pulse rather than competing with it.
+        assert!(REFRESH_NUDGE_S > pulse_interval_s(false));
     }
 }
