@@ -115,6 +115,19 @@ cache_control_for_phase() {
     esac
 }
 
+# An alias has a stable name so a download page can link to it forever, but
+# nobody wants a file called `mac.dmg` sitting in their Downloads folder with
+# no way to tell which version it is. The object carries the versioned name it
+# was copied from, and the browser saves it under that instead — the link and
+# the saved file are allowed to disagree, and here they should.
+#
+# Only the aliases. A versioned key is already named for its version, and the
+# manifest must stay a document the updater reads rather than a download.
+content_disposition_for() { # phase file
+    [ "$1" = alias ] || return 0
+    printf 'attachment; filename="%s"' "$(basename -- "$2")"
+}
+
 # --- the plan ---------------------------------------------------------------
 
 # Emits `phase<TAB>key<TAB>local file` lines, in the order they must be
@@ -142,25 +155,56 @@ build_plan() {
 # --- publish ----------------------------------------------------------------
 
 upload_one() { # phase key file
-    local phase=$1 key=$2 file=$3
+    local phase=$1 key=$2 file=$3 disposition
+    local -a extra=()
+
+    # An array, not `${var:+--flag "$var"}`: the value contains spaces and
+    # would be split into several arguments, leaving aws to reject a stray
+    # `filename="…"`.
+    disposition=$(content_disposition_for "$phase" "$file")
+    [ -n "$disposition" ] && extra=(--content-disposition "$disposition")
+
     "$AWS_BIN" s3api put-object \
         --bucket "$bucket" \
         --key "$key" \
         --body "$file" \
         --content-type "$(content_type_for "$key")" \
         --cache-control "$(cache_control_for_phase "$phase")" \
+        ${extra[@]+"${extra[@]}"} \
         --output text --query ETag >/dev/null \
         || die "upload failed: $key"
 }
 
 # Read back what we just wrote, from the API. A wrong prefix, a truncated
 # upload or a credential scoped to the wrong bucket all show up here.
-verify_object() { # key file
-    local key=$1 file=$2 remote local_size
-    remote=$("$AWS_BIN" s3api head-object --bucket "$bucket" --key "$key" --output text --query ContentLength 2>/dev/null) \
+verify_object() { # phase key file
+    local phase=$1 key=$2 file=$3 read_back remote disposition local_size want
+    # Size and download name in one head-object: the alias check is about a
+    # header on the object we just wrote, not a second thing to go and fetch.
+    read_back=$("$AWS_BIN" s3api head-object --bucket "$bucket" --key "$key" \
+        --output text --query '[ContentLength,ContentDisposition]' 2>/dev/null) \
         || die "verify: $key is not in the bucket after upload"
+    remote=$(printf '%s' "$read_back" | cut -f1)
+    disposition=$(printf '%s' "$read_back" | cut -f2-)
+
     local_size=$(wc -c < "$file" | tr -d ' ')
     [ "$remote" = "$local_size" ] || die "verify: $key is $remote bytes in the bucket, $local_size locally"
+
+    if [ "$phase" = alias ]; then
+        # The whole of the versioned-filename behaviour is this one header, so
+        # it is read back rather than assumed from having passed the flag. A
+        # silent failure stays invisible until someone finds `mac.dmg` in their
+        # Downloads folder with no way to tell which version it is.
+        want=$(basename -- "$file")
+        case $disposition in
+            *"filename=\"$want\""*) ;;
+            *) die "verify: $key would download as ${disposition:-its own key}, wanted $want" ;;
+        esac
+        note "  ok  $key ($local_size bytes, downloads as $want)"
+
+        return 0
+    fi
+
     note "  ok  $key ($local_size bytes)"
 }
 
@@ -242,7 +286,7 @@ EOF
     note "-- verifying"
     while IFS=$'\t' read -r phase key file; do
         [ -n "${phase:-}" ] || continue
-        verify_object "$key" "$file"
+        verify_object "$phase" "$key" "$file"
     done <<EOF
 $plan
 EOF

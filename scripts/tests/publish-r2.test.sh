@@ -269,24 +269,33 @@ cat > "$STUB/aws" <<'STUB_AWS'
 set -u
 printf '%s\n' "$*" >> "$AWS_LOG"
 op=$2
-key=''; body=''
+key=''; body=''; disposition=''
 while [ $# -gt 0 ]; do
     case $1 in
         --key) key=$2; shift 2 ;;
         --body) body=$2; shift 2 ;;
+        --content-disposition) disposition=$2; shift 2 ;;
         *) shift ;;
     esac
 done
 case $op in
     put-object)
         size=$(wc -c < "$body" | tr -d ' ')
-        printf '%s\t%s\n' "$key" "$size" >> "$AWS_STORE"
+        printf '%s\t%s\t%s\n' "$key" "$size" "$disposition" >> "$AWS_STORE"
         printf '"stub-etag"\n'
         ;;
     head-object)
-        size=$(awk -F'\t' -v k="$key" '$1 == k { print $2 }' "$AWS_STORE" | tail -1)
-        [ -n "$size" ] || { echo "stub: no such key $key" >&2; exit 1; }
-        printf '%s\n' "$((size + ${AWS_STUB_SIZE_SKEW:-0}))"
+        # Answers with what was really put, so the script cannot pass by
+        # reading back something it never wrote.
+        line=$(awk -F'\t' -v k="$key" '$1 == k' "$AWS_STORE" | tail -1)
+        [ -n "$line" ] || { echo "stub: no such key $key" >&2; exit 1; }
+        size=$(printf '%s' "$line" | cut -f2)
+        stored=$(printf '%s' "$line" | cut -f3-)
+        # Simulates a bucket that accepted the put but did not keep the header.
+        [ -n "${AWS_STUB_DROP_DISPOSITION:-}" ] && stored=''
+        # aws --output text renders a two-element query as one tab-separated
+        # line, and an absent header as the literal None.
+        printf '%s\t%s\n' "$((size + ${AWS_STUB_SIZE_SKEW:-0}))" "${stored:-None}"
         ;;
     *) echo "stub: unexpected aws $op" >&2; exit 1 ;;
 esac
@@ -317,6 +326,7 @@ run_publish() { # base [env assignments handled by caller] -> $out, $rc
     AWS_LOG=$TMP/aws.log CURL_LOG=$TMP/curl.log AWS_STORE=$TMP/aws.store CURL_BODY=$MANIFEST_FILE \
     AWS_BIN="$STUB/aws" CURL_BIN="$STUB/curl" AWS_ENDPOINT_URL="https://SECRET-ACCOUNT.r2.cloudflarestorage.com" \
     AWS_STUB_SIZE_SKEW="${SKEW:-0}" CURL_404="${MISSING:-}" \
+    AWS_STUB_DROP_DISPOSITION="${DROP_DISPOSITION:-}" \
         bash "$PUBLISH" publish --bucket app-downloads --base "$1" --version "$VERSION" \
             --dir "$BUNDLES" --manifest "$MANIFEST_FILE" --aliases "$TMP/aliases.tsv" \
             --public-base "$PUBLIC" 2>&1
@@ -343,6 +353,44 @@ check "the published manifest is fetched over the public hostname" \
     "$(grep -c 'app-downloads.zebu.work/desktop/_dryrun/4242/latest.json' "$TMP/curl.log")" "1"
 check "every URL in the manifest is HEADed" \
     "$(grep -c -- '-I' "$TMP/curl.log")" "4"
+
+# ---------------------------------------------------------------------------
+# The aliases download under their versioned name
+# ---------------------------------------------------------------------------
+# A stable link is what a download page needs; `mac.dmg` sitting in a Downloads
+# folder is not what a person needs. The object carries the name it was copied
+# from, so the two are allowed to differ.
+
+alias_disposition() { # alias key -> the --content-disposition it was put with
+    grep "^s3api put-object .*--key $1 " "$TMP/aws.log" | tail -1 |
+        sed -n 's/.*--content-disposition \(.*\) --output.*/\1/p'
+}
+
+check "the mac alias downloads under its version" \
+    "$(alias_disposition desktop/_dryrun/4242/latest/mac.dmg)" \
+    "attachment; filename=\"Zebu_${VERSION}_universal.dmg\""
+check "the windows alias downloads under its version" \
+    "$(alias_disposition desktop/_dryrun/4242/latest/windows.exe)" \
+    "attachment; filename=\"Zebu_${VERSION}_x64-setup.exe\""
+check "the linux alias downloads under its version" \
+    "$(alias_disposition desktop/_dryrun/4242/latest/linux.AppImage)" \
+    "attachment; filename=\"Zebu_${VERSION}_amd64.AppImage\""
+
+# The manifest is fetched and parsed by the updater, not saved by a person, and
+# a versioned file is already named for its version.
+check "nothing but the aliases is turned into a download" \
+    "$(grep -c -- '--content-disposition' "$TMP/aws.log")" "3"
+
+# A publish whose aliases lost the header must fail rather than ship a bucket
+# full of files called mac.dmg. Same run, with the stub dropping it.
+: > "$TMP/aws.log"; : > "$TMP/curl.log"; : > "$TMP/aws.store"
+DROP_DISPOSITION=1
+out=$(run_publish desktop/_dryrun/4242; printf 'RC=%s' "$rc")
+DROP_DISPOSITION=''
+rc=${out##*RC=}
+check "a publish that loses the download name fails" "$rc" "1"
+contains "and says which object and what it wanted" "${out%RC=*}" \
+    "wanted Zebu_${VERSION}_universal.dmg"
 lacks "the account id never reaches the output" "$out" "SECRET-ACCOUNT"
 lacks "nor does the endpoint" "$out" "r2.cloudflarestorage.com"
 
