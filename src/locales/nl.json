@@ -134,7 +134,8 @@
         "shortcutTaken": "Een andere app gebruikt die combinatie al.",
         "openInBrowser": "Open Zebu in de browser",
         "disconnect": "Dit apparaat loskoppelen",
-        "quit": "Zebu afsluiten"
+        "quit": "Zebu afsluiten",
+        "live": "Live-updates"
     },
     "update": {
         "available": "Zebu {version} is beschikbaar",

@@ -134,7 +134,8 @@
         "shortcutTaken": "その組み合わせは他のアプリが使用中です。",
         "openInBrowser": "ブラウザで Zebu を開く",
         "disconnect": "この端末の接続を解除",
-        "quit": "Zebu を終了"
+        "quit": "Zebu を終了",
+        "live": "ライブ更新"
     },
     "update": {
         "available": "Zebu {version} が利用可能です",

@@ -1,3 +1,4 @@
+mod live;
 mod tray_icon;
 
 use std::str::FromStr;
@@ -971,10 +972,15 @@ fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>,
     }
 }
 
-/// How long to wait before the next pulse, given whether a clock is running.
-/// Split out so the choice is a plain function over a bool and can be tested.
-fn pulse_interval_s(running: bool) -> u64 {
-    if running {
+/// How long to wait before the next pulse, given whether a clock is running
+/// and whether the live socket is subscribed. Live, every change is pushed and
+/// the pulse only backstops a quietly dead socket, so it slows to the idle
+/// cadence whatever runs. Split out so the choice is a plain function over two
+/// bools and can be tested.
+fn pulse_interval_s(running: bool, live: bool) -> u64 {
+    if live {
+        live::PULSE_LIVE_S
+    } else if running {
         PULSE_RUNNING_S
     } else {
         PULSE_IDLE_S
@@ -999,8 +1005,9 @@ fn spawn_tray_ticker(app: tauri::AppHandle) {
 
             let now = SystemTime::now();
             let running = TRAY_FRAME.lock().map(|f| f.as_ref().is_some_and(|f| f.running)).unwrap_or(false);
+            let live = live::LIVE.load(Ordering::SeqCst);
 
-            if now.duration_since(last_pulse).unwrap_or_default().as_secs() >= pulse_interval_s(running) {
+            if now.duration_since(last_pulse).unwrap_or_default().as_secs() >= pulse_interval_s(running, live) {
                 last_pulse = now;
                 let _ = app.emit_to("main", "pulse-due", ());
             }
@@ -1132,8 +1139,20 @@ fn set_shortcut(app: tauri::AppHandle, action: String, accelerator: Option<Strin
     Err("taken".into())
 }
 
+/// The webview learned (from GET /api/me) where the workspace pushes timer
+/// changes, or that it does not; None on disconnect. See src/live.rs.
+#[tauri::command]
+fn set_live_source(app: tauri::AppHandle, source: Option<live::LiveSource>) {
+    live::set_source(app, source);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // One TLS stack for the socket and the channel auth: rustls needs to be
+    // told which provider is the process default before either builds a
+    // client, and the updater plugin picks ring too.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
@@ -1152,6 +1171,7 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             set_tray_state,
+            set_live_source,
             quit,
             idle_seconds,
             set_idle_threshold,
@@ -1645,9 +1665,18 @@ mod pulse_cadence_tests {
     fn the_pulse_is_asked_for_far_less_often_while_nothing_is_running() {
         // A menubar app is open from login to shutdown, so the idle cadence is
         // what it costs the server for most of the day.
-        assert_eq!(pulse_interval_s(true), 2);
-        assert_eq!(pulse_interval_s(false), 30);
-        assert!(pulse_interval_s(false) > pulse_interval_s(true));
+        assert_eq!(pulse_interval_s(true, false), 2);
+        assert_eq!(pulse_interval_s(false, false), 30);
+        assert!(pulse_interval_s(false, false) > pulse_interval_s(true, false));
+    }
+
+    #[test]
+    fn while_the_socket_is_up_the_pulse_is_only_a_backstop() {
+        // Every change is pushed, so asking every two seconds as well would be
+        // the very load the socket exists to remove.
+        assert_eq!(pulse_interval_s(true, true), 30);
+        assert_eq!(pulse_interval_s(false, true), 30);
+        assert!(pulse_interval_s(true, true) > pulse_interval_s(true, false));
     }
 
     #[test]
@@ -1655,6 +1684,7 @@ mod pulse_cadence_tests {
         // It used to be how a timer started elsewhere got noticed at all. The
         // pulse does that now, and this only catches what the pulse misses, so
         // it has to be far rarer than the pulse rather than competing with it.
-        assert!(REFRESH_NUDGE_S > pulse_interval_s(false));
+        assert!(REFRESH_NUDGE_S > pulse_interval_s(false, false));
+        assert!(REFRESH_NUDGE_S > pulse_interval_s(true, true));
     }
 }

@@ -50,6 +50,20 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   app's (`resources/js/lib/timer.ts` there) on purpose: one person watching
   the same timer in a tab and in the menubar should not see one notice a stop
   long before the other.
+- **Timer changes are pushed; the pulse is the backstop.** `GET /api/me`
+  returns a `broadcast` block (or `null`) naming the workspace's Reverb
+  socket and the person's private channel. The webview reads it
+  (`src/live.ts`) and hands it to Rust (`set_live_source`), and Rust keeps
+  the websocket up on a tokio task (`src-tauri/src/live.rs`: Pusher
+  protocol 7, channel auth via `POST /api/broadcasting/auth`, pong to ping,
+  reconnect with backoff), because a webview socket would stall with the
+  popover hidden. Rust emits `live-changed` for every push — the frontend
+  runs it through `onPushed` in `src/pulse.ts`, the same state the pulse
+  uses, so a change is never fetched twice — and `live-state` when the
+  subscription comes up or drops; coming back after a drop asks for one
+  refetch. While subscribed the ticker slows the pulse to 30 s whatever
+  runs. No `broadcast` block means nothing changes: the pulse runs as
+  before.
 - The idle prompt is its own always-on-top window (`show_idle_prompt`, label
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers

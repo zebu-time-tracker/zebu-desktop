@@ -134,7 +134,8 @@
         "shortcutTaken": "Inna aplikacja już używa tej kombinacji.",
         "openInBrowser": "Otwórz Zebu w przeglądarce",
         "disconnect": "Odłącz to urządzenie",
-        "quit": "Zakończ Zebu"
+        "quit": "Zakończ Zebu",
+        "live": "Aktualizacje na żywo"
     },
     "update": {
         "available": "Dostępna jest wersja Zebu {version}",

@@ -134,7 +134,8 @@
         "shortcutTaken": "Another app is already using that combination.",
         "openInBrowser": "Open Zebu in the browser",
         "disconnect": "Disconnect this device",
-        "quit": "Quit Zebu"
+        "quit": "Quit Zebu",
+        "live": "Live updates"
     },
     "update": {
         "available": "Zebu {version} is available",

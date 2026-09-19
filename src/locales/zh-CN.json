@@ -134,7 +134,8 @@
         "shortcutTaken": "该组合已被其他应用占用。",
         "openInBrowser": "在浏览器中打开 Zebu",
         "disconnect": "断开此设备",
-        "quit": "退出 Zebu"
+        "quit": "退出 Zebu",
+        "live": "实时更新"
     },
     "update": {
         "available": "Zebu {version} 已可用",
