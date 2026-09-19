@@ -348,9 +348,27 @@ const onLiveChanged = async ({ token }: { token: string | null }) => {
 };
 
 /** Tell Rust where to subscribe — or, with null, to stop. */
+let handedBroadcast = 'null';
 const syncLive = (broadcast: unknown) => {
     live.value = false;
-    invoke('set_live_source', { source: liveSource(auth.workspace, auth.token, readBroadcast(broadcast)) }).catch(() => {});
+    const source = liveSource(auth.workspace, auth.token, readBroadcast(broadcast));
+    handedBroadcast = JSON.stringify(source?.broadcast ?? null);
+    invoke('set_live_source', { source }).catch(() => {});
+};
+
+/**
+ * The block is learned at sign-in, but a menubar app runs for weeks and a
+ * workspace can switch Reverb on (or rotate its key) meanwhile: while nothing
+ * is subscribed, ask again on the five-minute nudge and hand Rust what changed.
+ */
+const relearnLive = () => {
+    if (view.value !== 'main' || live.value) return;
+    api.me()
+        .then((u) => {
+            me.value = u;
+            if (JSON.stringify(readBroadcast(u.broadcast)) !== handedBroadcast) syncLive(u.broadcast);
+        })
+        .catch(() => {});
 };
 
 // The pill is the server's `active` entry: the running timer, or — so a timer
@@ -372,7 +390,10 @@ onMounted(() => {
     // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
     // another client shows up without a click; outside Tauri (plain-browser
     // dev) fall back to a webview interval.
-    listen('refresh-due', () => refresh())
+    listen('refresh-due', () => {
+        refresh();
+        relearnLive();
+    })
         .then((off) => (refreshUnlisten = off))
         .catch(() => (refreshLoop = setInterval(refresh, PULSE.fallback)));
     // Rust decides the pulse cadence from the clock it is already painting —
