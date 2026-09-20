@@ -50,6 +50,13 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   app's (`resources/js/lib/timer.ts` there) on purpose: one person watching
   the same timer in a tab and in the menubar should not see one notice a stop
   long before the other.
+- **A running clock counts down to the whole minute, never to the nearest.**
+  Forty seconds is 0:00, here and in the browser and in the terminal client:
+  the server floors a running entry (`currentMinutes()`) and every client
+  shows what the server would say. Both formatters in `src/duration.ts` and
+  Rust's `format_clock` go through that one rule. What gets *billed* is a
+  different question and is not ours: stopping rounds, with a one-minute
+  minimum, on the server.
 - The idle prompt is its own always-on-top window (`show_idle_prompt`, label
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers

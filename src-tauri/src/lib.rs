@@ -796,10 +796,12 @@ fn unix_ms(at: SystemTime) -> u64 {
     at.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-/// Clock-style "h:mm", rounded to the nearest minute like the frontend's
-/// formatMinutes so the pill and the list agree.
+/// Clock-style "h:mm", always rounded down like the frontend's formatMinutes
+/// so the pill and the list agree — and, since the server floors a running
+/// timer too, so the pill agrees with the browser beside it. A forty-second
+/// timer reads 0:00 here and everywhere else.
 fn format_clock(minutes: f64) -> String {
-    let m = minutes.max(0.0).round() as u64;
+    let m = minutes.max(0.0).floor() as u64;
     format!("{}:{:02}", m / 60, m % 60)
 }
 
@@ -1272,11 +1274,16 @@ mod tray_tests {
     }
 
     #[test]
-    fn the_clock_rounds_to_the_nearest_minute_like_the_list() {
+    fn the_clock_counts_down_to_the_whole_minute_like_every_other_client() {
         assert_eq!(format_clock(0.0), "0:00");
         assert_eq!(format_clock(0.4), "0:00");
-        assert_eq!(format_clock(0.6), "0:01");
+        // Forty seconds is not a minute. The pill used to say it was, which
+        // put it a minute ahead of the same timer in a browser.
+        assert_eq!(format_clock(0.6), "0:00");
+        assert_eq!(format_clock(0.99), "0:00");
+        assert_eq!(format_clock(1.0), "0:01");
         assert_eq!(format_clock(95.0), "1:35");
+        assert_eq!(format_clock(95.9), "1:35");
         assert_eq!(format_clock(-3.0), "0:00");
     }
 
@@ -1291,9 +1298,13 @@ mod tray_tests {
 
     #[test]
     fn equal_minutes_give_equal_frames_so_nothing_is_repainted_mid_minute() {
+        // Started exactly ten minutes ago, so the clock turns over on the
+        // minute: every frame inside it is the same frame, and the one after
+        // the turn is not.
         let entry = running(0.0, 600);
         assert_eq!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 20_000));
-        assert_ne!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 40_000));
+        assert_eq!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 59_000));
+        assert_ne!(tray_frame(Some(&entry), T0), tray_frame(Some(&entry), T0 + 60_000));
     }
 
     #[test]
