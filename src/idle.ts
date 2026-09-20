@@ -25,3 +25,13 @@ export const resolveIdleChoice = ({ remove, stop }: IdleChoice): IdleResolution 
 
 /** Whole minutes away, as the heading words it — an absence is never "0 minutes". */
 export const idleMinutes = (seconds: number): number => Math.max(1, Math.round(seconds / 60));
+
+/**
+ * Whether an absence that began at `startedAtMs` is worth asking about,
+ * given the timer the server says is running now (board #333): only one
+ * started at or before the absence began. A timer stopped and restarted
+ * from another machine while this one slept started later, and none of that
+ * time was this machine's; no timer at all means it was stopped elsewhere.
+ */
+export const idleWorthAsking = (startedAtMs: number, timerStartedAt: string | null | undefined): boolean =>
+    typeof timerStartedAt === 'string' && new Date(timerStartedAt).getTime() <= startedAtMs;

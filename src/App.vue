@@ -10,7 +10,7 @@ import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
-import { idleMinutes, resolveIdleChoice } from './idle';
+import { idleMinutes, resolveIdleChoice, idleWorthAsking } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
 import { initialPulseState, onPulse, onUnavailable, PULSE, refetched } from './pulse';
 import {
@@ -561,7 +561,13 @@ const runningStopButton = async (timeoutMs = 1500): Promise<HTMLElement | null> 
 };
 
 const onIdleReturn = async (payload: { started_at_ms: number; seconds: number }) => {
-    if (!running.value || idlePrompt.value) return;
+    if (idlePrompt.value) return;
+    // A fresh answer first (board #333): the machine slept, and the sheet on
+    // screen may still say "running" for a timer stopped from another
+    // machine meanwhile. A fetch that fails asks nothing; the time stays.
+    errorMessage.value = '';
+    await refresh();
+    if (errorMessage.value || !running.value || !idleWorthAsking(payload.started_at_ms, running.value.timer_started_at)) return;
     const minutes = idleMinutes(payload.seconds);
     idlePrompt.value = { startedAt: payload.started_at_ms, minutes };
     if (view.value !== 'main') view.value = 'main';
