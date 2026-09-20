@@ -7,7 +7,7 @@
 
 import { formatDurationHuman as formatDuration } from './duration';
 import { i18n } from './i18n';
-import { type Pulse } from './pulse';
+import { readWindow, retryAfterSeconds, type Pulse } from './pulse';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
 export { CENTRAL_URL, DEFAULT_DOMAIN };
@@ -173,6 +173,19 @@ const timeoutSignal = (): AbortSignal | undefined =>
 
 const jsonHeaders = { Accept: 'application/json', 'Content-Type': 'application/json' };
 
+/**
+ * The server is down for the window it announced, and said when to come back.
+ *
+ * `retryAfter` is its `Retry-After` header in seconds, or null when it did not
+ * send one — treat that as "unknown", not as "immediately".
+ */
+export class Unavailable extends Error {
+    constructor(readonly retryAfter: number | null) {
+        super('unavailable');
+        this.name = 'Unavailable';
+    }
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     if (!store.workspace || !store.token) throw new Error('unauthenticated');
 
@@ -189,6 +202,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         store.token = '';
         session.onExpired?.();
         throw new Error('unauthenticated');
+    }
+    // Deliberately down, not broken: the server says so and says for how long.
+    // Told apart from every other failure so the app waits rather than retries
+    // and shows "is being updated" rather than an error (board #216).
+    if (response.status === 503) {
+        throw new Unavailable(retryAfterSeconds(response.headers.get('Retry-After')));
     }
     if (!response.ok) {
         const data = await response.json().catch(() => null);
@@ -261,14 +280,23 @@ export const api = {
      * Null rather than throwing when it cannot be read: a workspace that
      * predates the endpoint answers 404, and the caller's job is then to carry
      * on refetching the old way rather than to treat it as an error.
+     *
+     * A planned outage is the exception it hands back rather than swallows —
+     * "down until 21:30" and "cannot be reached" call for opposite behaviour.
      */
-    pulse: async (): Promise<Pulse | null> => {
+    pulse: async (): Promise<Pulse | Unavailable | null> => {
         try {
             const body = await request<Partial<Pulse>>('GET', '/timer/pulse');
 
-            return typeof body?.token === 'string' ? { token: body.token, running: Boolean(body.running) } : null;
-        } catch {
-            return null;
+            if (typeof body?.token !== 'string') return null;
+
+            return {
+                token: body.token,
+                running: Boolean(body.running),
+                maintenance: readWindow(body.maintenance),
+            };
+        } catch (e) {
+            return e instanceof Unavailable ? e : null;
         }
     },
     summary: () => request<Summary>('GET', '/summary'),
