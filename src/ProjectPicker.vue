@@ -8,7 +8,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProjectOption } from './api';
 import { fuzzyFilter } from './fuzzy';
-import { groupByClient } from './picker';
+import { focusLeftPicker, groupByClient } from './picker';
 
 const props = defineProps<{
     modelValue: string;
@@ -68,10 +68,19 @@ const onKey = (e: KeyboardEvent) => {
     }
     nextTick(() => list.value?.querySelector<HTMLElement>('.picker-row.active')?.scrollIntoView({ block: 'nearest' }));
 };
+
+// Asked a frame later, and of the document rather than the event: see
+// focusLeftPicker for why the event itself cannot answer this.
+const onFocusOut = (e: FocusEvent) => {
+    const root = e.currentTarget as HTMLElement;
+    requestAnimationFrame(() => {
+        if (focusLeftPicker(root, document.activeElement)) open.value = false;
+    });
+};
 </script>
 
 <template>
-    <div class="picker" @focusout="(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) open = false; }">
+    <div class="picker" @focusout="onFocusOut">
         <button v-if="!open" type="button" class="picker-button" :class="{ placeholder: !selected }" @click="show">
             <template v-if="selected">
                 <span v-if="selected.code" class="picker-code">{{ selected.code }}:</span>
