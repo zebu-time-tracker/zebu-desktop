@@ -91,6 +91,12 @@ export interface Timesheet {
     active?: Entry | null;
     /** `active`'s `updated_at` (ISO 8601): how two replies are ordered. */
     active_as_of?: string | null;
+    /**
+     * The server's clock at this reply (ISO 8601). A running timer is elapsed
+     * time measured from a server timestamp, so a machine whose own clock is
+     * off counts wrong; see src/clock.ts. Absent on a workspace older than #49.
+     */
+    server_time?: string | null;
     projects: ProjectOption[];
     week_locked: boolean;
     project_stats: Record<string, ProjectStats>;
