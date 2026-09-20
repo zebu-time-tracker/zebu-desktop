@@ -50,6 +50,13 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   app's (`resources/js/lib/timer.ts` there) on purpose: one person watching
   the same timer in a tab and in the menubar should not see one notice a stop
   long before the other.
+- **A running clock counts down to the whole minute, never to the nearest.**
+  Forty seconds is 0:00, here and in the browser and in the terminal client:
+  the server floors a running entry (`currentMinutes()`) and every client
+  shows what the server would say. Both formatters in `src/duration.ts` and
+  Rust's `format_clock` go through that one rule. What gets *billed* is a
+  different question and is not ours: stopping rounds, with a one-minute
+  minimum, on the server.
 - **Timer changes are pushed; the pulse is the backstop.** `GET /api/me`
   returns a `broadcast` block (or `null`) naming the workspace's Reverb
   socket and the person's private channel. The webview reads it

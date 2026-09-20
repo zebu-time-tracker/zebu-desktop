@@ -14,10 +14,22 @@
  * every rule in it can be tested without a webview, a token or a clock.
  */
 
+/** An outage the server has announced ahead of time. Both ISO 8601. */
+export interface MaintenanceWindow {
+    starts_at: string;
+    ends_at: string;
+}
+
 /** What the pulse endpoint answers. */
 export interface Pulse {
     token: string;
     running: boolean;
+    /**
+     * Present only while an outage is announced and not yet over. The box is
+     * about to go down for a move or a rescale; see the server's
+     * docs/api.md § Planned outages (board #216).
+     */
+    maintenance?: MaintenanceWindow | null;
 }
 
 export const PULSE = {
@@ -39,6 +51,20 @@ export const PULSE = {
     unreachable: 30_000,
     /** Refetch everything on this beat whatever the pulse says. */
     fallback: 5 * 60_000,
+    /**
+     * How long past an announced window's end to wait before asking again. The
+     * work finishes when it finishes, rarely on the minute — and every client
+     * holds the same end time, so arriving a little after it keeps them from
+     * arriving together.
+     */
+    grace: 15_000,
+    /**
+     * The longest a single wait may be. A window can be hours, and one sleep
+     * that long would miss a box that came back early — and would be measured
+     * by a machine that may itself have slept. Checking back on this cadence
+     * costs one refused request.
+     */
+    maxHold: 5 * 60_000,
 } as const;
 
 /** What the app knows between beats. Plain data so the decision stays testable. */
@@ -100,7 +126,7 @@ export function onPulse(pulse: Pulse | null, state: PulseState, now: number): Pu
 
     return {
         refetch,
-        nextIn: pulse.running ? PULSE.running : PULSE.idle,
+        nextIn: holdFor(pulse.maintenance, now, pulse.running ? PULSE.running : PULSE.idle),
         state: {
             token: pulse.token,
             refetchedAt: refetch ? now : state.refetchedAt,
@@ -129,6 +155,80 @@ export function onPushed(token: string | null, state: PulseState, now: number): 
         state: { ...state, token, refetchedAt: refetch ? now : state.refetchedAt },
     };
 }
+
+/**
+ * How long to wait before the next beat, given an announced outage.
+ *
+ * Nothing has changed until the window starts, so the usual cadence stands —
+ * right up until the beat it would schedule lands inside the outage, at which
+ * point there is no reason to make that request at all. From then on the wait
+ * runs to the end of the window.
+ *
+ * A window whose times cannot be read is no window: an announcement the client
+ * does not understand must not stop it polling.
+ */
+export function holdFor(window: MaintenanceWindow | null | undefined, now: number, normal: number): number {
+    if (!window) return normal;
+
+    const starts = Date.parse(window.starts_at);
+    const ends = Date.parse(window.ends_at);
+
+    if (!Number.isFinite(starts) || !Number.isFinite(ends)) return normal;
+    // Already over, or the next beat still lands before it begins.
+    if (now >= ends || now + normal < starts) return normal;
+
+    return clampHold(ends + PULSE.grace - now);
+}
+
+/**
+ * The server refused the beat: it is down for the announced window, and
+ * `Retry-After` said how long to wait.
+ *
+ * Nothing is refetched. Unlike a server that cannot be reached there is
+ * nothing to converge on — the full payload would be refused too, and asking
+ * for it is exactly the hammering the header exists to prevent.
+ */
+export function onUnavailable(retryInMs: number | null, state: PulseState, now: number): PulseDecision {
+    return {
+        refetch: false,
+        nextIn: clampHold(retryInMs ?? PULSE.unreachable),
+        state: { ...state, failedAt: now },
+    };
+}
+
+/** Never sooner than the grace, never longer than one hold. */
+const clampHold = (ms: number): number => Math.min(Math.max(ms, PULSE.grace), PULSE.maxHold);
+
+/**
+ * The seconds a `Retry-After` header asks for, or null when it does not say
+ * anything usable — a missing header, junk, zero, or the HTTP-date form, which
+ * this server does not send. Null means "unknown", never "come straight back".
+ *
+ * It lives here rather than beside the fetch so it can be tested: this module
+ * is the one part of the beat that needs no webview and no token.
+ */
+export const retryAfterSeconds = (header: string | null): number | null => {
+    const seconds = Number(header);
+
+    return header !== null && header.trim() !== '' && Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+};
+
+/**
+ * The announced window off a pulse payload, or null.
+ *
+ * Both times have to be readable dates. An announcement the client only half
+ * understands must not stop it polling — that would take the app quiet on no
+ * evidence at all, against a server that is perfectly well.
+ */
+export const readWindow = (value: unknown): MaintenanceWindow | null => {
+    const window = value as Partial<MaintenanceWindow> | null | undefined;
+
+    if (!window || typeof window.starts_at !== 'string' || typeof window.ends_at !== 'string') return null;
+
+    return Number.isFinite(Date.parse(window.starts_at)) && Number.isFinite(Date.parse(window.ends_at))
+        ? { starts_at: window.starts_at, ends_at: window.ends_at }
+        : null;
+};
 
 /**
  * Fold a fetch the app made for its own reasons — opening the popover, the

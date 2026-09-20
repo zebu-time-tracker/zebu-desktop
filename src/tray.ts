@@ -35,11 +35,17 @@ export const TIME_PLACEHOLDER = '{time}';
 /**
  * The tray description for an entry: the running timer when there is one,
  * otherwise today's most recent entry as a paused pill, or null for idle.
+ *
+ * `skewMs` is how far this machine's clock runs ahead of the server's. The
+ * pill is ticked in Rust against the machine's own clock, so the start time
+ * handed over is shifted by the drift: five minutes fast means a start that
+ * looks five minutes later, and the pill counts the real elapsed time rather
+ * than five minutes of work nobody did (board #49).
  */
-export function trayEntry(entry: TrayCandidate | null, t: Translate): TrayEntry | null {
+export function trayEntry(entry: TrayCandidate | null, t: Translate, skewMs = 0): TrayEntry | null {
     if (!entry) return null;
     const running = entry.timer_started_at !== null;
-    const started = running ? new Date(entry.timer_started_at as string).getTime() : NaN;
+    const started = running ? new Date(entry.timer_started_at as string).getTime() + skewMs : NaN;
     const detail = [entry.project, entry.task].filter(Boolean).join(' · ');
     const tooltip = detail
         ? t(running ? 'tray.tooltipRunning' : 'tray.tooltipStopped', { detail, time: TIME_PLACEHOLDER })

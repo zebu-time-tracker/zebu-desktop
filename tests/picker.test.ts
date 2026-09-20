@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ProjectOption } from '../src/api.ts';
-import { groupByClient } from '../src/picker.ts';
+import { focusLeftPicker, groupByClient } from '../src/picker.ts';
 
 const project = (id: string, client: string | null): ProjectOption => ({ id, name: id, code: null, client, tasks: [] });
 
@@ -41,4 +41,30 @@ test('projects without a client land in one group of their own', () => {
 
 test('no projects means no groups', () => {
     assert.deepEqual(groupByClient([]), []);
+});
+
+// Closing the open list when focus leaves it, without closing it on the very
+// click that opened it (board #136). A stub Node is enough: the whole decision
+// is "is this element inside that one".
+const node = (children: unknown[] = []): Node => ({ contains: (other: Node) => children.includes(other) }) as unknown as Node;
+
+test('focus landing inside the picker keeps the list open', () => {
+    const row = {} as Node;
+
+    assert.equal(focusLeftPicker(node([row]), row), false);
+});
+
+test('focus landing elsewhere closes the list', () => {
+    assert.equal(focusLeftPicker(node([]), {} as Node), true);
+});
+
+test('focus landing nowhere closes the list', () => {
+    // document.activeElement is null while a document is being torn down.
+    assert.equal(focusLeftPicker(node([]), null), true);
+});
+
+test('a picker that is no longer on the page decides nothing', () => {
+    // The frame's wait can outlive the component; closing a picker that is gone
+    // is pointless, and asking `contains` of nothing would throw.
+    assert.equal(focusLeftPicker(null, {} as Node), false);
 });
