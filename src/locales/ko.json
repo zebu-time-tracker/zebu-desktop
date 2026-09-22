@@ -53,7 +53,7 @@
         "runningSince": "{date}부터 타이머 실행 중",
         "stop": "정지",
         "startHint": "시작 (다른 타이머는 정지)",
-        "startTimer": "타이머 시작",
+        "startTimer": "시작",
         "addEntry": "새 항목",
         "waiting": "에이전트 대기 {time}",
         "waitingNow": "에이전트 대기 중…"

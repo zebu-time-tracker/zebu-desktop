@@ -53,7 +53,7 @@
         "runningSince": "Temporizador activo desde el {date}",
         "stop": "Detener",
         "startHint": "Iniciar (detiene otros temporizadores)",
-        "startTimer": "Iniciar temporizador",
+        "startTimer": "Iniciar",
         "addEntry": "Nueva entrada",
         "waiting": "{time} esperando al agente",
         "waitingNow": "esperando al agente…"

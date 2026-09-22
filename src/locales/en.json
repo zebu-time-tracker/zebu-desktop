@@ -53,7 +53,7 @@
         "runningSince": "Timer running since {date}",
         "stop": "Stop",
         "startHint": "Start (stops any other timer)",
-        "startTimer": "Start timer",
+        "startTimer": "Start",
         "addEntry": "Add new entry",
         "waiting": "{time} waiting on agent",
         "waitingNow": "waiting for agent…"

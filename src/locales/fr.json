@@ -53,7 +53,7 @@
         "runningSince": "Minuteur en cours depuis le {date}",
         "stop": "Arrêter",
         "startHint": "Démarrer (arrête tout autre minuteur)",
-        "startTimer": "Démarrer le minuteur",
+        "startTimer": "Démarrer",
         "addEntry": "Nouvelle entrée",
         "waiting": "{time} d’attente de l’agent",
         "waitingNow": "en attente de l’agent…"

@@ -53,7 +53,7 @@
         "runningSince": "Stoper działa od {date}",
         "stop": "Zatrzymaj",
         "startHint": "Start (zatrzymuje inne stopery)",
-        "startTimer": "Uruchom stoper",
+        "startTimer": "Start",
         "addEntry": "Nowy wpis",
         "waiting": "{time} oczekiwania na agenta",
         "waitingNow": "oczekiwanie na agenta…"

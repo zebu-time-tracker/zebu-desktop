@@ -53,7 +53,7 @@
         "runningSince": "Timer attivo dal {date}",
         "stop": "Ferma",
         "startHint": "Avvia (ferma gli altri timer)",
-        "startTimer": "Avvia timer",
+        "startTimer": "Avvia",
         "addEntry": "Nuova voce",
         "waiting": "{time} in attesa dell’agente",
         "waitingNow": "in attesa dell’agente…"

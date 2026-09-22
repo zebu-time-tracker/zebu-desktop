@@ -53,7 +53,7 @@
         "runningSince": "计时器自 {date} 运行中",
         "stop": "停止",
         "startHint": "开始 (将停止其他计时器)",
-        "startTimer": "开始计时",
+        "startTimer": "开始",
         "addEntry": "新建条目",
         "waiting": "等待智能体 {time}",
         "waitingNow": "等待智能体…"

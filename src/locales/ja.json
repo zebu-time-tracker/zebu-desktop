@@ -53,7 +53,7 @@
         "runningSince": "{date} からタイマー実行中",
         "stop": "停止",
         "startHint": "開始 (他のタイマーは停止)",
-        "startTimer": "タイマー開始",
+        "startTimer": "開始",
         "addEntry": "新規エントリ",
         "waiting": "エージェント待ち {time}",
         "waitingNow": "エージェント待ち…"
