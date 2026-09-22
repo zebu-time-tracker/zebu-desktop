@@ -12,11 +12,11 @@
         "waiting": "Oczekiwanie na zatwierdzenie w przeglądarce…",
         "reopen": "Otwórz ponownie stronę zatwierdzania",
         "denied": "Odmówiono dostępu w przeglądarce.",
-        "expired": "Żądanie wygasło — spróbuj ponownie.",
+        "expired": "Żądanie wygasło. Spróbuj ponownie.",
         "workspace": "Przestrzeń robocza",
         "workspaceHint": "Nazwa Twojej przestrzeni roboczej (np. „studio”), jej adres (studio.zebu.work) lub pełny URL.",
         "invalidWorkspace": "To nie jest prawidłowy adres przestrzeni roboczej.",
-        "notAWorkspace": "To główna strona Zebu — wpisz zamiast tego nazwę swojej przestrzeni roboczej.",
+        "notAWorkspace": "To główna strona Zebu. Wpisz nazwę swojej przestrzeni roboczej.",
         "insecureWorkspace": "Adresy przestrzeni roboczych muszą używać https.",
         "sessionExpired": "Dostęp tego urządzenia został cofnięty. Zaloguj się ponownie."
     },
@@ -68,7 +68,7 @@
     },
     "newDay": {
         "title": "Uruchomić nowy stoper na dziś?",
-        "body": "Ten wpis pochodzi z {date}. Nowy stoper wystartuje dziś z tym samym projektem, zadaniem i notatkami — oryginał pozostanie bez zmian.",
+        "body": "Ten wpis pochodzi z {date}. Dziś wystartuje nowy stoper z tym samym projektem, zadaniem i notatkami. Pierwotny wpis się nie zmieni.",
         "confirm": "Uruchom dziś"
     },
     "idle": {
@@ -80,7 +80,7 @@
     "form": {
         "editTitle": "Edytuj wpis",
         "newTitle": "Nowy wpis",
-        "draftRestored": "Przywrócono wpis, który nie został jeszcze zapisany.",
+        "draftRestored": "Przywrócono niezapisany wpis.",
         "addProject": "Wybierz projekt…",
         "addTask": "Wybierz zadanie…",
         "notes": "Notatki (opcjonalne)",
@@ -139,7 +139,7 @@
     },
     "update": {
         "available": "Dostępna jest wersja Zebu {version}",
-        "body": "Aktualizacja pobiera się w tle, a aplikacja uruchomi się ponownie. Uruchomiony stoper nadal działa na serwerze.",
+        "body": "Zebu pobierze aktualizację i uruchomi się ponownie. Stoper nadal działa.",
         "install": "Zainstaluj i uruchom ponownie",
         "later": "Później",
         "installVersion": "Zainstaluj {version}",

@@ -12,11 +12,11 @@
         "waiting": "Warten auf Freigabe im Browser…",
         "reopen": "Freigabeseite erneut öffnen",
         "denied": "Zugriff wurde im Browser verweigert.",
-        "expired": "Anfrage abgelaufen — bitte erneut versuchen.",
+        "expired": "Die Anfrage ist abgelaufen. Versuch es erneut.",
         "workspace": "Arbeitsbereich",
         "workspaceHint": "Name deines Arbeitsbereichs (z. B. „studio“), seine Adresse (studio.zebu.work) oder eine vollständige URL.",
         "invalidWorkspace": "Das ist keine gültige Adresse eines Arbeitsbereichs.",
-        "notAWorkspace": "Das ist die zentrale Zebu-Seite — gib stattdessen den Namen deines Arbeitsbereichs ein.",
+        "notAWorkspace": "Das ist die zentrale Zebu-Seite. Gib den Namen deines Arbeitsbereichs ein.",
         "insecureWorkspace": "Adressen von Arbeitsbereichen müssen https verwenden.",
         "sessionExpired": "Der Zugriff dieses Geräts wurde widerrufen. Melde dich erneut an."
     },
@@ -68,7 +68,7 @@
     },
     "newDay": {
         "title": "Neuen Timer für heute starten?",
-        "body": "Dieser Eintrag ist vom {date}. Ein neuer Timer startet heute mit demselben Projekt, derselben Aufgabe und den Notizen — das Original bleibt unverändert.",
+        "body": "Dieser Eintrag ist vom {date}. Heute startet ein neuer Timer mit demselben Projekt, derselben Aufgabe und denselben Notizen. Der ursprüngliche Eintrag bleibt unverändert.",
         "confirm": "Heute starten"
     },
     "idle": {
@@ -80,7 +80,7 @@
     "form": {
         "editTitle": "Eintrag bearbeiten",
         "newTitle": "Neuer Zeiteintrag",
-        "draftRestored": "Der noch nicht gespeicherte Eintrag wurde wiederhergestellt.",
+        "draftRestored": "Dein nicht gespeicherter Eintrag wurde wiederhergestellt.",
         "addProject": "Projekt wählen…",
         "addTask": "Aufgabe wählen…",
         "notes": "Notizen (optional)",
@@ -139,7 +139,7 @@
     },
     "update": {
         "available": "Zebu {version} ist verfügbar",
-        "body": "Das Update wird im Hintergrund geladen und die App neu gestartet. Ein laufender Timer läuft auf dem Server weiter.",
+        "body": "Zebu lädt das Update und startet neu. Dein Timer läuft weiter.",
         "install": "Installieren & neu starten",
         "later": "Später",
         "installVersion": "{version} installieren",

@@ -16,7 +16,7 @@
         "workspace": "워크스페이스",
         "workspaceHint": "워크스페이스 이름(예: studio), 주소(studio.zebu.work) 또는 전체 URL을 입력하세요.",
         "invalidWorkspace": "올바른 워크스페이스 주소가 아닙니다.",
-        "notAWorkspace": "그것은 Zebu 메인 사이트입니다. 대신 내 워크스페이스 이름을 입력하세요.",
+        "notAWorkspace": "Zebu 메인 사이트입니다. 워크스페이스 이름을 입력하세요.",
         "insecureWorkspace": "워크스페이스 주소는 https를 사용해야 합니다.",
         "sessionExpired": "이 기기의 접근 권한이 취소되었습니다. 다시 로그인하세요."
     },
@@ -68,7 +68,7 @@
     },
     "newDay": {
         "title": "오늘 새 타이머를 시작할까요?",
-        "body": "해당 항목은 {date}의 기록입니다. 같은 프로젝트·작업·메모로 오늘 새 타이머를 시작하며, 원본은 그대로 유지됩니다.",
+        "body": "해당 항목은 {date}의 기록입니다. 같은 프로젝트·작업·메모로 오늘 새 타이머를 시작합니다. 원래 항목은 바뀌지 않습니다.",
         "confirm": "오늘 시작"
     },
     "idle": {
@@ -80,7 +80,7 @@
     "form": {
         "editTitle": "항목 편집",
         "newTitle": "새 시간 항목",
-        "draftRestored": "아직 저장하지 않은 항목을 복원했습니다.",
+        "draftRestored": "저장하지 않은 항목을 복원했습니다.",
         "addProject": "프로젝트 선택…",
         "addTask": "작업 선택…",
         "notes": "메모 (선택)",
@@ -139,7 +139,7 @@
     },
     "update": {
         "available": "Zebu {version} 사용 가능",
-        "body": "업데이트는 백그라운드에서 다운로드되며 앱이 다시 시작됩니다. 실행 중인 타이머는 서버에서 계속 진행됩니다.",
+        "body": "Zebu가 업데이트를 내려받고 다시 시작합니다. 타이머는 계속 실행됩니다.",
         "install": "설치 후 다시 시작",
         "later": "나중에",
         "installVersion": "{version} 설치",
