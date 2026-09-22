@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Hervatten",
+        "startWorkingOn": "Aan de slag met {work}",
         "runningSince": "Timer loopt sinds {date}",
         "stop": "Stoppen",
         "startHint": "Starten (stopt andere timers)",

@@ -469,6 +469,15 @@ watch(intlLocale, () => updateTray());
 
 const confirmNewDay = ref(false);
 
+// Clicking Resume on an entry from an earlier day starts a new timer today
+// (startFreshToday), so the button says so instead of "Resume". Reading `now`
+// re-checks the date on each tick, so an open popover relabels at midnight.
+const lastIsOlderDay = computed(() => {
+    void now.value;
+    return !!lastTimer.value && lastTimer.value.date !== todayStr();
+});
+const lastTimerWork = computed(() => (lastTimer.value ? [lastTimer.value.project, lastTimer.value.task].filter(Boolean).join(' · ') : ''));
+
 /**
  * Starting or resuming a timer jumps to the entry's day (today, for a fresh
  * timer) so the running row is on screen; act() then refreshes that day.
@@ -1297,7 +1306,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
             <span class="resume-play">▶</span>
             <span class="running-elsewhere-text">
-                {{ t('timer.resume') }} — {{ lastTimer.project }}<template v-if="lastTimer.task"> · {{ lastTimer.task }}</template>
+                <template v-if="lastIsOlderDay">{{ t('timer.startWorkingOn', { work: lastTimerWork }) }}</template>
+                <template v-else>{{ t('timer.resume') }} — {{ lastTimerWork }}</template>
             </span>
         </button>
 

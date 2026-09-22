@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Resume",
+        "startWorkingOn": "Start working on {work}",
         "runningSince": "Timer running since {date}",
         "stop": "Stop",
         "startHint": "Start (stops any other timer)",

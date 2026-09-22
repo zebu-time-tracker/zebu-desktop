@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "继续",
+        "startWorkingOn": "开始工作：{work}",
         "runningSince": "计时器自 {date} 运行中",
         "stop": "停止",
         "startHint": "开始 (将停止其他计时器)",

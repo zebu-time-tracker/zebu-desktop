@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "다시 시작",
+        "startWorkingOn": "{work} 작업 시작",
         "runningSince": "{date}부터 타이머 실행 중",
         "stop": "정지",
         "startHint": "시작 (다른 타이머는 정지)",

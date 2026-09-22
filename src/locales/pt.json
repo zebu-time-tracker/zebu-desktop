@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Retomar",
+        "startWorkingOn": "Começar a trabalhar em {work}",
         "runningSince": "Timer ativo desde {date}",
         "stop": "Parar",
         "startHint": "Iniciar (para outros timers)",

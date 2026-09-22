@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Reprendre",
+        "startWorkingOn": "Commencer à travailler sur {work}",
         "runningSince": "Minuteur en cours depuis le {date}",
         "stop": "Arrêter",
         "startHint": "Démarrer (arrête tout autre minuteur)",
