@@ -33,8 +33,15 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   workspace that predates board #49. Everything that needs "the current
   timer" — the pill, `running`, Resume, the pill's ▶ — reads `activeEntry`,
   so the app cannot disagree with itself.
-- Idle detection lives in Rust (`spawn_idle_watcher`); the frontend only sets
-  the threshold and renders the prompt. Webview timers are throttled while
+- **Idle is the server's answer, not ours** (board #333, API in the web
+  app's `docs/idle-detection.md`). Rust (`spawn_idle_watcher`) only watches
+  input while a timer runs: `input-seen` (at most once a minute) becomes
+  `POST /api/timer/activity`, and `idle-return` (input after a pause, or
+  wake) becomes `GET /api/timer/idle` *before* that input is reported, as
+  does launch with a timer running. The server's minutes and the user's
+  threshold decide the prompt; every answer goes to `POST /api/timer/idle`,
+  and a pulse refetch re-asks so a prompt answered elsewhere closes. Every
+  rule is in `src/idle.ts`; keep no idle state locally. Webview timers are throttled while
   hidden, so never rely on `setInterval` for anything time-critical: the tray
   pill ticks from `spawn_tray_ticker` (the frontend only describes what is on
   the clock via `set_tray_state`, see `src/tray.ts`), and the same thread

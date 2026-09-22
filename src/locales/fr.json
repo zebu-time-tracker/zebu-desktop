@@ -73,9 +73,10 @@
     },
     "idle": {
         "title": "Inactif pendant {duration}",
-        "timeQuestion": "Retirer l’inactivité ?",
-        "timerQuestion": "Continuer le minuteur ?",
-        "ok": "OK"
+        "stop": "Arrêter le minuteur et retirer {duration}",
+        "continue": "Continuer et retirer {duration}",
+        "newEntry": "Ajouter {duration} comme nouvelle entrée",
+        "ignore": "Ignorer"
     },
     "form": {
         "editTitle": "Modifier l'entrée",

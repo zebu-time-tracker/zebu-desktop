@@ -73,9 +73,10 @@
     },
     "idle": {
         "title": "Brak aktywności przez {duration}",
-        "timeQuestion": "Usunąć bezczynność?",
-        "timerQuestion": "Kontynuować odliczanie?",
-        "ok": "OK"
+        "stop": "Zatrzymaj stoper i usuń {duration}",
+        "continue": "Kontynuuj i usuń {duration}",
+        "newEntry": "Dodaj {duration} jako nowy wpis",
+        "ignore": "Ignoruj"
     },
     "form": {
         "editTitle": "Edytuj wpis",

@@ -73,9 +73,10 @@
     },
     "idle": {
         "title": "Du warst {duration} inaktiv",
-        "timeQuestion": "Leerlaufzeit entfernen?",
-        "timerQuestion": "Weiter messen?",
-        "ok": "OK"
+        "stop": "Timer stoppen und {duration} entfernen",
+        "continue": "Weiter messen und {duration} entfernen",
+        "newEntry": "{duration} als neuen Eintrag hinzufügen",
+        "ignore": "Ignorieren"
     },
     "form": {
         "editTitle": "Eintrag bearbeiten",

@@ -73,9 +73,10 @@
     },
     "idle": {
         "title": "Je was {duration} inactief",
-        "timeQuestion": "Inactieve tijd verwijderen?",
-        "timerQuestion": "Doorgaan met timen?",
-        "ok": "OK"
+        "stop": "Timer stoppen en {duration} verwijderen",
+        "continue": "Doorgaan en {duration} verwijderen",
+        "newEntry": "{duration} toevoegen als nieuwe registratie",
+        "ignore": "Negeren"
     },
     "form": {
         "editTitle": "Registratie bewerken",

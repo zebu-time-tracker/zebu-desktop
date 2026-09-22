@@ -7,6 +7,7 @@
 
 import { formatDurationHuman as formatDuration } from './duration';
 import { i18n } from './i18n';
+import type { IdleAction, IdleAnswer, IdleReply } from './idle';
 import { readWindow, retryAfterSeconds, type Pulse } from './pulse';
 import { CENTRAL_URL, DEFAULT_DOMAIN, migrateWorkspaceOrigin, resolveWorkspace, type WorkspaceResolution } from './workspace';
 
@@ -213,6 +214,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         const data = await response.json().catch(() => null);
         throw new Error(data?.message ?? t('errors.requestFailed', { status: response.status }));
     }
+    if (response.status === 204) return undefined as T;
 
     return response.json();
 }
@@ -303,8 +305,12 @@ export const api = {
     startTimer: (payload: { project_id: string; task_id?: string | null; notes?: string | null; entry_id?: string }) =>
         request<{ entry: Entry }>('POST', '/timer/start', payload),
     stopTimer: () => request<{ ok: boolean }>('POST', '/timer/stop'),
-    idleTimer: (payload: { idle_started_at: string; action: 'discard_keep' | 'discard_stop' }) =>
-        request<{ entry: Entry | null }>('POST', '/timer/idle', payload),
+    /** Input seen while a timer runs; the server turns a long enough silence before it into an idle gap. */
+    timerActivity: (at: string) => request<void>('POST', '/timer/activity', { at }),
+    /** What to prompt about: the server holds idle for every device (see src/idle.ts). */
+    idleState: () => request<IdleAnswer>('GET', '/timer/idle'),
+    answerIdle: (payload: { idle_started_at: string; action: IdleAction; entry_id: string }) =>
+        request<IdleReply & { entry: Entry | null }>('POST', '/timer/idle', payload),
     updateEntry: (id: string, payload: { project_id?: string; task_id?: string | null; notes?: string | null; date?: string; minutes?: number }) =>
         request<{ entry: Entry }>('PUT', `/time/${id}`, payload),
     addEntry: (payload: { project_id: string; task_id?: string | null; date: string; minutes: number; notes?: string | null }) =>

@@ -10,7 +10,7 @@ import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
-import { idleMinutes, resolveIdleChoice } from './idle';
+import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
 import { initialPulseState, onPulse, onUnavailable, PULSE, refetched } from './pulse';
 import {
@@ -335,7 +335,11 @@ const onPulseBeat = async () => {
 
     pulseState = decision.state;
     if (down) errorMessage.value = t('errors.maintenance');
-    if (decision.refetch) await refresh();
+    if (decision.refetch) {
+        await refresh();
+        // the timer changed: an open idle prompt may have been answered elsewhere
+        recheckIdlePrompt();
+    }
 
     return decision.nextIn;
 };
@@ -378,16 +382,17 @@ onMounted(() => {
     now.value = Date.now();
     if (view.value === 'main') refresh();
     window.addEventListener('focus', () => view.value === 'main' && refresh());
-    listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
+    listen('idle-return', () => onReturn()).then((off) => (idleUnlisten = off));
+    listen<{ at_ms: number }>('input-seen', (e) => reportActivity(e.payload.at_ms)).then((off) => (inputUnlisten = off));
     // the answer comes back from the prompt's own window, via Rust
-    listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
+    listen<{ choice: string }>('idle-choice', (e) => applyIdleChoice(e.payload.choice)).then((off) => (idleChoiceUnlisten = off));
     // the menubar pill is a play/pause button: Rust reads the running flag it
     // was last handed and sends whichever press this was (see below)
     listen('tray-toggle-timer', () => onTrayToggle()).then((off) => (trayPauseUnlisten = off));
     listen('tray-open-new-timer', () => onTrayPlay()).then((off) => (trayPlayUnlisten = off));
     // the presets hotkey, once Rust has the popover on screen (src-tauri: show_presets)
     listen('open-presets', () => openPresets()).then((off) => (presetsUnlisten = off));
-    syncIdleThreshold();
+    syncIdleWatch();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
 });
@@ -400,6 +405,7 @@ onUnmounted(() => {
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
+    inputUnlisten?.();
     trayPauseUnlisten?.();
     trayPlayUnlisten?.();
     presetsUnlisten?.();
@@ -523,26 +529,43 @@ const budgetClass = (pct: number) => {
 
 const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(intlLocale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
-// ---- idle detection (Harvest-style) ----------------------------------------
+// ---- idle detection (Harvest-style, decided by the server) ----------------
 //
-// The OS idle counter is watched from a native thread (src-tauri/src/lib.rs):
-// webview timers are throttled or paused while the popover is hidden, and the
-// counter does not tick through system sleep, so polling from here missed
-// long absences. The frontend only tells Rust the threshold (0 = off), decides
-// whether the return is worth asking about, and points Rust at the row the
-// prompt should hang from. The prompt itself is a window of its own (it used
-// to be a callout in this DOM, which the window frame clipped); its two
-// answers come back as an `idle-choice` event, and what they mean stays here.
+// The server owns idle (board #333): every device reports activity, and the
+// server turns a long enough silence into a pending gap that stays until
+// someone answers for it — so a night away is counted whole, and an absence
+// answered on another device is not asked about again here.
+//
+// Rust watches the OS idle counter from a native thread (webview timers are
+// throttled while the popover is hidden, and the counter does not tick through
+// sleep) and says two things: `input-seen`, at most once a minute while a timer
+// runs, which is reported as activity; and `idle-return`, when input resumes
+// after a pause (or the machine wakes), which is answered by asking the server
+// what to prompt about — before reporting the activity that ends the absence.
+// App launch with a timer running asks too. Every rule is in src/idle.ts.
+//
+// The prompt is a window of its own (it used to be a callout in this DOM,
+// which the window frame clipped); its four answers come back as an
+// `idle-choice` event, and what they mean stays here.
 
-const idlePrompt = ref<{ startedAt: number; minutes: number } | null>(null);
+const idleAsk = ref<IdleAsk | null>(null);
 let idleUnlisten: UnlistenFn | null = null;
 let idleChoiceUnlisten: UnlistenFn | null = null;
+let inputUnlisten: UnlistenFn | null = null;
+/** Numbers each idle request, so a reply that was overtaken (or outlived its prompt) is dropped. */
+let idleSeq = 0;
+/** An idle check on its way: activity waits for it, so the server is asked before the absence ends. */
+let idleCheck: Promise<void> | null = null;
+let activitySentAt: number | null = null;
+let launchChecked = false;
 
-const syncIdleThreshold = () => {
-    const seconds = prefs.value.idleEnabled && running.value ? Math.max(1, prefs.value.idleMinutes) * 60 : 0;
-    invoke('set_idle_threshold', { seconds }).catch(() => {});
+const idleThreshold = () => (prefs.value.idleEnabled ? Math.max(1, prefs.value.idleMinutes) : null);
+
+// Rust watches input only while a timer runs.
+const syncIdleWatch = () => {
+    invoke('set_idle_watch', { watch: !!running.value }).catch(() => {});
 };
-watch([() => prefs.value.idleEnabled, () => prefs.value.idleMinutes, () => running.value?.id ?? null], syncIdleThreshold);
+watch(() => running.value?.id ?? null, syncIdleWatch);
 
 /**
  * The running entry's stop button, once it is on screen. Switching day starts
@@ -560,11 +583,42 @@ const runningStopButton = async (timeoutMs = 1500): Promise<HTMLElement | null> 
     }
 };
 
-const onIdleReturn = async (payload: { started_at_ms: number; seconds: number }) => {
-    if (!running.value || idlePrompt.value) return;
-    const minutes = idleMinutes(payload.seconds);
-    idlePrompt.value = { startedAt: payload.started_at_ms, minutes };
+/** Report input to the server: at most once a minute, and never ahead of a pending idle check. */
+const reportActivity = async (atMs: number) => {
+    if (idleCheck) await idleCheck;
+    if (view.value !== 'main' || !running.value || !activityDue(activitySentAt, Date.now())) return;
+    activitySentAt = Date.now();
+    // the input happened on this machine's clock; the server measures on its own
+    const at = new Date(Math.min(serverNow(), atMs - clockSkewMs())).toISOString();
+    api.timerActivity(at).catch(() => {});
+};
+
+/** Ask the server whether the absence that just ended is worth a prompt, and show it if so. */
+const askServerAboutIdle = async () => {
+    if (view.value !== 'main' || !running.value || idleAsk.value) return;
+    const seq = ++idleSeq;
+    const answer = await api.idleState().catch(() => null);
+    if (!answer || seq !== idleSeq || idleAsk.value) return;
+    const ask = idleQuestion(answer, running.value, idleThreshold());
+    if (ask) presentIdlePrompt(ask);
+};
+
+/** The person is back (input after a pause, wake, or launch): ask first, then report the input. */
+const onReturn = () => {
+    if (!running.value) return;
+    const check = askServerAboutIdle().finally(() => {
+        if (idleCheck === check) idleCheck = null;
+    });
+    idleCheck = check;
+    reportActivity(Date.now());
+};
+
+const presentIdlePrompt = async (ask: IdleAsk) => {
+    idleAsk.value = ask;
     if (view.value !== 'main') view.value = 'main';
+    // open the list first: the prompt hangs from the running row, which only
+    // sits where it should point once the window has moved
+    await invoke('open_popover').catch(() => {});
     // The user has been away from the machine, so nothing laid over the
     // timesheet is still what they are doing — and an open sheet would cover
     // the ■ the prompt is about to be anchored to. Rust's `popover-visible`
@@ -572,36 +626,74 @@ const onIdleReturn = async (payload: { started_at_ms: number; seconds: number })
     settleAfterAbsence(Number.POSITIVE_INFINITY);
     // the prompt hangs from the running entry, so show the day it lives on
     // (a timer left running overnight sits on yesterday) and bring it into view
-    if (running.value.date !== selectedDate.value) goDate(running.value.date);
+    if (running.value && running.value.date !== selectedDate.value) goDate(running.value.date);
     const button = await runningStopButton();
+    if (idleAsk.value !== ask) return; // closed while the row was on its way
     button?.scrollIntoView({ block: 'nearest' });
     // Hand Rust that button's rect in CSS pixels: it places the prompt window
     // against it, or under the menubar icon when there is nothing to point at.
     const rect = button?.getBoundingClientRect();
     const anchor = rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null;
-    invoke('show_idle_prompt', { minutes, anchor }).catch(() => {});
+    invoke('show_idle_prompt', { minutes: ask.minutes, anchor }).catch(() => {});
 };
 
-/** Map the prompt's two answers onto the API: removing is one call, keeping-and-stopping is a plain stop. */
-const applyIdleChoice = async (choice: { remove: boolean; stop: boolean }) => {
-    const { action, stopAfter } = resolveIdleChoice(choice);
-    await resolveIdle(action);
-    if (stopAfter) stopTimer();
+/** Answered somewhere else, stopped, or switched: the question no longer stands. */
+const closeIdlePrompt = () => {
+    if (!idleAsk.value) return;
+    idleAsk.value = null;
+    idleSeq++;
+    invoke('close_idle_prompt').catch(() => {});
 };
 
-const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
-    const prompt = idlePrompt.value;
-    idlePrompt.value = null;
+/** After the timer changed (pulse, live update): ask again whether the open prompt still stands. */
+const recheckIdlePrompt = async () => {
+    const ask = idleAsk.value;
+    if (!ask) return;
+    if (!askMatchesRunning(ask, running.value)) return closeIdlePrompt();
+    const seq = ++idleSeq;
+    const answer = await api.idleState().catch(() => null);
+    if (!answer || seq !== idleSeq || idleAsk.value !== ask) return;
+    if (!askStillOpen(ask, answer)) closeIdlePrompt();
+};
+// the timesheet alone can say the prompt is stale: the timer stopped or changed
+watch(
+    () => [running.value?.id ?? null, running.value?.timer_started_at ?? null],
+    () => {
+        if (idleAsk.value && !askMatchesRunning(idleAsk.value, running.value)) closeIdlePrompt();
+    },
+);
+// launch with a timer running counts as coming back
+watch(
+    () => running.value?.id ?? null,
+    (id) => {
+        if (id && !launchChecked) {
+            launchChecked = true;
+            onReturn();
+        }
+    },
+);
+
+/** One of the prompt's four buttons. Every answer goes to the server, "Ignore" included. */
+const applyIdleChoice = async (choice: string) => {
+    const ask = idleAsk.value;
+    idleAsk.value = null;
+    idleSeq++;
+    const action = idleAction(choice);
     // the popover only opened for this question: tuck it away again — through
-    // Rust, so it is one hide like any other and the window says it went away
-    invoke('hide_popover').catch(() => {});
-    if (!prompt || action === 'keep') return;
+    // Rust, so it is one hide like any other and the window says it went away.
+    // Not for "add as a new entry", which opens the sheet in it.
+    if (action !== 'discard_new_entry') invoke('hide_popover').catch(() => {});
+    if (!ask) return;
     try {
-        await api.idleTimer({ idle_started_at: new Date(prompt.startedAt).toISOString(), action });
+        const reply = await api.answerIdle({ idle_started_at: ask.idleSince, action, entry_id: ask.entryId });
         await refresh();
         updateTray();
+        const add = newEntryFrom(action, reply);
+        if (add) openForm({ date: add.date, duration: formatMinutes(add.minutes) });
+        else if (action === 'discard_new_entry') invoke('hide_popover').catch(() => {});
     } catch {
         // the next refresh will show the true state either way
+        if (action === 'discard_new_entry') invoke('hide_popover').catch(() => {});
     }
 };
 
@@ -653,13 +745,15 @@ watch(formOpen, (open) => {
     if (!open) draftRestored.value = false;
 });
 
-const openForm = () => {
+/** The new-entry sheet; `prefill` is what the app already knows (the idle prompt's "add as a new entry"). */
+const openForm = (prefill?: Partial<Pick<EntryDraft, 'date' | 'duration'>>) => {
     editingEntry.value = null;
     openedDuration = '';
-    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value };
-    // work typed before the popover was put away comes back rather than being lost
-    const draft = takeDraft(stashedDraft.value, Date.now());
-    stashedDraft.value = null;
+    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value, ...prefill };
+    // work typed before the popover was put away comes back rather than being
+    // lost — unless the sheet opens for something else, which it would cover
+    const draft = prefill ? null : takeDraft(stashedDraft.value, Date.now());
+    if (!prefill) stashedDraft.value = null;
     draftRestored.value = !!draft;
     form.value = { ...(draft ?? openedForm) };
     formOpen.value = true;
@@ -1325,7 +1419,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <p v-if="sheet?.week_locked" class="muted locked-note">{{ t('entry.weekLocked') }}</p>
 
             <div v-if="!dayEntries.length && !loading" class="empty" :class="{ raised: runningElsewhere || (!running && lastTimer) }">
-                <button class="btn-outline" @click="openForm">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
+                <button class="btn-outline" @click="openForm()">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
             </div>
 
             <div v-for="entry in dayEntries" :key="entry.id" class="entry" :class="{ running: entry.timer_started_at }">
@@ -1449,7 +1543,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- footer -->
         <footer class="footer">
             <div class="footer-left">
-                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm">＋</button>
+                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm()">＋</button>
                 <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
                 <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
             </div>

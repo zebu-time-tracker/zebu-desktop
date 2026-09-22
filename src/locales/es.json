@@ -73,9 +73,10 @@
     },
     "idle": {
         "title": "Estuviste inactivo {duration}",
-        "timeQuestion": "¿Quitar la inactividad?",
-        "timerQuestion": "¿Seguir contando?",
-        "ok": "OK"
+        "stop": "Detener el temporizador y quitar {duration}",
+        "continue": "Seguir contando y quitar {duration}",
+        "newEntry": "Añadir {duration} como nueva entrada",
+        "ignore": "Ignorar"
     },
     "form": {
         "editTitle": "Editar entrada",
