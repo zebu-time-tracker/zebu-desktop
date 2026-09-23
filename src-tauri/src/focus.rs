@@ -132,10 +132,16 @@ pub fn is_private_title(title: &str) -> bool {
         .any(|m| t.contains(m))
 }
 
+/// What macOS puts in front while the screen is locked or the screen saver
+/// runs. Nobody is working in these; the first live run on a locked Mac
+/// recorded "loginwindow" for as long as it was left running.
+const NOT_WORK: [&str; 2] = ["loginwindow", "ScreenSaverEngine"];
+
 /// The sample as it may be recorded, or None when it must not be recorded
-/// at all: excluded apps vanish entirely, private windows lose their title.
+/// at all: excluded apps (and the lock screen) vanish entirely, private
+/// windows lose their title.
 pub fn sanitise(sample: Sample, exclude: &[String]) -> Option<Sample> {
-    if sample.app.trim().is_empty() || is_excluded(&sample.app, exclude) {
+    if sample.app.trim().is_empty() || NOT_WORK.contains(&sample.app.trim()) || is_excluded(&sample.app, exclude) {
         return None;
     }
     let title = sample
@@ -310,6 +316,11 @@ pub fn focus_titles_allowed() -> bool {
 #[tauri::command]
 pub fn focus_request_titles(app: tauri::AppHandle) {
     platform::request_titles(&app);
+}
+
+/// Keep the span in progress when the app quits, rather than losing it.
+pub fn flush() {
+    record(None, now_ms());
 }
 
 /// "Delete focus history": the file and the span in progress.
@@ -581,6 +592,9 @@ mod tests {
         assert_eq!(sanitise(sample("Google Chrome", "Docs (Incognito)"), &list).unwrap().title, None);
         assert_eq!(sanitise(sample("Code", "  lib.rs  "), &list).unwrap().title.as_deref(), Some("lib.rs"));
         assert_eq!(sanitise(Sample { app: "Finder".into(), title: None }, &list).unwrap().title, None);
+        // the lock screen is not work, whatever the list says
+        assert_eq!(sanitise(Sample { app: "loginwindow".into(), title: None }, &[]), None);
+        assert_eq!(sanitise(sample("ScreenSaverEngine", ""), &[]), None);
     }
 
     #[test]
