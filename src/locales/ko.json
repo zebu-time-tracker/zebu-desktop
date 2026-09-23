@@ -87,6 +87,8 @@
         "timerRunning": "타이머 실행 중",
         "delete": "삭제",
         "save": "저장",
+        "ctrlKey": "Ctrl",
+        "durationError": "1:30, 1.5 또는 90m 같은 형식으로 입력하세요.",
         "log": "기록",
         "start": "시작",
         "searchProject": "프로젝트 검색…",
