@@ -160,5 +160,22 @@
         "minute": "min",
         "day": "d",
         "week": "tyg"
+    },
+    "focus": {
+        "tab": "Skupienie",
+        "tabSummary": "Podsumowanie",
+        "enable": "Śledź aktywną aplikację i okno",
+        "privacy": "Zapisuję, w której aplikacji i oknie jesteś. Zostaje to na tym Macu, a po 14 dniach to usuwam.",
+        "unsupported": "Na tym systemie jeszcze tego nie potrafię.",
+        "titlesBlocked": "Widzę tylko nazwy aplikacji, dopóki nie zezwolisz na dostępność.",
+        "allowTitles": "Zezwól",
+        "exclude": "Nigdy nie zapisuj tych aplikacji",
+        "delete": "Usuń historię skupienia",
+        "deleteConfirm": "Usunąć wszystko? Kliknij ponownie",
+        "deleted": "Historia skupienia usunięta",
+        "today": "Śledzone dziś",
+        "other": "Inne",
+        "empty": "Dziś jeszcze nic. Liczę okno po 20 sekundach.",
+        "suggest": "Zapisać {time} w {target}?"
     }
 }

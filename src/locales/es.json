@@ -160,5 +160,22 @@
         "minute": "min",
         "day": "d",
         "week": "sem"
+    },
+    "focus": {
+        "tab": "Enfoque",
+        "tabSummary": "Resumen",
+        "enable": "Registrar la app y la ventana activas",
+        "privacy": "Anoto en qué app y ventana estás. Se queda en este Mac y lo borro a los 14 días.",
+        "unsupported": "Todavía no puedo hacerlo en este sistema.",
+        "titlesBlocked": "Solo veo nombres de apps hasta que permitas Accesibilidad.",
+        "allowTitles": "Permitir",
+        "exclude": "No registrar nunca estas apps",
+        "delete": "Borrar historial de enfoque",
+        "deleteConfirm": "¿Borrarlo todo? Haz clic otra vez",
+        "deleted": "Historial de enfoque borrado",
+        "today": "Registrado hoy",
+        "other": "Otros",
+        "empty": "Nada todavía hoy. Cuento una ventana tras 20 segundos en ella.",
+        "suggest": "¿Registrar {time} en {target}?"
     }
 }

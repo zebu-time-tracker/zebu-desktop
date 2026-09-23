@@ -160,5 +160,22 @@
         "minute": "分钟",
         "day": "天",
         "week": "周"
+    },
+    "focus": {
+        "tab": "专注",
+        "tabSummary": "概览",
+        "enable": "记录应用和窗口焦点",
+        "privacy": "我会记下你在用哪个应用和窗口。数据只留在这台 Mac 上，14 天后删除。",
+        "unsupported": "在这个系统上暂时还不支持。",
+        "titlesBlocked": "在你允许辅助功能之前，我只能看到应用名称。",
+        "allowTitles": "允许",
+        "exclude": "从不记录这些应用",
+        "delete": "删除专注记录",
+        "deleteConfirm": "全部删除？再点一次",
+        "deleted": "专注记录已删除",
+        "today": "今日已记录",
+        "other": "其他",
+        "empty": "今天还没有记录。在一个窗口停留 20 秒后开始计入。",
+        "suggest": "将 {time} 记到 {target}？"
     }
 }

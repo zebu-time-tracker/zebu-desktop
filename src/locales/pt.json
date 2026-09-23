@@ -160,5 +160,22 @@
         "minute": "min",
         "day": "d",
         "week": "sem"
+    },
+    "focus": {
+        "tab": "Foco",
+        "tabSummary": "Resumo",
+        "enable": "Registrar o app e a janela em foco",
+        "privacy": "Anoto em que app e janela você está. Fica neste Mac e apago depois de 14 dias.",
+        "unsupported": "Ainda não consigo fazer isso neste sistema.",
+        "titlesBlocked": "Só vejo nomes de apps até você permitir a Acessibilidade.",
+        "allowTitles": "Permitir",
+        "exclude": "Nunca registrar estes apps",
+        "delete": "Apagar histórico de foco",
+        "deleteConfirm": "Apagar tudo? Clique de novo",
+        "deleted": "Histórico de foco apagado",
+        "today": "Registrado hoje",
+        "other": "Outros",
+        "empty": "Nada ainda hoje. Conto uma janela depois de 20 segundos nela.",
+        "suggest": "Registrar {time} em {target}?"
     }
 }
