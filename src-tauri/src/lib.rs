@@ -1,7 +1,9 @@
+mod focus;
+mod live;
 mod tray_icon;
 
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
@@ -103,6 +105,13 @@ fn hide_popover(app: tauri::AppHandle) {
     hide_popover_window(&app);
 }
 
+/// The popover showing itself: the server said an absence is worth asking
+/// about, and the prompt hangs from the running row in the list.
+#[tauri::command]
+fn open_popover(app: tauri::AppHandle) {
+    show_popover(&app);
+}
+
 // ---- popover height ---------------------------------------------------------
 //
 // The timesheet window sizes itself to the day. The entries list gets room for
@@ -191,14 +200,20 @@ fn toggle_popover(app: &tauri::AppHandle) {
     }
 }
 
-/// Idle threshold in seconds; 0 = detection off (no timer running, or the
-/// preference is disabled). The frontend keeps this current.
-static IDLE_THRESHOLD_S: AtomicU64 = AtomicU64::new(0);
+/// Whether a timer is running, so input is worth watching. The frontend keeps
+/// this current; whether an absence is worth a prompt is the server's answer
+/// and the user's threshold, not ours (board #333).
+static IDLE_WATCH: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
-fn set_idle_threshold(seconds: u64) {
-    IDLE_THRESHOLD_S.store(seconds, Ordering::SeqCst);
+fn set_idle_watch(watch: bool) {
+    IDLE_WATCH.store(watch, Ordering::SeqCst);
 }
+
+/// A pause shorter than this is not a return worth asking the server about.
+const RETURN_MIN_S: u64 = 60;
+/// Input is reported as activity at most this often, and only when it is this recent.
+const ACTIVITY_EVERY_S: u64 = 60;
 
 /// How long the user was away, given two samples of the OS idle counter
 /// taken `gap_s` seconds of wall-clock time apart. None while the stretch
@@ -217,35 +232,44 @@ fn away_seconds(prev_idle_s: u64, gap_s: u64, idle_s: u64) -> Option<u64> {
     (away > 0).then_some(away)
 }
 
+/// Whether input `idle_s` seconds ago should be reported now, `since_last_s`
+/// after the last report (None: never reported). At most once a minute, and
+/// only for input within that minute.
+fn activity_due(idle_s: u64, since_last_s: Option<u64>) -> bool {
+    idle_s < ACTIVITY_EVERY_S && since_last_s.is_none_or(|s| s >= ACTIVITY_EVERY_S)
+}
+
 /// Watches the OS idle counter from a native thread (webview timers are
-/// throttled or paused while the popover is hidden). When input resumes
-/// after at least the threshold, shows the popover and emits `idle-return`
-/// with when the absence started and how long it lasted.
+/// throttled or paused while the popover is hidden) while a timer runs, and
+/// tells the frontend two things: `idle-return` when input resumes after a
+/// pause (or the machine wakes), which it answers by asking the server what to
+/// prompt about before it reports the input; and `input-seen` with when input
+/// last happened, at most once a minute, which it reports as activity.
 fn spawn_idle_watcher(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut prev_idle = idle_seconds();
         let mut prev_at = SystemTime::now();
+        let mut reported_at: Option<SystemTime> = None;
         loop {
             std::thread::sleep(Duration::from_secs(2));
             let now = SystemTime::now();
             let gap = now.duration_since(prev_at).unwrap_or_default().as_secs();
             let idle = idle_seconds();
-            let threshold = IDLE_THRESHOLD_S.load(Ordering::SeqCst);
 
-            if threshold > 0 {
-                if let Some(away) = away_seconds(prev_idle, gap, idle) {
-                    if away >= threshold {
-                        let started_ms = prev_at
-                            .duration_since(UNIX_EPOCH)
-                            .map(|d| d.as_millis() as u64)
-                            .unwrap_or(0)
-                            .saturating_sub(prev_idle * 1000);
-                        // open the list first: the frontend answers this event
-                        // by measuring the running row, which only sits where
-                        // the prompt should point once the window has moved
-                        show_popover(&app);
-                        let _ = app.emit("idle-return", serde_json::json!({ "started_at_ms": started_ms, "seconds": away }));
-                    }
+            if IDLE_WATCH.load(Ordering::SeqCst) {
+                let since_last = reported_at.map(|at| now.duration_since(at).unwrap_or_default().as_secs());
+                if away_seconds(prev_idle, gap, idle).is_some_and(|away| away >= RETURN_MIN_S) {
+                    // the frontend reports this input itself, after asking
+                    reported_at = Some(now);
+                    let _ = app.emit("idle-return", ());
+                } else if activity_due(idle, since_last) {
+                    reported_at = Some(now);
+                    let at_ms = now
+                        .duration_since(UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0)
+                        .saturating_sub(idle * 1000);
+                    let _ = app.emit("input-seen", serde_json::json!({ "at_ms": at_ms }));
                 }
             }
             prev_idle = idle;
@@ -267,13 +291,11 @@ const IDLE_LABEL: &str = "idle";
 /// Logical size of the prompt: the width is fixed, the height is what the
 /// webview measures once the (translated) text has been laid out.
 ///
-/// The width is set by the two side-by-side questions in `IdlePrompt.vue`:
-/// each column needs (330 - 14px padding ×2 - 1px border ×2 - 10px gap) / 2 =
-/// 145px, and the longest question in any locale measures ~136px (nl
-/// "Inactieve tijd verwijderen?", pt "Remover o tempo inativo?"), so every
-/// catalog keeps both questions and both Yes/No pairs on one line.
+/// The width fits Harvest's four stacked answers ("Continue timing and remove
+/// 12h 43m") on one line in English; a longer translation wraps, and the
+/// measured height follows.
 const IDLE_WIDTH: f64 = 330.0;
-const IDLE_HEIGHT: f64 = 220.0;
+const IDLE_HEIGHT: f64 = 240.0;
 /// Breathing room between the anchor and the prompt, in logical pixels.
 const IDLE_GAP: f64 = 6.0;
 
@@ -450,16 +472,28 @@ fn fit_idle_prompt(app: tauri::AppHandle, height: f64) {
     place_idle_prompt(&app, height.clamp(120.0, 400.0));
 }
 
-/// The two answers, handed back to the main window, which owns what they mean.
-#[tauri::command]
-fn resolve_idle_prompt(app: tauri::AppHandle, remove: bool, stop: bool) {
+/// Put the prompt away, whatever became of its question.
+fn dismiss_idle_prompt(app: &tauri::AppHandle) {
     if let Ok(mut prompt) = IDLE_PROMPT.lock() {
         *prompt = None;
     }
     if let Some(window) = app.get_webview_window(IDLE_LABEL) {
         let _ = window.hide();
     }
-    let _ = app.emit_to("main", "idle-choice", serde_json::json!({ "remove": remove, "stop": stop }));
+}
+
+/// The button pressed, handed back to the main window, which owns what it means.
+#[tauri::command]
+fn resolve_idle_prompt(app: tauri::AppHandle, choice: String) {
+    dismiss_idle_prompt(&app);
+    let _ = app.emit_to("main", "idle-choice", serde_json::json!({ "choice": choice }));
+}
+
+/// The question no longer stands — answered on another device, or the timer
+/// stopped or changed — so the prompt goes without an answer from here.
+#[tauri::command]
+fn close_idle_prompt(app: tauri::AppHandle) {
+    dismiss_idle_prompt(&app);
 }
 
 // ---- insights window -------------------------------------------------------
@@ -973,10 +1007,15 @@ fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>,
     }
 }
 
-/// How long to wait before the next pulse, given whether a clock is running.
-/// Split out so the choice is a plain function over a bool and can be tested.
-fn pulse_interval_s(running: bool) -> u64 {
-    if running {
+/// How long to wait before the next pulse, given whether a clock is running
+/// and whether the live socket is subscribed. Live, every change is pushed and
+/// the pulse only backstops a quietly dead socket, so it slows to the idle
+/// cadence whatever runs. Split out so the choice is a plain function over two
+/// bools and can be tested.
+fn pulse_interval_s(running: bool, live: bool) -> u64 {
+    if live {
+        live::PULSE_LIVE_S
+    } else if running {
         PULSE_RUNNING_S
     } else {
         PULSE_IDLE_S
@@ -1001,8 +1040,9 @@ fn spawn_tray_ticker(app: tauri::AppHandle) {
 
             let now = SystemTime::now();
             let running = TRAY_FRAME.lock().map(|f| f.as_ref().is_some_and(|f| f.running)).unwrap_or(false);
+            let live = live::LIVE.load(Ordering::SeqCst);
 
-            if now.duration_since(last_pulse).unwrap_or_default().as_secs() >= pulse_interval_s(running) {
+            if now.duration_since(last_pulse).unwrap_or_default().as_secs() >= pulse_interval_s(running, live) {
                 last_pulse = now;
                 let _ = app.emit_to("main", "pulse-due", ());
             }
@@ -1134,8 +1174,20 @@ fn set_shortcut(app: tauri::AppHandle, action: String, accelerator: Option<Strin
     Err("taken".into())
 }
 
+/// The webview learned (from GET /api/me) where the workspace pushes timer
+/// changes, or that it does not; None on disconnect. See src/live.rs.
+#[tauri::command]
+fn set_live_source(app: tauri::AppHandle, source: Option<live::LiveSource>) {
+    live::set_source(app, source);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // One TLS stack for the socket and the channel auth: rustls needs to be
+    // told which provider is the process default before either builds a
+    // client, and the updater plugin picks ring too.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
@@ -1154,9 +1206,11 @@ pub fn run() {
     builder
         .invoke_handler(tauri::generate_handler![
             set_tray_state,
+            set_live_source,
             quit,
             idle_seconds,
-            set_idle_threshold,
+            set_idle_watch,
+            open_popover,
             set_dock_visible,
             set_hide_on_blur,
             fit_popover,
@@ -1165,10 +1219,18 @@ pub fn run() {
             idle_prompt_data,
             fit_idle_prompt,
             resolve_idle_prompt,
+            close_idle_prompt,
             toggle_insights,
             close_insights,
             fit_insights,
-            set_shortcut
+            set_shortcut,
+            focus::set_focus_tracking,
+            focus::focus_spans,
+            focus::focus_titles_allowed,
+            focus::focus_request_titles,
+            focus::focus_clear,
+            focus::focus_supported,
+            focus::open_focus_suggestion
         ])
         .on_window_event(|window, event| {
             // "Hide when changing focus": the popover hides itself when focus
@@ -1250,6 +1312,8 @@ pub fn run() {
 
             spawn_idle_watcher(app.handle().clone());
             spawn_tray_ticker(app.handle().clone());
+            // samples nothing until the user opts in (see focus.rs)
+            focus::spawn_focus_watcher(app.handle().clone());
 
             Ok(())
         })
@@ -1267,7 +1331,11 @@ pub fn run() {
                 }
             }
             #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
+            let _ = app;
+            // the focus span in progress is only written when it ends; quitting ends it
+            if let tauri::RunEvent::Exit = event {
+                focus::flush();
+            }
         });
 }
 
@@ -1425,7 +1493,16 @@ mod shortcut_tests {
 
 #[cfg(test)]
 mod idle_tests {
-    use super::away_seconds;
+    use super::{activity_due, away_seconds};
+
+    #[test]
+    fn activity_is_reported_once_a_minute_and_only_for_recent_input() {
+        assert!(activity_due(0, None));
+        assert!(activity_due(59, None));
+        assert!(!activity_due(60, None)); // no input this minute: nothing to report
+        assert!(!activity_due(3, Some(59)));
+        assert!(activity_due(3, Some(60)));
+    }
 
     #[test]
     fn a_climbing_counter_is_not_a_return() {
@@ -1670,9 +1747,18 @@ mod pulse_cadence_tests {
     fn the_pulse_is_asked_for_far_less_often_while_nothing_is_running() {
         // A menubar app is open from login to shutdown, so the idle cadence is
         // what it costs the server for most of the day.
-        assert_eq!(pulse_interval_s(true), 2);
-        assert_eq!(pulse_interval_s(false), 30);
-        assert!(pulse_interval_s(false) > pulse_interval_s(true));
+        assert_eq!(pulse_interval_s(true, false), 2);
+        assert_eq!(pulse_interval_s(false, false), 30);
+        assert!(pulse_interval_s(false, false) > pulse_interval_s(true, false));
+    }
+
+    #[test]
+    fn while_the_socket_is_up_the_pulse_is_only_a_backstop() {
+        // Every change is pushed, so asking every two seconds as well would be
+        // the very load the socket exists to remove.
+        assert_eq!(pulse_interval_s(true, true), 30);
+        assert_eq!(pulse_interval_s(false, true), 30);
+        assert!(pulse_interval_s(true, true) > pulse_interval_s(true, false));
     }
 
     #[test]
@@ -1680,6 +1766,7 @@ mod pulse_cadence_tests {
         // It used to be how a timer started elsewhere got noticed at all. The
         // pulse does that now, and this only catches what the pulse misses, so
         // it has to be far rarer than the pulse rather than competing with it.
-        assert!(REFRESH_NUDGE_S > pulse_interval_s(false));
+        assert!(REFRESH_NUDGE_S > pulse_interval_s(false, false));
+        assert!(REFRESH_NUDGE_S > pulse_interval_s(true, true));
     }
 }

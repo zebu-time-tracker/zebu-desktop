@@ -136,6 +136,27 @@ export function onPulse(pulse: Pulse | null, state: PulseState, now: number): Pu
 }
 
 /**
+ * A change pushed over the live channel (src/live.ts): the pulse, delivered
+ * rather than asked for.
+ *
+ * Unlike the first pulse of a session, a push always means something moved
+ * just now — that is the only reason the server sends one — so an unknown
+ * held token refetches too. A push whose token matches the one held is the
+ * echo of this app's own write, already fetched. Either way the held token
+ * becomes the pushed one, so the next beat of the pulse does not fetch the
+ * same change a second time.
+ */
+export function onPushed(token: string | null, state: PulseState, now: number): PulseDecision {
+    const refetch = token === null || token !== state.token;
+
+    return {
+        refetch,
+        nextIn: PULSE.idle,
+        state: { ...state, token, refetchedAt: refetch ? now : state.refetchedAt },
+    };
+}
+
+/**
  * How long to wait before the next beat, given an announced outage.
  *
  * Nothing has changed until the window starts, so the usual cadence stands —

@@ -12,11 +12,11 @@
         "waiting": "En attente d'approbation dans le navigateur…",
         "reopen": "Rouvrir la page d'approbation",
         "denied": "Accès refusé dans le navigateur.",
-        "expired": "Demande expirée — réessayez.",
+        "expired": "La demande a expiré. Réessayez.",
         "workspace": "Espace de travail",
         "workspaceHint": "Le nom de votre espace de travail (ex. « studio »), son adresse (studio.zebu.work) ou une URL complète.",
         "invalidWorkspace": "Ce n’est pas une adresse d’espace de travail valide.",
-        "notAWorkspace": "C’est le site principal de Zebu — saisissez plutôt le nom de votre espace de travail.",
+        "notAWorkspace": "C’est le site principal de Zebu. Saisissez le nom de votre espace de travail.",
         "insecureWorkspace": "Les adresses d’espaces de travail doivent utiliser https.",
         "sessionExpired": "L’accès de cet appareil a été révoqué. Reconnectez-vous."
     },
@@ -54,7 +54,7 @@
         "runningSince": "Minuteur en cours depuis le {date}",
         "stop": "Arrêter",
         "startHint": "Démarrer (arrête tout autre minuteur)",
-        "startTimer": "Démarrer le minuteur",
+        "startTimer": "Démarrer",
         "addEntry": "Nouvelle entrée",
         "lastActive": "Dernier projet actif",
         "waiting": "{time} d’attente de l’agent",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "Inactif pendant {duration}",
-        "timeQuestion": "Retirer l’inactivité ?",
-        "timerQuestion": "Continuer le minuteur ?",
-        "ok": "OK"
+        "stop": "Arrêter le minuteur et retirer {duration}",
+        "continue": "Continuer et retirer {duration}",
+        "newEntry": "Ajouter {duration} comme nouvelle entrée",
+        "ignore": "Ignorer"
     },
     "form": {
         "editTitle": "Modifier l'entrée",
         "newTitle": "Nouvelle entrée",
-        "draftRestored": "L'entrée que vous n'aviez pas encore enregistrée a été restaurée.",
+        "draftRestored": "Votre entrée non enregistrée a été restaurée.",
         "addProject": "Choisir un projet…",
         "addTask": "Choisir une tâche…",
         "notes": "Notes (facultatif)",
         "timerRunning": "Minuteur en cours",
         "delete": "Supprimer",
         "save": "Enregistrer",
+        "ctrlKey": "Ctrl",
+        "durationError": "Saisissez une durée comme 1:30, 1,5 ou 90m.",
         "log": "Consigner",
         "start": "Démarrer",
         "searchProject": "Rechercher un projet…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "Une autre app utilise déjà cette combinaison.",
         "openInBrowser": "Ouvrir Zebu dans le navigateur",
         "disconnect": "Déconnecter cet appareil",
-        "quit": "Quitter Zebu"
+        "quit": "Quitter Zebu",
+        "live": "Mises à jour en direct"
     },
     "update": {
         "available": "Zebu {version} est disponible",
-        "body": "La mise à jour se télécharge en arrière-plan et l’application redémarre. Un minuteur en cours continue sur le serveur.",
+        "body": "Zebu télécharge la mise à jour et redémarre. Votre minuteur continue.",
         "install": "Installer et redémarrer",
         "later": "Plus tard",
         "installVersion": "Installer {version}",
@@ -162,5 +166,22 @@
         "minute": "min",
         "day": "j",
         "week": "sem"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Résumé",
+        "enable": "Suivre l'app et la fenêtre actives",
+        "privacy": "Je note dans quelle app et quelle fenêtre vous êtes. Cela reste sur ce Mac et je l'efface après 14 jours.",
+        "unsupported": "Je ne sais pas encore le faire sur ce système.",
+        "titlesBlocked": "Je ne vois que les noms d'apps tant que l'accessibilité n'est pas autorisée.",
+        "allowTitles": "Autoriser",
+        "exclude": "Ne jamais enregistrer ces apps",
+        "delete": "Effacer l'historique de focus",
+        "deleteConfirm": "Tout effacer ? Cliquez encore",
+        "deleted": "Historique de focus effacé",
+        "today": "Suivi aujourd'hui",
+        "other": "Autres",
+        "empty": "Rien pour l'instant aujourd'hui. Je compte une fenêtre après 20 secondes.",
+        "suggest": "Saisir {time} sur {target} ?"
     }
 }

@@ -12,11 +12,11 @@
         "waiting": "Esperando aprobación en el navegador…",
         "reopen": "Reabrir la página de aprobación",
         "denied": "El acceso fue denegado en el navegador.",
-        "expired": "La solicitud caducó; inténtalo de nuevo.",
+        "expired": "La solicitud caducó. Inténtalo de nuevo.",
         "workspace": "Espacio de trabajo",
         "workspaceHint": "El nombre de tu espacio de trabajo (p. ej. «studio»), su dirección (studio.zebu.work) o una URL completa.",
         "invalidWorkspace": "Esa no es una dirección de espacio de trabajo válida.",
-        "notAWorkspace": "Ese es el sitio principal de Zebu; escribe el nombre de tu propio espacio de trabajo.",
+        "notAWorkspace": "Ese es el sitio principal de Zebu. Escribe el nombre de tu espacio de trabajo.",
         "insecureWorkspace": "Las direcciones de espacios de trabajo deben usar https.",
         "sessionExpired": "Se revocó el acceso de este dispositivo. Inicia sesión de nuevo para reconectar."
     },
@@ -54,7 +54,7 @@
         "runningSince": "Temporizador activo desde el {date}",
         "stop": "Detener",
         "startHint": "Iniciar (detiene otros temporizadores)",
-        "startTimer": "Iniciar temporizador",
+        "startTimer": "Iniciar",
         "addEntry": "Nueva entrada",
         "lastActive": "Último proyecto activo",
         "waiting": "{time} esperando al agente",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "Estuviste inactivo {duration}",
-        "timeQuestion": "¿Quitar la inactividad?",
-        "timerQuestion": "¿Seguir contando?",
-        "ok": "OK"
+        "stop": "Detener el temporizador y quitar {duration}",
+        "continue": "Seguir contando y quitar {duration}",
+        "newEntry": "Añadir {duration} como nueva entrada",
+        "ignore": "Ignorar"
     },
     "form": {
         "editTitle": "Editar entrada",
         "newTitle": "Nueva entrada",
-        "draftRestored": "Se ha restaurado la entrada que aún no habías guardado.",
+        "draftRestored": "Se restauró tu entrada sin guardar.",
         "addProject": "Elegir proyecto…",
         "addTask": "Elegir tarea…",
         "notes": "Notas (opcional)",
         "timerRunning": "Temporizador activo",
         "delete": "Eliminar",
         "save": "Guardar",
+        "ctrlKey": "Ctrl",
+        "durationError": "Introduce una duración como 1:30, 1,5 o 90m.",
         "log": "Registrar",
         "start": "Iniciar",
         "searchProject": "Buscar proyectos…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "Otra app ya usa esa combinación.",
         "openInBrowser": "Abrir Zebu en el navegador",
         "disconnect": "Desconectar este dispositivo",
-        "quit": "Salir de Zebu"
+        "quit": "Salir de Zebu",
+        "live": "Actualizaciones en vivo"
     },
     "update": {
         "available": "Zebu {version} está disponible",
-        "body": "La actualización se descarga en segundo plano y la app se reinicia. Un temporizador en marcha sigue corriendo en el servidor.",
+        "body": "Zebu descarga la actualización y se reinicia. Tu temporizador sigue en marcha.",
         "install": "Instalar y reiniciar",
         "later": "Más tarde",
         "installVersion": "Instalar {version}",
@@ -162,5 +166,22 @@
         "minute": "min",
         "day": "d",
         "week": "sem"
+    },
+    "focus": {
+        "tab": "Enfoque",
+        "tabSummary": "Resumen",
+        "enable": "Registrar la app y la ventana activas",
+        "privacy": "Anoto en qué app y ventana estás. Se queda en este Mac y lo borro a los 14 días.",
+        "unsupported": "Todavía no puedo hacerlo en este sistema.",
+        "titlesBlocked": "Solo veo nombres de apps hasta que permitas Accesibilidad.",
+        "allowTitles": "Permitir",
+        "exclude": "No registrar nunca estas apps",
+        "delete": "Borrar historial de enfoque",
+        "deleteConfirm": "¿Borrarlo todo? Haz clic otra vez",
+        "deleted": "Historial de enfoque borrado",
+        "today": "Registrado hoy",
+        "other": "Otros",
+        "empty": "Nada todavía hoy. Cuento una ventana tras 20 segundos en ella.",
+        "suggest": "¿Registrar {time} en {target}?"
     }
 }

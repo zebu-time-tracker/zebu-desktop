@@ -12,11 +12,11 @@
         "waiting": "Wachten op goedkeuring in de browser…",
         "reopen": "Goedkeuringspagina opnieuw openen",
         "denied": "Toegang geweigerd in de browser.",
-        "expired": "Verzoek verlopen — probeer opnieuw.",
+        "expired": "Het verzoek is verlopen. Probeer het opnieuw.",
         "workspace": "Werkruimte",
         "workspaceHint": "De naam van je werkruimte (bijv. “studio”), het adres (studio.zebu.work) of een volledige URL.",
         "invalidWorkspace": "Dat is geen geldig werkruimte-adres.",
-        "notAWorkspace": "Dat is de hoofdsite van Zebu — voer in plaats daarvan de naam van je eigen werkruimte in.",
+        "notAWorkspace": "Dat is de hoofdsite van Zebu. Voer de naam van je werkruimte in.",
         "insecureWorkspace": "Werkruimte-adressen moeten https gebruiken.",
         "sessionExpired": "De toegang van dit apparaat is ingetrokken. Log opnieuw in om te verbinden."
     },
@@ -54,7 +54,7 @@
         "runningSince": "Timer loopt sinds {date}",
         "stop": "Stoppen",
         "startHint": "Starten (stopt andere timers)",
-        "startTimer": "Timer starten",
+        "startTimer": "Starten",
         "addEntry": "Nieuwe registratie",
         "lastActive": "Laatst actieve project",
         "waiting": "{time} wachten op agent",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "Je was {duration} inactief",
-        "timeQuestion": "Inactieve tijd verwijderen?",
-        "timerQuestion": "Doorgaan met timen?",
-        "ok": "OK"
+        "stop": "Timer stoppen en {duration} verwijderen",
+        "continue": "Doorgaan en {duration} verwijderen",
+        "newEntry": "{duration} toevoegen als nieuwe registratie",
+        "ignore": "Negeren"
     },
     "form": {
         "editTitle": "Registratie bewerken",
         "newTitle": "Nieuwe registratie",
-        "draftRestored": "De invoer die je nog niet had opgeslagen, is hersteld.",
+        "draftRestored": "Je niet-opgeslagen registratie is hersteld.",
         "addProject": "Project kiezen…",
         "addTask": "Taak kiezen…",
         "notes": "Notities (optioneel)",
         "timerRunning": "Timer loopt",
         "delete": "Verwijderen",
         "save": "Opslaan",
+        "ctrlKey": "Ctrl",
+        "durationError": "Voer een duur in zoals 1:30, 1,5 of 90m.",
         "log": "Vastleggen",
         "start": "Starten",
         "searchProject": "Projecten zoeken…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "Een andere app gebruikt die combinatie al.",
         "openInBrowser": "Open Zebu in de browser",
         "disconnect": "Dit apparaat loskoppelen",
-        "quit": "Zebu afsluiten"
+        "quit": "Zebu afsluiten",
+        "live": "Live-updates"
     },
     "update": {
         "available": "Zebu {version} is beschikbaar",
-        "body": "De update wordt op de achtergrond gedownload en de app herstart. Een lopende timer loopt door op de server.",
+        "body": "Zebu downloadt de update en start opnieuw. Je timer blijft lopen.",
         "install": "Installeren en herstarten",
         "later": "Later",
         "installVersion": "{version} installeren",
@@ -162,5 +166,22 @@
         "minute": "m",
         "day": "d",
         "week": "w"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Overzicht",
+        "enable": "App- en vensterfocus bijhouden",
+        "privacy": "Ik noteer in welke app en welk venster je zit. Het blijft op deze Mac en ik wis het na 14 dagen.",
+        "unsupported": "Op dit systeem kan ik dit nog niet.",
+        "titlesBlocked": "Ik zie alleen appnamen tot je Toegankelijkheid toestaat.",
+        "allowTitles": "Toestaan",
+        "exclude": "Deze apps nooit vastleggen",
+        "delete": "Focusgeschiedenis wissen",
+        "deleteConfirm": "Alles wissen? Klik nogmaals",
+        "deleted": "Focusgeschiedenis gewist",
+        "today": "Vandaag bijgehouden",
+        "other": "Overig",
+        "empty": "Vandaag nog niets. Een venster telt na 20 seconden.",
+        "suggest": "{time} boeken op {target}?"
     }
 }

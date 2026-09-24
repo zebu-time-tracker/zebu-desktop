@@ -16,7 +16,7 @@
         "workspace": "ワークスペース",
         "workspaceHint": "ワークスペース名 (例: studio)、そのアドレス (studio.zebu.work)、または完全な URL を入力します。",
         "invalidWorkspace": "有効なワークスペースのアドレスではありません。",
-        "notAWorkspace": "それは Zebu のメインサイトです。ご自身のワークスペース名を入力してください。",
+        "notAWorkspace": "それは Zebu のメインサイトです。ワークスペース名を入力してください。",
         "insecureWorkspace": "ワークスペースのアドレスは https を使用する必要があります。",
         "sessionExpired": "このデバイスのアクセスは取り消されました。再度ログインしてください。"
     },
@@ -54,7 +54,7 @@
         "runningSince": "{date} からタイマー実行中",
         "stop": "停止",
         "startHint": "開始 (他のタイマーは停止)",
-        "startTimer": "タイマー開始",
+        "startTimer": "開始",
         "addEntry": "新規エントリ",
         "lastActive": "最後に作業したプロジェクト",
         "waiting": "エージェント待ち {time}",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "{duration} 操作がありませんでした",
-        "timeQuestion": "無操作時間を削除しますか？",
-        "timerQuestion": "計測を続けますか？",
-        "ok": "OK"
+        "stop": "タイマーを停止して {duration} を削除",
+        "continue": "計測を続けて {duration} を削除",
+        "newEntry": "{duration} を新規エントリとして追加",
+        "ignore": "無視"
     },
     "form": {
         "editTitle": "エントリを編集",
         "newTitle": "新規エントリ",
-        "draftRestored": "まだ保存していなかったエントリを復元しました。",
+        "draftRestored": "保存していないエントリを復元しました。",
         "addProject": "プロジェクトを選択…",
         "addTask": "タスクを選択…",
         "notes": "メモ (任意)",
         "timerRunning": "タイマー実行中",
         "delete": "削除",
         "save": "保存",
+        "ctrlKey": "Ctrl",
+        "durationError": "1:30、1.5、90m のように入力してください。",
         "log": "記録",
         "start": "開始",
         "searchProject": "プロジェクトを検索…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "その組み合わせは他のアプリが使用中です。",
         "openInBrowser": "ブラウザで Zebu を開く",
         "disconnect": "この端末の接続を解除",
-        "quit": "Zebu を終了"
+        "quit": "Zebu を終了",
+        "live": "ライブ更新"
     },
     "update": {
         "available": "Zebu {version} が利用可能です",
-        "body": "更新はバックグラウンドでダウンロードされ、アプリが再起動します。実行中のタイマーはサーバー上で継続されます。",
+        "body": "Zebu が更新をダウンロードして再起動します。タイマーは動き続けます。",
         "install": "インストールして再起動",
         "later": "後で",
         "installVersion": "{version} をインストール",
@@ -162,5 +166,22 @@
         "minute": "分",
         "day": "日",
         "week": "週"
+    },
+    "focus": {
+        "tab": "フォーカス",
+        "tabSummary": "概要",
+        "enable": "アプリとウィンドウのフォーカスを記録",
+        "privacy": "どのアプリとウィンドウを使っているかを記録します。このMacの中だけに保存し、14日後に削除します。",
+        "unsupported": "このシステムではまだ使えません。",
+        "titlesBlocked": "アクセシビリティを許可するまで、アプリ名しか見えません。",
+        "allowTitles": "許可",
+        "exclude": "記録しないアプリ",
+        "delete": "フォーカス履歴を削除",
+        "deleteConfirm": "すべて削除しますか？もう一度クリック",
+        "deleted": "フォーカス履歴を削除しました",
+        "today": "今日の記録",
+        "other": "その他",
+        "empty": "今日はまだ何もありません。同じウィンドウに20秒いると記録します。",
+        "suggest": "{time} を {target} に記録しますか？"
     }
 }

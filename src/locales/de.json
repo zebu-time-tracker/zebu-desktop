@@ -12,11 +12,11 @@
         "waiting": "Warten auf Freigabe im Browser…",
         "reopen": "Freigabeseite erneut öffnen",
         "denied": "Zugriff wurde im Browser verweigert.",
-        "expired": "Anfrage abgelaufen — bitte erneut versuchen.",
+        "expired": "Die Anfrage ist abgelaufen. Versuch es erneut.",
         "workspace": "Arbeitsbereich",
         "workspaceHint": "Name deines Arbeitsbereichs (z. B. „studio“), seine Adresse (studio.zebu.work) oder eine vollständige URL.",
         "invalidWorkspace": "Das ist keine gültige Adresse eines Arbeitsbereichs.",
-        "notAWorkspace": "Das ist die zentrale Zebu-Seite — gib stattdessen den Namen deines Arbeitsbereichs ein.",
+        "notAWorkspace": "Das ist die zentrale Zebu-Seite. Gib den Namen deines Arbeitsbereichs ein.",
         "insecureWorkspace": "Adressen von Arbeitsbereichen müssen https verwenden.",
         "sessionExpired": "Der Zugriff dieses Geräts wurde widerrufen. Melde dich erneut an."
     },
@@ -54,7 +54,7 @@
         "runningSince": "Timer läuft seit {date}",
         "stop": "Stopp",
         "startHint": "Starten (stoppt andere Timer)",
-        "startTimer": "Timer starten",
+        "startTimer": "Starten",
         "addEntry": "Neuer Eintrag",
         "lastActive": "Zuletzt aktives Projekt",
         "waiting": "{time} Wartezeit auf Agenten",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "Du warst {duration} inaktiv",
-        "timeQuestion": "Leerlaufzeit entfernen?",
-        "timerQuestion": "Weiter messen?",
-        "ok": "OK"
+        "stop": "Timer stoppen und {duration} entfernen",
+        "continue": "Weiter messen und {duration} entfernen",
+        "newEntry": "{duration} als neuen Eintrag hinzufügen",
+        "ignore": "Ignorieren"
     },
     "form": {
         "editTitle": "Eintrag bearbeiten",
         "newTitle": "Neuer Zeiteintrag",
-        "draftRestored": "Der noch nicht gespeicherte Eintrag wurde wiederhergestellt.",
+        "draftRestored": "Dein nicht gespeicherter Eintrag wurde wiederhergestellt.",
         "addProject": "Projekt wählen…",
         "addTask": "Aufgabe wählen…",
         "notes": "Notizen (optional)",
         "timerRunning": "Timer läuft",
         "delete": "Löschen",
         "save": "Speichern",
+        "ctrlKey": "Strg",
+        "durationError": "Gib eine Dauer wie 1:30, 1,5 oder 90m ein.",
         "log": "Erfassen",
         "start": "Starten",
         "searchProject": "Projekte suchen…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "Eine andere App belegt diese Kombination bereits.",
         "openInBrowser": "Zebu im Browser öffnen",
         "disconnect": "Gerät trennen",
-        "quit": "Zebu beenden"
+        "quit": "Zebu beenden",
+        "live": "Live-Updates"
     },
     "update": {
         "available": "Zebu {version} ist verfügbar",
-        "body": "Das Update wird im Hintergrund geladen und die App neu gestartet. Ein laufender Timer läuft auf dem Server weiter.",
+        "body": "Zebu lädt das Update und startet neu. Dein Timer läuft weiter.",
         "install": "Installieren & neu starten",
         "later": "Später",
         "installVersion": "{version} installieren",
@@ -162,5 +166,22 @@
         "minute": "min",
         "day": "T",
         "week": "W"
+    },
+    "focus": {
+        "tab": "Fokus",
+        "tabSummary": "Übersicht",
+        "enable": "App- und Fensterfokus erfassen",
+        "privacy": "Ich notiere, in welcher App und welchem Fenster du bist. Das bleibt auf diesem Mac, und ich lösche es nach 14 Tagen.",
+        "unsupported": "Auf diesem System kann ich das noch nicht.",
+        "titlesBlocked": "Ich sehe nur App-Namen, bis du Bedienungshilfen erlaubst.",
+        "allowTitles": "Erlauben",
+        "exclude": "Diese Apps nie erfassen",
+        "delete": "Fokusverlauf löschen",
+        "deleteConfirm": "Alles löschen? Noch einmal klicken",
+        "deleted": "Fokusverlauf gelöscht",
+        "today": "Heute erfasst",
+        "other": "Sonstiges",
+        "empty": "Heute noch nichts. Ein Fenster zählt ab 20 Sekunden.",
+        "suggest": "{time} auf {target} buchen?"
     }
 }

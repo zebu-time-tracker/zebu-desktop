@@ -33,8 +33,15 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   workspace that predates board #49. Everything that needs "the current
   timer" — the pill, `running`, Resume, the pill's ▶ — reads `activeEntry`,
   so the app cannot disagree with itself.
-- Idle detection lives in Rust (`spawn_idle_watcher`); the frontend only sets
-  the threshold and renders the prompt. Webview timers are throttled while
+- **Idle is the server's answer, not ours** (board #333, API in the web
+  app's `docs/idle-detection.md`). Rust (`spawn_idle_watcher`) only watches
+  input while a timer runs: `input-seen` (at most once a minute) becomes
+  `POST /api/timer/activity`, and `idle-return` (input after a pause, or
+  wake) becomes `GET /api/timer/idle` *before* that input is reported, as
+  does launch with a timer running. The server's minutes and the user's
+  threshold decide the prompt; every answer goes to `POST /api/timer/idle`,
+  and a pulse refetch re-asks so a prompt answered elsewhere closes. Every
+  rule is in `src/idle.ts`; keep no idle state locally. Webview timers are throttled while
   hidden, so never rely on `setInterval` for anything time-critical: the tray
   pill ticks from `spawn_tray_ticker` (the frontend only describes what is on
   the clock via `set_tray_state`, see `src/tray.ts`), and the same thread
@@ -57,6 +64,20 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   Rust's `format_clock` go through that one rule. What gets *billed* is a
   different question and is not ours: stopping rounds, with a one-minute
   minimum, on the server.
+- **Timer changes are pushed; the pulse is the backstop.** `GET /api/me`
+  returns a `broadcast` block (or `null`) naming the workspace's Reverb
+  socket and the person's private channel. The webview reads it
+  (`src/live.ts`) and hands it to Rust (`set_live_source`), and Rust keeps
+  the websocket up on a tokio task (`src-tauri/src/live.rs`: Pusher
+  protocol 7, channel auth via `POST /api/broadcasting/auth`, pong to ping,
+  reconnect with backoff), because a webview socket would stall with the
+  popover hidden. Rust emits `live-changed` for every push — the frontend
+  runs it through `onPushed` in `src/pulse.ts`, the same state the pulse
+  uses, so a change is never fetched twice — and `live-state` when the
+  subscription comes up or drops; coming back after a drop asks for one
+  refetch. While subscribed the ticker slows the pulse to 30 s whatever
+  runs. No `broadcast` block means nothing changes: the pulse runs as
+  before.
 - The idle prompt is its own always-on-top window (`show_idle_prompt`, label
   `idle`, `src/IdlePrompt.vue`) so it is never clipped by the timer list's
   frame; it only presents the question — App.vue still owns what the answers
@@ -95,6 +116,12 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   each one ends in the call a click already makes; the frontend only owns the
   bindings (`src/shortcuts.ts`). Adding an action means a name in both lists
   and a slot in `SHORTCUTS`.
+- Focus tracking (board #401) is opt-in and local: Rust's `spawn_focus_watcher`
+  (`src-tauri/src/focus.rs`) samples nothing until `set_focus_tracking` turns
+  it on, and writes spans only to `focus.jsonl` in the app data dir, pruned
+  after 14 days. Never send spans to the server. The grouping and suggestion
+  rules are in `src/focus.ts`; the Focus tab is `src/FocusPanel.vue` inside
+  Insights, and a suggestion only opens the new-entry sheet (`focus-log`).
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

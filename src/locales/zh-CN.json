@@ -16,7 +16,7 @@
         "workspace": "工作区",
         "workspaceHint": "输入你的工作区名称（如 studio）、其地址（studio.zebu.work）或完整 URL。",
         "invalidWorkspace": "这不是有效的工作区地址。",
-        "notAWorkspace": "那是 Zebu 主站，请改为输入你自己的工作区名称。",
+        "notAWorkspace": "那是 Zebu 主站。请输入你的工作区名称。",
         "insecureWorkspace": "工作区地址必须使用 https。",
         "sessionExpired": "此设备的访问权限已被撤销。请重新登录以重新连接。"
     },
@@ -54,7 +54,7 @@
         "runningSince": "计时器自 {date} 运行中",
         "stop": "停止",
         "startHint": "开始 (将停止其他计时器)",
-        "startTimer": "开始计时",
+        "startTimer": "开始",
         "addEntry": "新建条目",
         "lastActive": "最近活动的项目",
         "waiting": "等待智能体 {time}",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "您已闲置 {duration}",
-        "timeQuestion": "移除闲置时间？",
-        "timerQuestion": "继续计时？",
-        "ok": "确定"
+        "stop": "停止计时并移除 {duration}",
+        "continue": "继续计时并移除 {duration}",
+        "newEntry": "将 {duration} 添加为新条目",
+        "ignore": "忽略"
     },
     "form": {
         "editTitle": "编辑时间条目",
         "newTitle": "新建时间条目",
-        "draftRestored": "已恢复尚未保存的记录。",
+        "draftRestored": "已恢复未保存的记录。",
         "addProject": "选择项目…",
         "addTask": "选择任务…",
         "notes": "备注 (可选)",
         "timerRunning": "计时进行中",
         "delete": "删除",
         "save": "保存",
+        "ctrlKey": "Ctrl",
+        "durationError": "请输入 1:30、1.5 或 90m 这样的时长。",
         "log": "记录",
         "start": "开始",
         "searchProject": "搜索项目…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "该组合已被其他应用占用。",
         "openInBrowser": "在浏览器中打开 Zebu",
         "disconnect": "断开此设备",
-        "quit": "退出 Zebu"
+        "quit": "退出 Zebu",
+        "live": "实时更新"
     },
     "update": {
         "available": "Zebu {version} 已可用",
-        "body": "更新将在后台下载并重新启动应用。正在运行的计时器会在服务器上继续。",
+        "body": "Zebu 会下载更新并重新启动。计时器会继续运行。",
         "install": "安装并重新启动",
         "later": "稍后",
         "installVersion": "安装 {version}",
@@ -162,5 +166,22 @@
         "minute": "分钟",
         "day": "天",
         "week": "周"
+    },
+    "focus": {
+        "tab": "专注",
+        "tabSummary": "概览",
+        "enable": "记录应用和窗口焦点",
+        "privacy": "我会记下你在用哪个应用和窗口。数据只留在这台 Mac 上，14 天后删除。",
+        "unsupported": "在这个系统上暂时还不支持。",
+        "titlesBlocked": "在你允许辅助功能之前，我只能看到应用名称。",
+        "allowTitles": "允许",
+        "exclude": "从不记录这些应用",
+        "delete": "删除专注记录",
+        "deleteConfirm": "全部删除？再点一次",
+        "deleted": "专注记录已删除",
+        "today": "今日已记录",
+        "other": "其他",
+        "empty": "今天还没有记录。在一个窗口停留 20 秒后开始计入。",
+        "suggest": "将 {time} 记到 {target}？"
     }
 }

@@ -12,11 +12,11 @@
         "waiting": "In attesa di approvazione nel browser…",
         "reopen": "Riapri la pagina di approvazione",
         "denied": "Accesso negato nel browser.",
-        "expired": "Richiesta scaduta — riprova.",
+        "expired": "La richiesta è scaduta. Riprova.",
         "workspace": "Spazio di lavoro",
         "workspaceHint": "Il nome del tuo spazio di lavoro (es. “studio”), il suo indirizzo (studio.zebu.work) o un URL completo.",
         "invalidWorkspace": "Non è un indirizzo di spazio di lavoro valido.",
-        "notAWorkspace": "Quello è il sito principale di Zebu — inserisci invece il nome del tuo spazio di lavoro.",
+        "notAWorkspace": "Quello è il sito principale di Zebu. Inserisci il nome del tuo spazio di lavoro.",
         "insecureWorkspace": "Gli indirizzi degli spazi di lavoro devono usare https.",
         "sessionExpired": "L’accesso di questo dispositivo è stato revocato. Accedi di nuovo per riconnetterti."
     },
@@ -54,7 +54,7 @@
         "runningSince": "Timer attivo dal {date}",
         "stop": "Ferma",
         "startHint": "Avvia (ferma gli altri timer)",
-        "startTimer": "Avvia timer",
+        "startTimer": "Avvia",
         "addEntry": "Nuova voce",
         "lastActive": "Ultimo progetto attivo",
         "waiting": "{time} in attesa dell’agente",
@@ -75,20 +75,23 @@
     },
     "idle": {
         "title": "Sei stato inattivo per {duration}",
-        "timeQuestion": "Rimuovere l’inattività?",
-        "timerQuestion": "Continuare a misurare?",
-        "ok": "OK"
+        "stop": "Ferma il timer e rimuovi {duration}",
+        "continue": "Continua e rimuovi {duration}",
+        "newEntry": "Aggiungi {duration} come nuova voce",
+        "ignore": "Ignora"
     },
     "form": {
         "editTitle": "Modifica voce",
         "newTitle": "Nuova voce",
-        "draftRestored": "È stata ripristinata la voce che non avevi ancora salvato.",
+        "draftRestored": "La voce non salvata è stata ripristinata.",
         "addProject": "Scegli progetto…",
         "addTask": "Scegli attività…",
         "notes": "Note (facoltative)",
         "timerRunning": "Timer attivo",
         "delete": "Elimina",
         "save": "Salva",
+        "ctrlKey": "Ctrl",
+        "durationError": "Inserisci una durata come 1:30, 1,5 o 90m.",
         "log": "Registra",
         "start": "Avvia",
         "searchProject": "Cerca progetti…",
@@ -137,11 +140,12 @@
         "shortcutTaken": "Un'altra app usa già questa combinazione.",
         "openInBrowser": "Apri Zebu nel browser",
         "disconnect": "Disconnetti questo dispositivo",
-        "quit": "Esci da Zebu"
+        "quit": "Esci da Zebu",
+        "live": "Aggiornamenti in tempo reale"
     },
     "update": {
         "available": "Zebu {version} è disponibile",
-        "body": "L’aggiornamento viene scaricato in background e l’app si riavvia. Un timer in corso continua sul server.",
+        "body": "Zebu scarica l’aggiornamento e si riavvia. Il timer continua a girare.",
         "install": "Installa e riavvia",
         "later": "Più tardi",
         "installVersion": "Installa {version}",
@@ -162,5 +166,22 @@
         "minute": "min",
         "day": "g",
         "week": "sett"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Riepilogo",
+        "enable": "Traccia app e finestra attive",
+        "privacy": "Annoto in quale app e finestra ti trovi. Resta su questo Mac e lo cancello dopo 14 giorni.",
+        "unsupported": "Su questo sistema non posso ancora farlo.",
+        "titlesBlocked": "Vedo solo i nomi delle app finché non consenti l'accessibilità.",
+        "allowTitles": "Consenti",
+        "exclude": "Non registrare mai queste app",
+        "delete": "Elimina cronologia focus",
+        "deleteConfirm": "Eliminare tutto? Clicca di nuovo",
+        "deleted": "Cronologia focus eliminata",
+        "today": "Tracciato oggi",
+        "other": "Altro",
+        "empty": "Ancora niente oggi. Conto una finestra dopo 20 secondi.",
+        "suggest": "Registrare {time} su {target}?"
     }
 }

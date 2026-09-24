@@ -8,12 +8,15 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { editDurationToSave, isApplePlatform, isSaveShortcut, saveShortcutHint } from './entryForm';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
-import { idleMinutes, resolveIdleChoice } from './idle';
+import { DEFAULT_EXCLUDED, parseExcludeList } from './focus';
+import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
-import { initialPulseState, onPulse, onUnavailable, PULSE, refetched } from './pulse';
+import { liveSource, readBroadcast } from './live';
+import { initialPulseState, onPulse, onPushed, onUnavailable, PULSE, refetched } from './pulse';
 import {
     defaultPresetName,
     filterPresets,
@@ -51,8 +54,22 @@ interface Prefs {
     idleMinutes: number;
     language: string; // 'system' or a locale code from SUPPORTED_LOCALES
     shortcuts: Shortcuts; // system-wide hotkeys, one accelerator per action ('' = unbound)
+    /** Focus tracking (board #401): off until the user turns it on. Rust samples nothing while false. */
+    focusEnabled: boolean;
+    /** Apps never recorded, one per line — the password managers by default. */
+    focusExclude: string;
 }
-const prefs = ref<Prefs>({ appearance: 'system', dock: false, hideOnBlur: true, idleEnabled: true, idleMinutes: 10, language: 'system', shortcuts: noShortcuts() });
+const prefs = ref<Prefs>({
+    appearance: 'system',
+    dock: false,
+    hideOnBlur: true,
+    idleEnabled: true,
+    idleMinutes: 10,
+    language: 'system',
+    shortcuts: noShortcuts(),
+    focusEnabled: false,
+    focusExclude: DEFAULT_EXCLUDED.join('\n'),
+});
 try {
     Object.assign(prefs.value, JSON.parse(localStorage.getItem('zebu.prefs') ?? '{}'));
 } catch {
@@ -74,6 +91,7 @@ watch(
         setLocalePreference(p.language);
         invoke('set_dock_visible', { visible: p.dock }).catch(() => {});
         invoke('set_hide_on_blur', { hide: p.hideOnBlur }).catch(() => {});
+        invoke('set_focus_tracking', { enabled: !!p.focusEnabled, exclude: parseExcludeList(p.focusExclude ?? '') }).catch(() => {});
     },
     { deep: true, immediate: true },
 );
@@ -180,6 +198,7 @@ const disconnect = (message = '') => {
     stashedDraft.value = null; // a draft only means something on the workspace it was typed for
     closeInsights();
     me.value = null;
+    syncLive(null);
     sheet.value = null;
     // a reply still in flight for the old workspace must not repopulate the pill
     resetActive();
@@ -311,6 +330,8 @@ let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
 let refreshUnlisten: UnlistenFn | null = null;
 let pulseUnlisten: UnlistenFn | null = null;
+let liveStateUnlisten: UnlistenFn | null = null;
+let liveChangedUnlisten: UnlistenFn | null = null;
 let pulseLoop: ReturnType<typeof setTimeout> | null = null;
 
 // What the pulse knows between beats (src/pulse.ts owns every rule; this only
@@ -337,9 +358,66 @@ const onPulseBeat = async () => {
 
     pulseState = decision.state;
     if (down) errorMessage.value = t('errors.maintenance');
-    if (decision.refetch) await refresh();
+    if (decision.refetch) {
+        await refresh();
+        // the timer changed: an open idle prompt may have been answered elsewhere
+        recheckIdlePrompt();
+    }
 
     return decision.nextIn;
+};
+
+// ---- live channel ------------------------------------------------------------
+//
+// The workspace pushes "your timer changed" over a websocket the moment an
+// entry is written (board #278), so a start in the browser reaches the pill in
+// about a hundred milliseconds instead of on the next beat. Rust keeps the
+// socket (src-tauri/src/live.rs); this side hands it what GET /api/me said
+// and decides what to fetch, with the same state the pulse uses, so the two
+// never fetch the same change twice.
+
+/** Whether pushes are arriving right now — the pulse is only a backstop meanwhile. */
+const live = ref(false);
+
+const onLiveState = ({ live: up, gap }: { live: boolean; gap: boolean }) => {
+    live.value = up;
+    // back after a drop: something may have been pushed into the dark
+    if (gap) refresh();
+};
+
+const onLiveChanged = async ({ token }: { token: string | null }) => {
+    if (view.value !== 'main') return;
+    const decision = onPushed(token, pulseState, Date.now());
+    pulseState = decision.state;
+    if (decision.refetch) {
+        await refresh();
+        // the same as after a pulse refetch: the prompt may have been answered elsewhere
+        recheckIdlePrompt();
+    }
+};
+
+/** Tell Rust where to subscribe — or, with null, to stop. */
+let handedBroadcast = 'null';
+const syncLive = (broadcast: unknown) => {
+    live.value = false;
+    const source = liveSource(auth.workspace, auth.token, readBroadcast(broadcast));
+    handedBroadcast = JSON.stringify(source?.broadcast ?? null);
+    invoke('set_live_source', { source }).catch(() => {});
+};
+
+/**
+ * The block is learned at sign-in, but a menubar app runs for weeks and a
+ * workspace can switch Reverb on (or rotate its key) meanwhile: while nothing
+ * is subscribed, ask again on the five-minute nudge and hand Rust what changed.
+ */
+const relearnLive = () => {
+    if (view.value !== 'main' || live.value) return;
+    api.me()
+        .then((u) => {
+            me.value = u;
+            if (JSON.stringify(readBroadcast(u.broadcast)) !== handedBroadcast) syncLive(u.broadcast);
+        })
+        .catch(() => {});
 };
 
 // The pill is the server's `active` entry: the running timer, or — so a timer
@@ -364,6 +442,7 @@ onMounted(() => {
     listen('refresh-due', () => {
         refresh();
         maybeCheckForUpdates(); // every six hours, by the wall clock (updateSchedule.ts)
+        relearnLive();
     })
         .then((off) => (refreshUnlisten = off))
         .catch(() => (refreshLoop = setInterval(refresh, PULSE.fallback)));
@@ -371,6 +450,8 @@ onMounted(() => {
     // two seconds while something runs, thirty while nothing does — because its
     // thread keeps time while the popover is hidden and the webview's does not.
     // Outside Tauri (plain-browser dev) the beat schedules itself instead.
+    listen<{ live: boolean; gap: boolean }>('live-state', (e) => onLiveState(e.payload)).then((off) => (liveStateUnlisten = off));
+    listen<{ token: string | null }>('live-changed', (e) => onLiveChanged(e.payload)).then((off) => (liveChangedUnlisten = off));
     listen('pulse-due', () => onPulseBeat())
         .then((off) => (pulseUnlisten = off))
         .catch(() => {
@@ -386,16 +467,17 @@ onMounted(() => {
         if (view.value === 'main') refresh();
         maybeCheckForUpdates();
     });
-    listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
+    listen('idle-return', () => onReturn()).then((off) => (idleUnlisten = off));
+    listen<{ at_ms: number }>('input-seen', (e) => reportActivity(e.payload.at_ms)).then((off) => (inputUnlisten = off));
     // the answer comes back from the prompt's own window, via Rust
-    listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
+    listen<{ choice: string }>('idle-choice', (e) => applyIdleChoice(e.payload.choice)).then((off) => (idleChoiceUnlisten = off));
     // the menubar pill is a play/pause button: Rust reads the running flag it
     // was last handed and sends whichever press this was (see below)
     listen('tray-toggle-timer', () => onTrayToggle()).then((off) => (trayPauseUnlisten = off));
     listen('tray-open-new-timer', () => onTrayPlay()).then((off) => (trayPlayUnlisten = off));
     // the presets hotkey, once Rust has the popover on screen (src-tauri: show_presets)
     listen('open-presets', () => openPresets()).then((off) => (presetsUnlisten = off));
-    syncIdleThreshold();
+    syncIdleWatch();
     // quiet launch-time update check; the prompt only appears when there is one
     setTimeout(() => checkForUpdates(false), 4000);
 });
@@ -405,9 +487,12 @@ onUnmounted(() => {
     refreshUnlisten?.();
     if (pulseLoop) clearTimeout(pulseLoop);
     pulseUnlisten?.();
+    liveStateUnlisten?.();
+    liveChangedUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
+    inputUnlisten?.();
     trayPauseUnlisten?.();
     trayPlayUnlisten?.();
     presetsUnlisten?.();
@@ -483,6 +568,14 @@ watch(intlLocale, () => updateTray());
 const confirmNewDay = ref(false);
 const newDayToday = ref(''); // "today" as of when the dialog opened: what {when} is counted from
 
+// Clicking ▶ on an entry from an earlier day starts a new timer today
+// (startFreshToday), so the button says so instead of "Resume" (#361). Reading
+// `now` re-checks the date on each tick, so an open popover relabels at midnight.
+const lastTimerLabelKey = computed(() => {
+    void now.value;
+    return lastTimer.value ? resumeLabelKey(lastTimer.value.date, todayStr()) : 'timer.resume';
+});
+
 /**
  * Starting or resuming a timer jumps to the entry's day (today, for a fresh
  * timer) so the running row is on screen; act() then refreshes that day.
@@ -550,26 +643,43 @@ const projectUrl = (projectId: string) => `${auth.workspace}/projects/${projectI
 
 const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(intlLocale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
-// ---- idle detection (Harvest-style) ----------------------------------------
+// ---- idle detection (Harvest-style, decided by the server) ----------------
 //
-// The OS idle counter is watched from a native thread (src-tauri/src/lib.rs):
-// webview timers are throttled or paused while the popover is hidden, and the
-// counter does not tick through system sleep, so polling from here missed
-// long absences. The frontend only tells Rust the threshold (0 = off), decides
-// whether the return is worth asking about, and points Rust at the row the
-// prompt should hang from. The prompt itself is a window of its own (it used
-// to be a callout in this DOM, which the window frame clipped); its two
-// answers come back as an `idle-choice` event, and what they mean stays here.
+// The server owns idle (board #333): every device reports activity, and the
+// server turns a long enough silence into a pending gap that stays until
+// someone answers for it — so a night away is counted whole, and an absence
+// answered on another device is not asked about again here.
+//
+// Rust watches the OS idle counter from a native thread (webview timers are
+// throttled while the popover is hidden, and the counter does not tick through
+// sleep) and says two things: `input-seen`, at most once a minute while a timer
+// runs, which is reported as activity; and `idle-return`, when input resumes
+// after a pause (or the machine wakes), which is answered by asking the server
+// what to prompt about — before reporting the activity that ends the absence.
+// App launch with a timer running asks too. Every rule is in src/idle.ts.
+//
+// The prompt is a window of its own (it used to be a callout in this DOM,
+// which the window frame clipped); its four answers come back as an
+// `idle-choice` event, and what they mean stays here.
 
-const idlePrompt = ref<{ startedAt: number; minutes: number } | null>(null);
+const idleAsk = ref<IdleAsk | null>(null);
 let idleUnlisten: UnlistenFn | null = null;
 let idleChoiceUnlisten: UnlistenFn | null = null;
+let inputUnlisten: UnlistenFn | null = null;
+/** Numbers each idle request, so a reply that was overtaken (or outlived its prompt) is dropped. */
+let idleSeq = 0;
+/** An idle check on its way: activity waits for it, so the server is asked before the absence ends. */
+let idleCheck: Promise<void> | null = null;
+let activitySentAt: number | null = null;
+let launchChecked = false;
 
-const syncIdleThreshold = () => {
-    const seconds = prefs.value.idleEnabled && running.value ? Math.max(1, prefs.value.idleMinutes) * 60 : 0;
-    invoke('set_idle_threshold', { seconds }).catch(() => {});
+const idleThreshold = () => (prefs.value.idleEnabled ? Math.max(1, prefs.value.idleMinutes) : null);
+
+// Rust watches input only while a timer runs.
+const syncIdleWatch = () => {
+    invoke('set_idle_watch', { watch: !!running.value }).catch(() => {});
 };
-watch([() => prefs.value.idleEnabled, () => prefs.value.idleMinutes, () => running.value?.id ?? null], syncIdleThreshold);
+watch(() => running.value?.id ?? null, syncIdleWatch);
 
 /**
  * The running entry's stop button, once it is on screen. Switching day starts
@@ -587,11 +697,42 @@ const runningStopButton = async (timeoutMs = 1500): Promise<HTMLElement | null> 
     }
 };
 
-const onIdleReturn = async (payload: { started_at_ms: number; seconds: number }) => {
-    if (!running.value || idlePrompt.value) return;
-    const minutes = idleMinutes(payload.seconds);
-    idlePrompt.value = { startedAt: payload.started_at_ms, minutes };
+/** Report input to the server: at most once a minute, and never ahead of a pending idle check. */
+const reportActivity = async (atMs: number) => {
+    if (idleCheck) await idleCheck;
+    if (view.value !== 'main' || !running.value || !activityDue(activitySentAt, Date.now())) return;
+    activitySentAt = Date.now();
+    // the input happened on this machine's clock; the server measures on its own
+    const at = new Date(Math.min(serverNow(), atMs - clockSkewMs())).toISOString();
+    api.timerActivity(at).catch(() => {});
+};
+
+/** Ask the server whether the absence that just ended is worth a prompt, and show it if so. */
+const askServerAboutIdle = async () => {
+    if (view.value !== 'main' || !running.value || idleAsk.value) return;
+    const seq = ++idleSeq;
+    const answer = await api.idleState().catch(() => null);
+    if (!answer || seq !== idleSeq || idleAsk.value) return;
+    const ask = idleQuestion(answer, running.value, idleThreshold());
+    if (ask) presentIdlePrompt(ask);
+};
+
+/** The person is back (input after a pause, wake, or launch): ask first, then report the input. */
+const onReturn = () => {
+    if (!running.value) return;
+    const check = askServerAboutIdle().finally(() => {
+        if (idleCheck === check) idleCheck = null;
+    });
+    idleCheck = check;
+    reportActivity(Date.now());
+};
+
+const presentIdlePrompt = async (ask: IdleAsk) => {
+    idleAsk.value = ask;
     if (view.value !== 'main') view.value = 'main';
+    // open the list first: the prompt hangs from the running row, which only
+    // sits where it should point once the window has moved
+    await invoke('open_popover').catch(() => {});
     // The user has been away from the machine, so nothing laid over the
     // timesheet is still what they are doing — and an open sheet would cover
     // the ■ the prompt is about to be anchored to. Rust's `popover-visible`
@@ -599,36 +740,74 @@ const onIdleReturn = async (payload: { started_at_ms: number; seconds: number })
     settleAfterAbsence(Number.POSITIVE_INFINITY);
     // the prompt hangs from the running entry, so show the day it lives on
     // (a timer left running overnight sits on yesterday) and bring it into view
-    if (running.value.date !== selectedDate.value) goDate(running.value.date);
+    if (running.value && running.value.date !== selectedDate.value) goDate(running.value.date);
     const button = await runningStopButton();
+    if (idleAsk.value !== ask) return; // closed while the row was on its way
     button?.scrollIntoView({ block: 'nearest' });
     // Hand Rust that button's rect in CSS pixels: it places the prompt window
     // against it, or under the menubar icon when there is nothing to point at.
     const rect = button?.getBoundingClientRect();
     const anchor = rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null;
-    invoke('show_idle_prompt', { minutes, anchor }).catch(() => {});
+    invoke('show_idle_prompt', { minutes: ask.minutes, anchor }).catch(() => {});
 };
 
-/** Map the prompt's two answers onto the API: removing is one call, keeping-and-stopping is a plain stop. */
-const applyIdleChoice = async (choice: { remove: boolean; stop: boolean }) => {
-    const { action, stopAfter } = resolveIdleChoice(choice);
-    await resolveIdle(action);
-    if (stopAfter) stopTimer();
+/** Answered somewhere else, stopped, or switched: the question no longer stands. */
+const closeIdlePrompt = () => {
+    if (!idleAsk.value) return;
+    idleAsk.value = null;
+    idleSeq++;
+    invoke('close_idle_prompt').catch(() => {});
 };
 
-const resolveIdle = async (action: 'keep' | 'discard_keep' | 'discard_stop') => {
-    const prompt = idlePrompt.value;
-    idlePrompt.value = null;
+/** After the timer changed (pulse, live update): ask again whether the open prompt still stands. */
+const recheckIdlePrompt = async () => {
+    const ask = idleAsk.value;
+    if (!ask) return;
+    if (!askMatchesRunning(ask, running.value)) return closeIdlePrompt();
+    const seq = ++idleSeq;
+    const answer = await api.idleState().catch(() => null);
+    if (!answer || seq !== idleSeq || idleAsk.value !== ask) return;
+    if (!askStillOpen(ask, answer)) closeIdlePrompt();
+};
+// the timesheet alone can say the prompt is stale: the timer stopped or changed
+watch(
+    () => [running.value?.id ?? null, running.value?.timer_started_at ?? null],
+    () => {
+        if (idleAsk.value && !askMatchesRunning(idleAsk.value, running.value)) closeIdlePrompt();
+    },
+);
+// launch with a timer running counts as coming back
+watch(
+    () => running.value?.id ?? null,
+    (id) => {
+        if (id && !launchChecked) {
+            launchChecked = true;
+            onReturn();
+        }
+    },
+);
+
+/** One of the prompt's four buttons. Every answer goes to the server, "Ignore" included. */
+const applyIdleChoice = async (choice: string) => {
+    const ask = idleAsk.value;
+    idleAsk.value = null;
+    idleSeq++;
+    const action = idleAction(choice);
     // the popover only opened for this question: tuck it away again — through
-    // Rust, so it is one hide like any other and the window says it went away
-    invoke('hide_popover').catch(() => {});
-    if (!prompt || action === 'keep') return;
+    // Rust, so it is one hide like any other and the window says it went away.
+    // Not for "add as a new entry", which opens the sheet in it.
+    if (action !== 'discard_new_entry') invoke('hide_popover').catch(() => {});
+    if (!ask) return;
     try {
-        await api.idleTimer({ idle_started_at: new Date(prompt.startedAt).toISOString(), action });
+        const reply = await api.answerIdle({ idle_started_at: ask.idleSince, action, entry_id: ask.entryId });
         await refresh();
         updateTray();
+        const add = newEntryFrom(action, reply);
+        if (add) openForm({ date: add.date, duration: formatMinutes(add.minutes) });
+        else if (action === 'discard_new_entry') invoke('hide_popover').catch(() => {});
     } catch {
         // the next refresh will show the true state either way
+        if (action === 'discard_new_entry') invoke('hide_popover').catch(() => {});
     }
 };
 
@@ -669,6 +848,16 @@ const autosizeNotes = () => {
 const form = ref<EntryDraft>({ project_id: '', task_id: '', notes: '', duration: '', date: '' });
 const formProject = computed(() => sheet.value?.projects.find((p) => p.id === form.value.project_id));
 let openedDuration = ''; // the prefill — only a changed duration rebases a live timer
+/** Said inside the sheet, where the person is looking, rather than on the list behind it. */
+const formError = ref('');
+// ⌘↵ / Ctrl+↵ saves the sheet from any field (board #398); the keycap in the button says so.
+const appleKeys = isApplePlatform((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform);
+const saveHint = computed(() => saveShortcutHint(appleKeys, t('form.ctrlKey')));
+const onSheetKeydown = (e: KeyboardEvent) => {
+    if (!isSaveShortcut(e, appleKeys)) return;
+    e.preventDefault();
+    if (form.value.project_id) submitForm();
+};
 // The whole sheet as it was prefilled, so "did the user type anything?" is a
 // comparison rather than a guess (see popover.ts).
 let openedForm: EntryDraft = { project_id: '', task_id: '', notes: '', duration: '', date: '' };
@@ -678,15 +867,18 @@ const stashedDraft = ref<StashedDraft | null>(null);
 const draftRestored = ref(false);
 watch(formOpen, (open) => {
     if (!open) draftRestored.value = false;
+    formError.value = '';
 });
 
-const openForm = () => {
+/** The new-entry sheet; `prefill` is what the app already knows (the idle prompt's "add as a new entry"). */
+const openForm = (prefill?: Partial<Pick<EntryDraft, 'date' | 'duration'>>) => {
     editingEntry.value = null;
     openedDuration = '';
-    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value };
-    // work typed before the popover was put away comes back rather than being lost
-    const draft = takeDraft(stashedDraft.value, Date.now());
-    stashedDraft.value = null;
+    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value, ...prefill };
+    // work typed before the popover was put away comes back rather than being
+    // lost — unless the sheet opens for something else, which it would cover
+    const draft = prefill ? null : takeDraft(stashedDraft.value, Date.now());
+    if (!prefill) stashedDraft.value = null;
     draftRestored.value = !!draft;
     form.value = { ...(draft ?? openedForm) };
     formOpen.value = true;
@@ -726,12 +918,18 @@ const submitForm = () =>
             notes: form.value.notes || null,
         };
         if (editingEntry.value) {
-            // an untouched duration means "leave the clock alone"
-            const durationChanged = form.value.duration !== openedDuration;
+            // an untouched duration means "leave the clock alone"; a running
+            // timer's 0:00 is its clock, not a duration to refuse (board #398)
+            const checked = editDurationToSave({ typed: form.value.duration, opened: openedDuration, running: !!editingEntry.value.timer_started_at });
+            if (!checked.ok) {
+                formError.value = t('form.durationError');
+                return;
+            }
+            formError.value = '';
             await api.updateEntry(editingEntry.value.id, {
                 ...payload,
                 date: form.value.date,
-                ...(durationChanged && minutes !== null ? { minutes } : {}),
+                ...(checked.minutes !== null ? { minutes: checked.minutes } : {}),
             });
         } else if (minutes !== null && minutes > 0) {
             await showEntry(api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes }));
@@ -791,11 +989,12 @@ const settingsOpen = ref(false);
 // preferences it has always held, and the five shortcut recorders that were
 // added underneath them. Everything else in the popout — who is signed in, the
 // links, the build line — is chrome for the whole thing and sits outside both.
-const SETTINGS_TABS = ['preferences', 'shortcuts'] as const;
+const SETTINGS_TABS = ['preferences', 'shortcuts', 'focus'] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
     preferences: 'settings.tabSettings',
     shortcuts: 'settings.tabShortcuts',
+    focus: 'focus.tab',
 };
 /**
  * The tab on show. It is reset every time the popout opens rather than
@@ -923,7 +1122,7 @@ watch(
 watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen, settingsTab], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
-const me = ref<{ name: string; email: string } | null>(null);
+const me = ref<{ name: string; email: string; broadcast?: unknown } | null>(null);
 const appVersion = ref('');
 
 watch(
@@ -931,7 +1130,10 @@ watch(
     (v) => {
         if (v === 'main' && !me.value) {
             api.me()
-                .then((u) => (me.value = u))
+                .then((u) => {
+                    me.value = u;
+                    syncLive(u.broadcast);
+                })
                 .catch(() => {});
         }
     },
@@ -967,6 +1169,62 @@ onMounted(() => {
     listen<boolean>('insights-visible', (e) => (insightsOpen.value = e.payload)).then((off) => (insightsUnlisten = off));
 });
 onUnmounted(() => insightsUnlisten?.());
+
+// ---- focus tracking --------------------------------------------------------
+//
+// Board card #401. Rust records which app and window were in front into a
+// local file (src-tauri/src/focus.rs); the Focus tab in Insights shows the day
+// and suggests entries. This window owns only the opt-in, the exclude list,
+// the delete button — and the new-entry sheet a suggestion opens, prefilled
+// but not saved.
+
+/** Whether the OS lets us read window titles (macOS: Accessibility); app names need nothing. */
+const focusTitlesAllowed = ref(true);
+const focusSupported = ref(true);
+/** "Delete focus history" asks once more before it deletes. */
+const focusDelete = ref<'idle' | 'confirm' | 'done'>('idle');
+
+const checkFocusPermission = async () => {
+    focusSupported.value = await invoke<boolean>('focus_supported').catch(() => true);
+    focusTitlesAllowed.value = await invoke<boolean>('focus_titles_allowed').catch(() => true);
+};
+const requestFocusTitles = () => {
+    invoke('focus_request_titles').catch(() => {});
+    // the answer arrives in System Settings, not here; look again when the user is back
+    setTimeout(checkFocusPermission, 4000);
+};
+const deleteFocusHistory = () => {
+    if (focusDelete.value !== 'confirm') {
+        focusDelete.value = 'confirm';
+        return;
+    }
+    invoke('focus_clear').catch(() => {});
+    focusDelete.value = 'done';
+};
+watch(settingsTab, (tab) => {
+    focusDelete.value = 'idle';
+    if (tab === 'focus') checkFocusPermission();
+});
+
+let focusLogUnlisten: UnlistenFn | null = null;
+/** A suggestion from the Focus tab: the sheet opens filled in, and nothing is saved until Log. */
+const openFocusSuggestion = (d: { project_id: string; task_id: string | null; minutes: number; notes: string }) => {
+    if (view.value !== 'main' || sheet.value?.week_locked) return;
+    settingsOpen.value = false;
+    closePresets();
+    const draft: EntryDraft = { project_id: d.project_id, task_id: d.task_id ?? '', notes: d.notes, duration: formatMinutes(d.minutes), date: toDateString(new Date()) };
+    editingEntry.value = null;
+    openedDuration = '';
+    openedForm = { ...draft };
+    draftRestored.value = false;
+    form.value = { ...draft };
+    formOpen.value = true;
+    nextTick(autosizeNotes);
+};
+onMounted(() => {
+    listen<{ project_id: string; task_id: string | null; minutes: number; notes: string }>('focus-log', (e) => openFocusSuggestion(e.payload)).then((off) => (focusLogUnlisten = off));
+});
+onUnmounted(() => focusLogUnlisten?.());
 
 // ---- presets ---------------------------------------------------------------
 //
@@ -1332,7 +1590,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
                     <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
                 </span>
-                <span class="resume-action">▶ {{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
+                <span class="resume-action">▶ {{ t(lastTimerLabelKey) }}</span>
             </span>
         </button>
 
@@ -1360,7 +1618,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <p v-if="sheet?.week_locked" class="muted locked-note">{{ t('entry.weekLocked') }}</p>
 
             <div v-if="!dayEntries.length && !loading" class="empty" :class="{ raised: runningElsewhere || (!running && lastTimer) }">
-                <button class="btn-outline" @click="openForm">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
+                <button class="btn-outline" @click="openForm()">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
             </div>
 
             <div v-for="entry in dayEntries" :key="entry.id" class="entry" :class="{ running: entry.timer_started_at }">
@@ -1438,7 +1696,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- new entry sheet -->
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
-            <div class="sheet">
+            <div class="sheet" @keydown="onSheetKeydown">
                 <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
                 <!-- the popover was put away mid-entry: this is what was typed then, not a fresh sheet -->
                 <p v-if="draftRestored" class="muted">{{ t('form.draftRestored') }}</p>
@@ -1474,13 +1732,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :placeholder="t('form.notes')"
                     @input="autosizeNotes"
                 ></textarea>
+                <p v-if="formError" class="error sheet-error">{{ formError }}</p>
                 <div class="sheet-actions">
                     <button v-if="editingEntry && !editingEntry.timer_started_at" class="link danger sheet-delete" @click="deleteFromSheet">
                         {{ t('form.delete') }}
                     </button>
                     <button class="btn-outline" @click="formOpen = false">{{ t('common.cancel') }}</button>
-                    <button class="btn-primary" :disabled="!form.project_id" @click="submitForm">
-                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}
+                    <button class="btn-primary" :disabled="!form.project_id" :aria-keyshortcuts="appleKeys ? 'Meta+Enter' : 'Control+Enter'" @click="submitForm">
+                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}<kbd class="kbd-hint" aria-hidden="true">{{ saveHint }}</kbd>
                     </button>
                 </div>
             </div>
@@ -1489,7 +1748,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- footer -->
         <footer class="footer">
             <div class="footer-left">
-                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm">＋</button>
+                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm()">＋</button>
                 <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
                 <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
             </div>
@@ -1615,6 +1874,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </label>
             </div>
 
+            <!-- focus tracking (board #401): opt-in, local only; Rust samples, the Insights window shows it -->
+            <div v-else-if="settingsTab === 'focus'" id="settings-panel-focus" class="pref-panel" role="tabpanel" aria-labelledby="settings-tab-focus">
+                <label class="pref-row">
+                    <span>{{ t('focus.enable') }}</span>
+                    <input v-model="prefs.focusEnabled" type="checkbox" :disabled="!focusSupported" />
+                </label>
+                <p class="pref-note muted">{{ focusSupported ? t('focus.privacy') : t('focus.unsupported') }}</p>
+                <p v-if="prefs.focusEnabled && focusSupported && !focusTitlesAllowed" class="pref-note focus-permission">
+                    {{ t('focus.titlesBlocked') }}
+                    <button class="link" @click="requestFocusTitles">{{ t('focus.allowTitles') }}</button>
+                </p>
+                <label class="pref-stack">
+                    <span>{{ t('focus.exclude') }}</span>
+                    <textarea v-model="prefs.focusExclude" rows="3" class="pref-exclude" spellcheck="false"></textarea>
+                </label>
+                <button class="link danger" @click="deleteFocusHistory">
+                    {{ focusDelete === 'confirm' ? t('focus.deleteConfirm') : focusDelete === 'done' ? t('focus.deleted') : t('focus.delete') }}
+                </button>
+            </div>
+
             <!-- system-wide hotkeys; Rust registers them (src-tauri: set_shortcut) -->
             <div v-else id="settings-panel-shortcuts" class="pref-panel pref-shortcuts" role="tabpanel" aria-labelledby="settings-tab-shortcuts">
                 <div v-for="action in SHORTCUT_ACTIONS" :key="action" class="pref-shortcut">
@@ -1643,7 +1922,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <button class="link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
             <hr class="sep" />
             <div class="build-row">
-                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}</span>
+                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}<span v-if="live" class="live-dot" :title="t('settings.live')" /></span>
                 <button v-if="updateStatus === 'available'" class="link update-link" @click="installUpdate">{{ t('update.installVersion', { version: updateVersion }) }}</button>
                 <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
                 <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
@@ -2257,6 +2536,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     font-size: 12px;
 }
 
+/* ---- focus tracking (settings) ---- */
+.pref-note {
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 0 2px;
+}
+.focus-permission .link {
+    font-size: 11px;
+    margin-left: 2px;
+}
+.pref-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    padding: 1px 2px;
+}
+.pref-exclude {
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 4px 8px;
+    resize: none;
+}
+
 /* ---- keyboard shortcuts (settings) ---- */
 /* Tighter than the other panel: these are five rows of one kind, and the 8px
    the preferences use between unlike rows only makes the list longer. The tab
@@ -2356,6 +2659,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     gap: 8px;
     min-width: 0;
 }
+/* pushes are arriving: the pill follows the workspace within a blink */
+.live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: middle;
+}
+
 .build-line,
 .update-status,
 .update-link {
@@ -2595,6 +2909,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-actions .btn-primary,
 .sheet-actions .btn-outline {
     width: auto;
+}
+/* the save shortcut, as a quiet keycap inside the button (board #398) */
+.kbd-hint {
+    margin-left: 6px;
+    padding: 0 4px;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 16px;
+    vertical-align: 1px;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    opacity: 0.8;
+}
+.sheet-error {
+    padding: 0;
 }
 .btn-outline {
     border: 1px solid var(--border);
