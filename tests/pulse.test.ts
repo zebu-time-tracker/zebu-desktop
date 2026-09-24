@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { initialPulseState, onPulse, onUnavailable, PULSE, readWindow, refetched, retryAfterSeconds, type Pulse } from '../src/pulse.ts';
+import { initialPulseState, onPulse, onPushed, onUnavailable, PULSE, readWindow, refetched, retryAfterSeconds, type Pulse } from '../src/pulse.ts';
 
 const pulse = (token: string, running = true): Pulse => ({ token, running });
 
@@ -86,6 +86,38 @@ test('a fetch the app made for its own reasons pushes the backstop out', () => {
     const state = refetched(onPulse(pulse('abc'), initialPulseState(), 0).state, PULSE.fallback);
 
     assert.equal(onPulse(pulse('abc'), state, PULSE.fallback + 1).refetch, false);
+});
+
+test('a pushed change refetches unless it is the one already fetched', () => {
+    // The socket only speaks when something moved, so even a token held from
+    // nowhere (the first pulse has not been read yet) is a change...
+    const fresh = onPushed('tok-1', initialPulseState(), 1_000);
+    assert.equal(fresh.refetch, true);
+    assert.equal(fresh.state.token, 'tok-1');
+    assert.equal(fresh.state.refetchedAt, 1_000);
+
+    // ...the echo of this app's own write, already fetched, is not...
+    const echo = onPushed('tok-1', fresh.state, 2_000);
+    assert.equal(echo.refetch, false);
+    assert.equal(echo.state.refetchedAt, 1_000);
+
+    // ...and a server that could not say what changed is asked.
+    const unknown = onPushed(null, echo.state, 3_000);
+    assert.equal(unknown.refetch, true);
+    assert.equal(unknown.state.token, null);
+});
+
+test('the pulse does not fetch a pushed change a second time', () => {
+    // The push moved the held token along with the fetch, so the next beat
+    // sees the same token and stays quiet.
+    const pushed = onPushed('tok-2', onPulse(pulse('tok-1'), initialPulseState(), 0).state, 1_000);
+    assert.equal(pushed.refetch, true);
+
+    const beat = onPulse(pulse('tok-2'), pushed.state, 2_000);
+    assert.equal(beat.refetch, false);
+
+    // and a change the socket missed is still caught by the beat
+    assert.equal(onPulse(pulse('tok-3'), beat.state, 3_000).refetch, true);
 });
 
 // ---------------------------------------------------------------------------

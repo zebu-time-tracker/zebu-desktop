@@ -14,7 +14,8 @@ import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
-import { initialPulseState, onPulse, onUnavailable, PULSE, refetched } from './pulse';
+import { liveSource, readBroadcast } from './live';
+import { initialPulseState, onPulse, onPushed, onUnavailable, PULSE, refetched } from './pulse';
 import {
     defaultPresetName,
     filterPresets,
@@ -181,6 +182,7 @@ const disconnect = (message = '') => {
     stashedDraft.value = null; // a draft only means something on the workspace it was typed for
     closeInsights();
     me.value = null;
+    syncLive(null);
     sheet.value = null;
     // a reply still in flight for the old workspace must not repopulate the pill
     resetActive();
@@ -312,6 +314,8 @@ let tick: ReturnType<typeof setInterval> | null = null;
 let refreshLoop: ReturnType<typeof setInterval> | null = null;
 let refreshUnlisten: UnlistenFn | null = null;
 let pulseUnlisten: UnlistenFn | null = null;
+let liveStateUnlisten: UnlistenFn | null = null;
+let liveChangedUnlisten: UnlistenFn | null = null;
 let pulseLoop: ReturnType<typeof setTimeout> | null = null;
 
 // What the pulse knows between beats (src/pulse.ts owns every rule; this only
@@ -347,6 +351,55 @@ const onPulseBeat = async () => {
     return decision.nextIn;
 };
 
+// ---- live channel ------------------------------------------------------------
+//
+// The workspace pushes "your timer changed" over a websocket the moment an
+// entry is written (board #278), so a start in the browser reaches the pill in
+// about a hundred milliseconds instead of on the next beat. Rust keeps the
+// socket (src-tauri/src/live.rs); this side hands it what GET /api/me said
+// and decides what to fetch, with the same state the pulse uses, so the two
+// never fetch the same change twice.
+
+/** Whether pushes are arriving right now — the pulse is only a backstop meanwhile. */
+const live = ref(false);
+
+const onLiveState = ({ live: up, gap }: { live: boolean; gap: boolean }) => {
+    live.value = up;
+    // back after a drop: something may have been pushed into the dark
+    if (gap) refresh();
+};
+
+const onLiveChanged = async ({ token }: { token: string | null }) => {
+    if (view.value !== 'main') return;
+    const decision = onPushed(token, pulseState, Date.now());
+    pulseState = decision.state;
+    if (decision.refetch) await refresh();
+};
+
+/** Tell Rust where to subscribe — or, with null, to stop. */
+let handedBroadcast = 'null';
+const syncLive = (broadcast: unknown) => {
+    live.value = false;
+    const source = liveSource(auth.workspace, auth.token, readBroadcast(broadcast));
+    handedBroadcast = JSON.stringify(source?.broadcast ?? null);
+    invoke('set_live_source', { source }).catch(() => {});
+};
+
+/**
+ * The block is learned at sign-in, but a menubar app runs for weeks and a
+ * workspace can switch Reverb on (or rotate its key) meanwhile: while nothing
+ * is subscribed, ask again on the five-minute nudge and hand Rust what changed.
+ */
+const relearnLive = () => {
+    if (view.value !== 'main' || live.value) return;
+    api.me()
+        .then((u) => {
+            me.value = u;
+            if (JSON.stringify(readBroadcast(u.broadcast)) !== handedBroadcast) syncLive(u.broadcast);
+        })
+        .catch(() => {});
+};
+
 // The pill is the server's `active` entry: the running timer, or — so a timer
 // stopped elsewhere leaves the work on screen rather than "zzzz" — the entry
 // touched most recently. Not a guess made here: see src/active.ts.
@@ -369,6 +422,7 @@ onMounted(() => {
     listen('refresh-due', () => {
         refresh();
         maybeCheckForUpdates(); // every six hours, by the wall clock (updateSchedule.ts)
+        relearnLive();
     })
         .then((off) => (refreshUnlisten = off))
         .catch(() => (refreshLoop = setInterval(refresh, PULSE.fallback)));
@@ -376,6 +430,8 @@ onMounted(() => {
     // two seconds while something runs, thirty while nothing does — because its
     // thread keeps time while the popover is hidden and the webview's does not.
     // Outside Tauri (plain-browser dev) the beat schedules itself instead.
+    listen<{ live: boolean; gap: boolean }>('live-state', (e) => onLiveState(e.payload)).then((off) => (liveStateUnlisten = off));
+    listen<{ token: string | null }>('live-changed', (e) => onLiveChanged(e.payload)).then((off) => (liveChangedUnlisten = off));
     listen('pulse-due', () => onPulseBeat())
         .then((off) => (pulseUnlisten = off))
         .catch(() => {
@@ -411,6 +467,8 @@ onUnmounted(() => {
     refreshUnlisten?.();
     if (pulseLoop) clearTimeout(pulseLoop);
     pulseUnlisten?.();
+    liveStateUnlisten?.();
+    liveChangedUnlisten?.();
     if (pollTimer) clearInterval(pollTimer);
     idleUnlisten?.();
     idleChoiceUnlisten?.();
@@ -1043,7 +1101,7 @@ watch(
 watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen, settingsTab], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
-const me = ref<{ name: string; email: string } | null>(null);
+const me = ref<{ name: string; email: string; broadcast?: unknown } | null>(null);
 const appVersion = ref('');
 
 watch(
@@ -1051,7 +1109,10 @@ watch(
     (v) => {
         if (v === 'main' && !me.value) {
             api.me()
-                .then((u) => (me.value = u))
+                .then((u) => {
+                    me.value = u;
+                    syncLive(u.broadcast);
+                })
                 .catch(() => {});
         }
     },
@@ -1764,7 +1825,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <button class="link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
             <hr class="sep" />
             <div class="build-row">
-                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}</span>
+                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}<span v-if="live" class="live-dot" :title="t('settings.live')" /></span>
                 <button v-if="updateStatus === 'available'" class="link update-link" @click="installUpdate">{{ t('update.installVersion', { version: updateVersion }) }}</button>
                 <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
                 <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
@@ -2477,6 +2538,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     gap: 8px;
     min-width: 0;
 }
+/* pushes are arriving: the pill follows the workspace within a blink */
+.live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: middle;
+}
+
 .build-line,
 .update-status,
 .update-link {

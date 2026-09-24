@@ -140,7 +140,8 @@
         "shortcutTaken": "Otra app ya usa esa combinación.",
         "openInBrowser": "Abrir Zebu en el navegador",
         "disconnect": "Desconectar este dispositivo",
-        "quit": "Salir de Zebu"
+        "quit": "Salir de Zebu",
+        "live": "Actualizaciones en vivo"
     },
     "update": {
         "available": "Zebu {version} está disponible",

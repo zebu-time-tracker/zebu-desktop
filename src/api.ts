@@ -272,7 +272,8 @@ export const api = {
         return { status: 'pending' };
     },
 
-    me: () => request<{ name: string; email: string }>('GET', '/me'),
+    /** `broadcast` is the live channel (src/live.ts reads it); absent on older workspaces. */
+    me: () => request<{ name: string; email: string; broadcast?: unknown }>('GET', '/me'),
     timesheet: (date: string) => request<Timesheet>('GET', `/timesheet?date=${date}`),
     /**
      * "Has the active timer changed?" — a version token and a running flag,
