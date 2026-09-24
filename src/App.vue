@@ -389,7 +389,11 @@ const onLiveChanged = async ({ token }: { token: string | null }) => {
     if (view.value !== 'main') return;
     const decision = onPushed(token, pulseState, Date.now());
     pulseState = decision.state;
-    if (decision.refetch) await refresh();
+    if (decision.refetch) {
+        await refresh();
+        // the same as after a pulse refetch: the prompt may have been answered elsewhere
+        recheckIdlePrompt();
+    }
 };
 
 /** Tell Rust where to subscribe — or, with null, to stop. */
