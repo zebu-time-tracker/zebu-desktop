@@ -62,8 +62,8 @@
     "entry": {
         "edit": "Registratie bewerken",
         "invoiced": "Gefactureerd",
-        "total": "Totaal",
         "uninvoiced": "Ongefactureerd",
+        "viewProject": "Project bekijken",
         "budget": "Budget",
         "weekLocked": "Deze week is goedgekeurd en vergrendeld."
     },

@@ -62,8 +62,8 @@
     "entry": {
         "edit": "Eintrag bearbeiten",
         "invoiced": "Abgerechnet",
-        "total": "Gesamt",
         "uninvoiced": "Offen",
+        "viewProject": "Projekt ansehen",
         "budget": "Budget",
         "weekLocked": "Diese Woche ist freigegeben und gesperrt."
     },

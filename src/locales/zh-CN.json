@@ -62,8 +62,8 @@
     "entry": {
         "edit": "编辑条目",
         "invoiced": "已开票",
-        "total": "合计",
         "uninvoiced": "未开票",
+        "viewProject": "查看项目",
         "budget": "预算",
         "weekLocked": "本周已批准并锁定。"
     },

@@ -62,8 +62,8 @@
     "entry": {
         "edit": "Editar entrada",
         "invoiced": "Faturado",
-        "total": "Total",
         "uninvoiced": "Não faturado",
+        "viewProject": "Ver projeto",
         "budget": "Orçamento",
         "weekLocked": "Esta semana está aprovada e bloqueada."
     },

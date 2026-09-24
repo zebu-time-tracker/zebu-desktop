@@ -62,8 +62,8 @@
     "entry": {
         "edit": "항목 편집",
         "invoiced": "청구됨",
-        "total": "합계",
         "uninvoiced": "미청구",
+        "viewProject": "프로젝트 보기",
         "budget": "예산",
         "weekLocked": "이번 주는 승인되어 잠겨 있습니다."
     },
