@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "You were idle for {duration}",
-        "timeQuestion": "Remove Idle Time?",
-        "timerQuestion": "Continue Timing?",
-        "ok": "OK"
+        "stop": "Stop timer and remove {duration}",
+        "continue": "Continue timing and remove {duration}",
+        "newEntry": "Add {duration} as a new entry",
+        "ignore": "Ignore"
     },
     "form": {
         "editTitle": "Edit Time Entry",

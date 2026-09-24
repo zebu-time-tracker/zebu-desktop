@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "您已闲置 {duration}",
-        "timeQuestion": "移除闲置时间？",
-        "timerQuestion": "继续计时？",
-        "ok": "确定"
+        "stop": "停止计时并移除 {duration}",
+        "continue": "继续计时并移除 {duration}",
+        "newEntry": "将 {duration} 添加为新条目",
+        "ignore": "忽略"
     },
     "form": {
         "editTitle": "编辑时间条目",

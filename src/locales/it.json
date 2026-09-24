@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "Sei stato inattivo per {duration}",
-        "timeQuestion": "Rimuovere l’inattività?",
-        "timerQuestion": "Continuare a misurare?",
-        "ok": "OK"
+        "stop": "Ferma il timer e rimuovi {duration}",
+        "continue": "Continua e rimuovi {duration}",
+        "newEntry": "Aggiungi {duration} come nuova voce",
+        "ignore": "Ignora"
     },
     "form": {
         "editTitle": "Modifica voce",

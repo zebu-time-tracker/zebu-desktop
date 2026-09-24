@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "{duration} 동안 자리를 비웠습니다",
-        "timeQuestion": "유휴 시간을 제거할까요?",
-        "timerQuestion": "계속 측정할까요?",
-        "ok": "확인"
+        "stop": "타이머를 멈추고 {duration} 제거",
+        "continue": "계속 측정하고 {duration} 제거",
+        "newEntry": "{duration}을 새 항목으로 추가",
+        "ignore": "무시"
     },
     "form": {
         "editTitle": "항목 편집",

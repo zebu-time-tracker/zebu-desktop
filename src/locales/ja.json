@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "{duration} 操作がありませんでした",
-        "timeQuestion": "無操作時間を削除しますか？",
-        "timerQuestion": "計測を続けますか？",
-        "ok": "OK"
+        "stop": "タイマーを停止して {duration} を削除",
+        "continue": "計測を続けて {duration} を削除",
+        "newEntry": "{duration} を新規エントリとして追加",
+        "ignore": "無視"
     },
     "form": {
         "editTitle": "エントリを編集",

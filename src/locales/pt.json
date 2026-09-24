@@ -75,9 +75,10 @@
     },
     "idle": {
         "title": "Você ficou inativo por {duration}",
-        "timeQuestion": "Remover o tempo inativo?",
-        "timerQuestion": "Continuar a contar?",
-        "ok": "OK"
+        "stop": "Parar o timer e remover {duration}",
+        "continue": "Continuar e remover {duration}",
+        "newEntry": "Adicionar {duration} como nova entrada",
+        "ignore": "Ignorar"
     },
     "form": {
         "editTitle": "Editar entrada",
