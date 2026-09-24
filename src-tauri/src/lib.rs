@@ -236,7 +236,7 @@ fn away_seconds(prev_idle_s: u64, gap_s: u64, idle_s: u64) -> Option<u64> {
 /// after the last report (None: never reported). At most once a minute, and
 /// only for input within that minute.
 fn activity_due(idle_s: u64, since_last_s: Option<u64>) -> bool {
-    idle_s < ACTIVITY_EVERY_S && since_last_s.map_or(true, |s| s >= ACTIVITY_EVERY_S)
+    idle_s < ACTIVITY_EVERY_S && since_last_s.is_none_or(|s| s >= ACTIVITY_EVERY_S)
 }
 
 /// Watches the OS idle counter from a native thread (webview timers are
