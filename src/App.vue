@@ -8,7 +8,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
@@ -31,7 +31,8 @@ import { clientOf, lastTimerProject, relativeDay, resumeLabelKey, splitAround } 
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
-import { checkForUpdates, dismissUpdate, installUpdate, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
+import { checkForUpdates, dismissUpdate, installUpdate, maybeCheckForUpdates, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
+import { budgetLevel, formatHours } from './entryStats';
 
 const { t } = useI18n();
 
@@ -360,7 +361,10 @@ onMounted(() => {
     // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
     // another client shows up without a click; outside Tauri (plain-browser
     // dev) fall back to a webview interval.
-    listen('refresh-due', () => refresh())
+    listen('refresh-due', () => {
+        refresh();
+        maybeCheckForUpdates(); // every six hours, by the wall clock (updateSchedule.ts)
+    })
         .then((off) => (refreshUnlisten = off))
         .catch(() => (refreshLoop = setInterval(refresh, PULSE.fallback)));
     // Rust decides the pulse cadence from the clock it is already painting —
@@ -378,7 +382,10 @@ onMounted(() => {
         });
     now.value = Date.now();
     if (view.value === 'main') refresh();
-    window.addEventListener('focus', () => view.value === 'main' && refresh());
+    window.addEventListener('focus', () => {
+        if (view.value === 'main') refresh();
+        maybeCheckForUpdates();
+    });
     listen<{ started_at_ms: number; seconds: number }>('idle-return', (e) => onIdleReturn(e.payload)).then((off) => (idleUnlisten = off));
     // the answer comes back from the prompt's own window, via Rust
     listen<{ remove: boolean; stop: boolean }>('idle-choice', (e) => applyIdleChoice(e.payload)).then((off) => (idleChoiceUnlisten = off));
@@ -539,12 +546,7 @@ const statsFor = (entry: Entry): ProjectStats | null => {
         uninvoiced_minutes: stats.uninvoiced_minutes + (r.is_billable ? runningExtra.value : 0),
     };
 };
-const budgetClass = (pct: number) => {
-    if (pct > 100) return 'over';
-    if (pct > 80) return 'high';
-    if (pct > 50) return 'mid';
-    return 'ok';
-};
+const projectUrl = (projectId: string) => `${auth.workspace}/projects/${projectId}`;
 
 const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(intlLocale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -1374,16 +1376,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
-                        <!-- prose, not a column: plain "4h 5m", never padded (figure
-                             spaces read as stray gaps inside a sentence) -->
-                        <span class="entry-stats-dim">
-                            {{ t('entry.total') }}: {{ formatDurationHuman(statsFor(entry)!.total_minutes) }} · {{ t('entry.uninvoiced') }}:
-                            {{ formatDurationHuman(statsFor(entry)!.uninvoiced_minutes) }}
-                        </span>
-                        <!-- only projects with a budget get a budget line -->
+                        <!-- the link opens the project in the browser, never the edit sheet -->
+                        <button class="link entry-view" @click.stop="openUrl(projectUrl(entry.project_id))">
+                            {{ t('entry.viewProject') }}
+                        </button>
+                        <span class="entry-stats-dim"> · {{ t('entry.uninvoiced') }}: {{ formatHours(statsFor(entry)!.uninvoiced_minutes, intlLocale, t('units.hour')) }}</span>
+                        <!-- only projects with a budget get a budget part -->
                         <template v-if="statsFor(entry)!.budget_pct !== null">
                             <span class="entry-stats-dim"> · </span>
-                            <span class="budget-pill" :class="budgetClass(statsFor(entry)!.budget_pct!)">{{ t('entry.budget') }}: {{ statsFor(entry)!.budget_pct }}%</span>
+                            <span class="budget-pill" :class="budgetLevel(statsFor(entry)!.budget_pct!)">{{ t('entry.budget') }}: {{ statsFor(entry)!.budget_pct }}%</span>
                         </template>
                     </span>
                 </div>
@@ -1644,8 +1645,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
                 <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
                 <span v-else-if="updateStatus === 'installing'" class="muted update-status">{{ t('update.installing') }}</span>
-                <span v-else-if="updateStatus === 'upToDate'" class="muted update-status">{{ t('update.upToDate') }}</span>
-                <span v-else-if="updateStatus === 'error'" class="muted update-status">{{ t('update.failed') }}</span>
+                <!-- a finished check is itself the button to check again -->
+                <button v-else-if="updateStatus === 'upToDate'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.upToDate') }}</button>
+                <button v-else-if="updateStatus === 'error'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.failed') }}</button>
                 <button v-else class="link update-link" @click="checkForUpdates(true)">{{ t('update.check') }}</button>
             </div>
         </div>
@@ -2008,16 +2010,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     opacity: 1;
 }
 .budget-pill.ok {
-    color: var(--accent);
+    color: inherit; /* below 60%: nothing to call out */
 }
-.budget-pill.mid {
-    color: #eab308;
+.budget-pill.warn {
+    color: #d97706; /* amber: from 60% of the budget */
 }
-.budget-pill.high {
-    color: #f97316;
+.budget-pill.alarm {
+    color: var(--danger); /* from 80% */
 }
-.budget-pill.over {
-    color: var(--danger);
+.entry-view {
+    font-size: inherit;
+    font-weight: 500;
+    border-radius: 3px;
+}
+.entry-view:hover,
+.entry-view:focus-visible {
+    text-decoration: underline;
+}
+.entry-view:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+}
+/* pointing at the link is not pointing at the row's edit target */
+.entry-text.editable:has(.entry-view:hover) .entry-project {
+    text-decoration: none;
 }
 .entry-sub {
     color: var(--muted);

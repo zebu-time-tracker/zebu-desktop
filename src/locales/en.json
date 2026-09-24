@@ -63,8 +63,8 @@
     "entry": {
         "edit": "Edit entry",
         "invoiced": "Invoiced",
-        "total": "Total",
         "uninvoiced": "Uninvoiced",
+        "viewProject": "View project",
         "budget": "Budget",
         "weekLocked": "This week is approved and locked."
     },

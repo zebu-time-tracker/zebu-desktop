@@ -63,8 +63,8 @@
     "entry": {
         "edit": "Modifica voce",
         "invoiced": "Fatturato",
-        "total": "Totale",
         "uninvoiced": "Non fatturato",
+        "viewProject": "Vedi progetto",
         "budget": "Budget",
         "weekLocked": "Questa settimana è approvata e bloccata."
     },

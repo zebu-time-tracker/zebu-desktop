@@ -63,8 +63,8 @@
     "entry": {
         "edit": "エントリを編集",
         "invoiced": "請求済み",
-        "total": "合計",
         "uninvoiced": "未請求",
+        "viewProject": "プロジェクトを表示",
         "budget": "予算",
         "weekLocked": "この週は承認済みでロックされています。"
     },

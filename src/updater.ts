@@ -8,6 +8,7 @@
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { ref } from 'vue';
+import { updateCheckDue } from './updateSchedule';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'upToDate' | 'downloading' | 'installing' | 'error';
 
@@ -20,11 +21,14 @@ export const updateProgress = ref<number | null>(null);
 export const updatePromptOpen = ref(false);
 
 let pending: Update | null = null;
+/** When the last check started (ms since epoch); 0 until the launch check. */
+let lastCheckedAt = 0;
 
 /** Looks for a newer release. `manual` surfaces "up to date"/errors; the launch check stays quiet unless something is available. */
 export async function checkForUpdates(manual = false): Promise<void> {
     if (updateStatus.value === 'checking' || updateStatus.value === 'downloading' || updateStatus.value === 'installing') return;
     updateStatus.value = 'checking';
+    lastCheckedAt = Date.now();
     try {
         const update = await check({ timeout: 15_000 });
         if (update) {
@@ -41,6 +45,11 @@ export async function checkForUpdates(manual = false): Promise<void> {
         pending = null;
         updateStatus.value = manual ? 'error' : 'idle';
     }
+}
+
+/** The quiet re-check: runs only when six hours have passed since the last one (see updateSchedule.ts). */
+export function maybeCheckForUpdates(now = Date.now()): void {
+    if (updateCheckDue(updateStatus.value, lastCheckedAt, now)) void checkForUpdates(false);
 }
 
 /** Downloads, installs and relaunches. On failure the current build keeps running. */
