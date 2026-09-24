@@ -1253,8 +1253,22 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // With "Show in Dock" on, a click on the Dock icon (or opening the
+            // app again from Finder or Spotlight) asks to see the app: show
+            // the popover, as the menubar icon would (board #422). Without a
+            // Dock icon this event does not come up.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                if DOCK_MODE.load(Ordering::SeqCst) {
+                    show_popover(app);
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]

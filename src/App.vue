@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { idleMinutes, resolveIdleChoice } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
@@ -273,9 +274,8 @@ const activeEntry = computed(() => activeAnswer.value?.entry ?? null);
 const running = computed(() => runningOf(activeEntry.value));
 
 const headerLabel = computed(() => {
-    const d = new Date(selectedDate.value + 'T00:00:00');
-    if (isToday.value) return t('header.todayWithDate', { date: d.toLocaleDateString(intlLocale.value, { day: 'numeric', month: 'short' }) });
-    return d.toLocaleDateString(intlLocale.value, { weekday: 'long', day: 'numeric', month: 'short' });
+    const label = dayLabel(selectedDate.value, intlLocale.value);
+    return isToday.value ? t('header.todayWithDate', { date: label }) : label;
 });
 
 const goDate = (date: string) => {
@@ -1207,6 +1207,9 @@ const settleAfterAbsence = (awayMs: number) => {
 const onPopoverVisible = (visible: boolean) => {
     if (!visible) {
         hiddenAt = Date.now();
+        // the settings are a detour, not a place: the popover always comes
+        // back on the day, however short the absence (board #422)
+        settingsOpen.value = false;
         return;
     }
     const away = hiddenAt ? Date.now() - hiddenAt : 0;
