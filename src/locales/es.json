@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Reanudar",
+        "startNew": "Iniciar nuevo temporizador",
         "runningSince": "Temporizador activo desde el {date}",
         "stop": "Detener",
         "startHint": "Iniciar (detiene otros temporizadores)",
@@ -67,9 +68,9 @@
         "weekLocked": "Esta semana está aprobada y bloqueada."
     },
     "newDay": {
-        "title": "¿Iniciar un temporizador nuevo hoy?",
-        "body": "Esa entrada es del {date}. Hoy se inicia un temporizador nuevo con el mismo proyecto, tarea y notas; la original no cambia.",
-        "confirm": "Iniciar hoy"
+        "confirm": "Iniciar hoy",
+        "question": "¿Reanudar el temporizador anterior de {when} o iniciar uno nuevo hoy?",
+        "resumeOld": "Reanudar el anterior"
     },
     "idle": {
         "title": "Estuviste inactivo {duration}",

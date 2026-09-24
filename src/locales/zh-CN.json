@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "继续",
+        "startNew": "开始新计时",
         "runningSince": "计时器自 {date} 运行中",
         "stop": "停止",
         "startHint": "开始 (将停止其他计时器)",
@@ -67,9 +68,9 @@
         "weekLocked": "本周已批准并锁定。"
     },
     "newDay": {
-        "title": "今天开始新的计时吗？",
-        "body": "该条目属于 {date}。今天将以相同的项目、任务和备注开始新的计时，原条目保持不变。",
-        "confirm": "今天开始"
+        "confirm": "今天开始",
+        "question": "继续{when}的旧计时，还是今天开始新的计时？",
+        "resumeOld": "继续旧计时"
     },
     "idle": {
         "title": "您已闲置 {duration}",

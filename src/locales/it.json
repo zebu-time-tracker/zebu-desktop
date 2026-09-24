@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Riprendi",
+        "startNew": "Avvia nuovo timer",
         "runningSince": "Timer attivo dal {date}",
         "stop": "Ferma",
         "startHint": "Avvia (ferma gli altri timer)",
@@ -67,9 +68,9 @@
         "weekLocked": "Questa settimana è approvata e bloccata."
     },
     "newDay": {
-        "title": "Avviare un nuovo timer per oggi?",
-        "body": "Quella voce è del {date}. Oggi parte un nuovo timer con lo stesso progetto, attività e note — l'originale resta invariata.",
-        "confirm": "Avvia oggi"
+        "confirm": "Avvia oggi",
+        "question": "Riprendere il vecchio timer di {when} o avviarne uno nuovo oggi?",
+        "resumeOld": "Riprendi il vecchio"
     },
     "idle": {
         "title": "Sei stato inattivo per {duration}",

@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Fortsetzen",
+        "startNew": "Neuen Timer starten",
         "runningSince": "Timer läuft seit {date}",
         "stop": "Stopp",
         "startHint": "Starten (stoppt andere Timer)",
@@ -67,9 +68,9 @@
         "weekLocked": "Diese Woche ist freigegeben und gesperrt."
     },
     "newDay": {
-        "title": "Neuen Timer für heute starten?",
-        "body": "Dieser Eintrag ist vom {date}. Ein neuer Timer startet heute mit demselben Projekt, derselben Aufgabe und den Notizen — das Original bleibt unverändert.",
-        "confirm": "Heute starten"
+        "confirm": "Heute starten",
+        "question": "Den alten Timer von {when} fortsetzen oder heute einen neuen Timer starten?",
+        "resumeOld": "Alten Timer fortsetzen"
     },
     "idle": {
         "title": "Du warst {duration} inaktiv",

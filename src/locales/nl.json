@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Hervatten",
+        "startNew": "Nieuwe timer starten",
         "runningSince": "Timer loopt sinds {date}",
         "stop": "Stoppen",
         "startHint": "Starten (stopt andere timers)",
@@ -67,9 +68,9 @@
         "weekLocked": "Deze week is goedgekeurd en vergrendeld."
     },
     "newDay": {
-        "title": "Nieuwe timer voor vandaag starten?",
-        "body": "Die registratie is van {date}. Er start vandaag een nieuwe timer met hetzelfde project, dezelfde taak en notities — het origineel blijft staan.",
-        "confirm": "Vandaag starten"
+        "confirm": "Vandaag starten",
+        "question": "De oude timer van {when} hervatten of vandaag een nieuwe timer starten?",
+        "resumeOld": "Oude timer hervatten"
     },
     "idle": {
         "title": "Je was {duration} inactief",
