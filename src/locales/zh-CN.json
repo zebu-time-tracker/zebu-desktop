@@ -16,7 +16,7 @@
         "workspace": "工作区",
         "workspaceHint": "输入你的工作区名称（如 studio）、其地址（studio.zebu.work）或完整 URL。",
         "invalidWorkspace": "这不是有效的工作区地址。",
-        "notAWorkspace": "那是 Zebu 主站，请改为输入你自己的工作区名称。",
+        "notAWorkspace": "那是 Zebu 主站。请输入你的工作区名称。",
         "insecureWorkspace": "工作区地址必须使用 https。",
         "sessionExpired": "此设备的访问权限已被撤销。请重新登录以重新连接。"
     },
@@ -54,7 +54,7 @@
         "runningSince": "计时器自 {date} 运行中",
         "stop": "停止",
         "startHint": "开始 (将停止其他计时器)",
-        "startTimer": "开始计时",
+        "startTimer": "开始",
         "addEntry": "新建条目",
         "lastActive": "最近活动的项目",
         "waiting": "等待智能体 {time}",
@@ -83,7 +83,7 @@
     "form": {
         "editTitle": "编辑时间条目",
         "newTitle": "新建时间条目",
-        "draftRestored": "已恢复尚未保存的记录。",
+        "draftRestored": "已恢复未保存的记录。",
         "addProject": "选择项目…",
         "addTask": "选择任务…",
         "notes": "备注 (可选)",
@@ -144,7 +144,7 @@
     },
     "update": {
         "available": "Zebu {version} 已可用",
-        "body": "更新将在后台下载并重新启动应用。正在运行的计时器会在服务器上继续。",
+        "body": "Zebu 会下载更新并重新启动。计时器会继续运行。",
         "install": "安装并重新启动",
         "later": "稍后",
         "installVersion": "安装 {version}",

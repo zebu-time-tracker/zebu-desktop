@@ -16,7 +16,7 @@
         "workspace": "ワークスペース",
         "workspaceHint": "ワークスペース名 (例: studio)、そのアドレス (studio.zebu.work)、または完全な URL を入力します。",
         "invalidWorkspace": "有効なワークスペースのアドレスではありません。",
-        "notAWorkspace": "それは Zebu のメインサイトです。ご自身のワークスペース名を入力してください。",
+        "notAWorkspace": "それは Zebu のメインサイトです。ワークスペース名を入力してください。",
         "insecureWorkspace": "ワークスペースのアドレスは https を使用する必要があります。",
         "sessionExpired": "このデバイスのアクセスは取り消されました。再度ログインしてください。"
     },
@@ -54,7 +54,7 @@
         "runningSince": "{date} からタイマー実行中",
         "stop": "停止",
         "startHint": "開始 (他のタイマーは停止)",
-        "startTimer": "タイマー開始",
+        "startTimer": "開始",
         "addEntry": "新規エントリ",
         "lastActive": "最後に作業したプロジェクト",
         "waiting": "エージェント待ち {time}",
@@ -83,7 +83,7 @@
     "form": {
         "editTitle": "エントリを編集",
         "newTitle": "新規エントリ",
-        "draftRestored": "まだ保存していなかったエントリを復元しました。",
+        "draftRestored": "保存していないエントリを復元しました。",
         "addProject": "プロジェクトを選択…",
         "addTask": "タスクを選択…",
         "notes": "メモ (任意)",
@@ -144,7 +144,7 @@
     },
     "update": {
         "available": "Zebu {version} が利用可能です",
-        "body": "更新はバックグラウンドでダウンロードされ、アプリが再起動します。実行中のタイマーはサーバー上で継続されます。",
+        "body": "Zebu が更新をダウンロードして再起動します。タイマーは動き続けます。",
         "install": "インストールして再起動",
         "later": "後で",
         "installVersion": "{version} をインストール",
