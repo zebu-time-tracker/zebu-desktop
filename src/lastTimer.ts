@@ -23,3 +23,35 @@ export const lastTimerProject = (last: Pick<LastTimerWork, 'project' | 'task'>):
  */
 export const resumeLabelKey = (date: string, today: string): 'timer.resume' | 'timer.startNew' =>
     date === today ? 'timer.resume' : 'timer.startNew';
+
+const dayNumber = (date: string): number => {
+    const [y, m, d] = date.split('-').map(Number);
+    return Date.UTC(y, m - 1, d) / 86_400_000;
+};
+
+/**
+ * How long ago `date` was, as the app's locale says it: "yesterday",
+ * "3 days ago", "2 weeks ago", "last month". Both dates are YYYY-MM-DD, so
+ * this counts calendar days, not 24-hour spans.
+ */
+export const relativeDay = (date: string, today: string, locale: string): string => {
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    const days = Math.max(0, Math.round(dayNumber(today) - dayNumber(date)));
+    if (days < 7) return rtf.format(-days, 'day');
+    if (days < 30) return rtf.format(-Math.floor(days / 7), 'week');
+    const [ty, tm, td] = today.split('-').map(Number);
+    const [y, m, d] = date.split('-').map(Number);
+    const months = Math.max(1, (ty - y) * 12 + (tm - m) - (td < d ? 1 : 0));
+    if (months < 12) return rtf.format(-months, 'month');
+    return rtf.format(-Math.floor(months / 12), 'year');
+};
+
+/**
+ * A translated sentence split around one placeholder's value, so the value can
+ * be styled on its own without rendering the translation as HTML. `mark` is a
+ * value that cannot occur in the translation itself.
+ */
+export const splitAround = (text: string, mark: string): [string, string] => {
+    const at = text.indexOf(mark);
+    return at < 0 ? [text, ''] : [text.slice(0, at), text.slice(at + mark.length)];
+};

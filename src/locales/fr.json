@@ -68,9 +68,9 @@
         "weekLocked": "Cette semaine est approuvée et verrouillée."
     },
     "newDay": {
-        "title": "Démarrer un nouveau minuteur aujourd'hui ?",
-        "body": "Cette entrée date du {date}. Un nouveau minuteur démarre aujourd'hui avec le même projet, la même tâche et les mêmes notes — l'original reste intact.",
-        "confirm": "Démarrer aujourd'hui"
+        "confirm": "Démarrer aujourd'hui",
+        "question": "Reprendre l'ancien minuteur ({when}) ou démarrer un nouveau minuteur aujourd'hui ?",
+        "resumeOld": "Reprendre l'ancien"
     },
     "idle": {
         "title": "Inactif pendant {duration}",

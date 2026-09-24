@@ -27,7 +27,7 @@ import {
     type Preset,
     type PresetRow,
 } from './presets';
-import { clientOf, lastTimerProject, resumeLabelKey } from './lastTimer';
+import { clientOf, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from './lastTimer';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
@@ -474,6 +474,7 @@ watch(activeEntry, (entry) => {
 watch(intlLocale, () => updateTray());
 
 const confirmNewDay = ref(false);
+const newDayToday = ref(''); // "today" as of when the dialog opened: what {when} is counted from
 
 /**
  * Starting or resuming a timer jumps to the entry's day (today, for a fresh
@@ -488,9 +489,27 @@ const resumeLast = () => {
     const last = lastTimer.value;
     if (!last || running.value) return;
     if (last.date !== todayStr()) {
+        newDayToday.value = todayStr();
         confirmNewDay.value = true; // don't silently back-date onto an old entry
         return;
     }
+    act(() => showEntry(api.startTimer({ project_id: last.project_id, entry_id: last.entry_id })));
+};
+
+// "Resume the old timer from **3 days ago** …": the sentence is translated
+// whole, then cut around {when} so only that part is bold, without v-html.
+const WHEN_MARK = '\u2063';
+const newDayQuestion = computed(() => {
+    const last = lastTimer.value;
+    const [before, after] = splitAround(t('newDay.question', { when: WHEN_MARK }), WHEN_MARK);
+    return { before, when: last ? relativeDay(last.date, newDayToday.value, intlLocale.value) : '', after };
+});
+
+// Restart the old entry itself, on its own day — what Resume does for today's.
+const resumeOldTimer = () => {
+    const last = lastTimer.value;
+    confirmNewDay.value = false;
+    if (!last) return;
     act(() => showEntry(api.startTimer({ project_id: last.project_id, entry_id: last.entry_id })));
 };
 
@@ -1380,17 +1399,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
         </main>
 
-        <!-- resuming an entry from an earlier day starts a fresh one today -->
+        <!-- an entry from an earlier day: resume it where it is, or start today -->
         <div v-if="confirmNewDay" class="sheet-overlay" @click.self="confirmNewDay = false">
-            <div class="sheet">
-                <p class="sheet-title">{{ t('newDay.title') }}</p>
+            <div class="sheet new-day">
+                <button class="sheet-close" :title="t('common.close')" :aria-label="t('common.close')" @click="confirmNewDay = false">×</button>
+                <p class="new-day-question">
+                    {{ newDayQuestion.before }}<strong>{{ newDayQuestion.when }}</strong>{{ newDayQuestion.after }}
+                </p>
                 <div v-if="lastTimer" class="entry-text new-day-work">
                     <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
                     <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
                 </div>
-                <p class="muted">{{ t('newDay.body', { date: lastTimer ? shortDate(lastTimer.date) : '' }) }}</p>
                 <div class="sheet-actions">
-                    <button class="btn-outline" @click="confirmNewDay = false">{{ t('common.cancel') }}</button>
+                    <button class="btn-outline" @click="resumeOldTimer">{{ t('newDay.resumeOld') }}</button>
                     <button class="btn-primary" @click="startFreshToday">{{ t('newDay.confirm') }}</button>
                 </div>
             </div>
@@ -1884,8 +1905,33 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .resume-last .entry-text {
     text-align: left;
 }
+.new-day {
+    position: relative;
+}
+.new-day-question {
+    padding-right: 20px; /* clear of the × */
+    line-height: 1.4;
+}
 .new-day-work {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+}
+.sheet-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+}
+.sheet-close:hover {
+    color: var(--text);
+    background: var(--bg-hover, rgba(127, 127, 127, 0.15));
 }
 .resume-last:hover {
     border-color: var(--accent);

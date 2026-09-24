@@ -68,9 +68,9 @@
         "weekLocked": "Ten tydzień jest zatwierdzony i zablokowany."
     },
     "newDay": {
-        "title": "Uruchomić nowy stoper na dziś?",
-        "body": "Ten wpis pochodzi z {date}. Nowy stoper wystartuje dziś z tym samym projektem, zadaniem i notatkami — oryginał pozostanie bez zmian.",
-        "confirm": "Uruchom dziś"
+        "confirm": "Uruchom dziś",
+        "question": "Wznowić stary stoper ({when}) czy uruchomić dziś nowy?",
+        "resumeOld": "Wznów stary stoper"
     },
     "idle": {
         "title": "Brak aktywności przez {duration}",

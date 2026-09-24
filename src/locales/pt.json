@@ -68,9 +68,9 @@
         "weekLocked": "Esta semana está aprovada e bloqueada."
     },
     "newDay": {
-        "title": "Iniciar um novo timer hoje?",
-        "body": "Essa entrada é de {date}. Um novo timer começa hoje com o mesmo projeto, tarefa e notas — a original não muda.",
-        "confirm": "Iniciar hoje"
+        "confirm": "Iniciar hoje",
+        "question": "Retomar o timer antigo ({when}) ou iniciar um novo timer hoje?",
+        "resumeOld": "Retomar o antigo"
     },
     "idle": {
         "title": "Você ficou inativo por {duration}",

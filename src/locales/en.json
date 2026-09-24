@@ -68,9 +68,9 @@
         "weekLocked": "This week is approved and locked."
     },
     "newDay": {
-        "title": "Start a new timer for today?",
-        "body": "That entry is from {date}. A fresh timer starts today with the same project, task and notes — the original stays as it is.",
-        "confirm": "Start today's timer"
+        "confirm": "Start today",
+        "question": "Resume the old timer from {when} or start a new timer today?",
+        "resumeOld": "Resume old timer"
     },
     "idle": {
         "title": "You were idle for {duration}",
