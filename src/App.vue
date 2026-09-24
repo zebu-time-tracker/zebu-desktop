@@ -8,7 +8,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
+import { editDurationToSave, isApplePlatform, isSaveShortcut, saveShortcutHint } from './entryForm';
+import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
@@ -761,6 +762,16 @@ const autosizeNotes = () => {
 const form = ref<EntryDraft>({ project_id: '', task_id: '', notes: '', duration: '', date: '' });
 const formProject = computed(() => sheet.value?.projects.find((p) => p.id === form.value.project_id));
 let openedDuration = ''; // the prefill — only a changed duration rebases a live timer
+/** Said inside the sheet, where the person is looking, rather than on the list behind it. */
+const formError = ref('');
+// ⌘↵ / Ctrl+↵ saves the sheet from any field (board #398); the keycap in the button says so.
+const appleKeys = isApplePlatform((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform);
+const saveHint = computed(() => saveShortcutHint(appleKeys, t('form.ctrlKey')));
+const onSheetKeydown = (e: KeyboardEvent) => {
+    if (!isSaveShortcut(e, appleKeys)) return;
+    e.preventDefault();
+    if (form.value.project_id) submitForm();
+};
 // The whole sheet as it was prefilled, so "did the user type anything?" is a
 // comparison rather than a guess (see popover.ts).
 let openedForm: EntryDraft = { project_id: '', task_id: '', notes: '', duration: '', date: '' };
@@ -770,6 +781,7 @@ const stashedDraft = ref<StashedDraft | null>(null);
 const draftRestored = ref(false);
 watch(formOpen, (open) => {
     if (!open) draftRestored.value = false;
+    formError.value = '';
 });
 
 /** The new-entry sheet; `prefill` is what the app already knows (the idle prompt's "add as a new entry"). */
@@ -820,12 +832,18 @@ const submitForm = () =>
             notes: form.value.notes || null,
         };
         if (editingEntry.value) {
-            // an untouched duration means "leave the clock alone"
-            const durationChanged = form.value.duration !== openedDuration;
+            // an untouched duration means "leave the clock alone"; a running
+            // timer's 0:00 is its clock, not a duration to refuse (board #398)
+            const checked = editDurationToSave({ typed: form.value.duration, opened: openedDuration, running: !!editingEntry.value.timer_started_at });
+            if (!checked.ok) {
+                formError.value = t('form.durationError');
+                return;
+            }
+            formError.value = '';
             await api.updateEntry(editingEntry.value.id, {
                 ...payload,
                 date: form.value.date,
-                ...(durationChanged && minutes !== null ? { minutes } : {}),
+                ...(checked.minutes !== null ? { minutes: checked.minutes } : {}),
             });
         } else if (minutes !== null && minutes > 0) {
             await showEntry(api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes }));
@@ -1532,7 +1550,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- new entry sheet -->
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
-            <div class="sheet">
+            <div class="sheet" @keydown="onSheetKeydown">
                 <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
                 <!-- the popover was put away mid-entry: this is what was typed then, not a fresh sheet -->
                 <p v-if="draftRestored" class="muted">{{ t('form.draftRestored') }}</p>
@@ -1568,13 +1586,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :placeholder="t('form.notes')"
                     @input="autosizeNotes"
                 ></textarea>
+                <p v-if="formError" class="error sheet-error">{{ formError }}</p>
                 <div class="sheet-actions">
                     <button v-if="editingEntry && !editingEntry.timer_started_at" class="link danger sheet-delete" @click="deleteFromSheet">
                         {{ t('form.delete') }}
                     </button>
                     <button class="btn-outline" @click="formOpen = false">{{ t('common.cancel') }}</button>
-                    <button class="btn-primary" :disabled="!form.project_id" @click="submitForm">
-                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}
+                    <button class="btn-primary" :disabled="!form.project_id" :aria-keyshortcuts="appleKeys ? 'Meta+Enter' : 'Control+Enter'" @click="submitForm">
+                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}<kbd class="kbd-hint" aria-hidden="true">{{ saveHint }}</kbd>
                     </button>
                 </div>
             </div>
@@ -2689,6 +2708,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-actions .btn-primary,
 .sheet-actions .btn-outline {
     width: auto;
+}
+/* the save shortcut, as a quiet keycap inside the button (board #398) */
+.kbd-hint {
+    margin-left: 6px;
+    padding: 0 4px;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 16px;
+    vertical-align: 1px;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    opacity: 0.8;
+}
+.sheet-error {
+    padding: 0;
 }
 .btn-outline {
     border: 1px solid var(--border);
