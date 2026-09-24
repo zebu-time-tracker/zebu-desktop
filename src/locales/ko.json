@@ -56,6 +56,7 @@
         "startHint": "시작 (다른 타이머는 정지)",
         "startTimer": "타이머 시작",
         "addEntry": "새 항목",
+        "lastActive": "마지막으로 작업한 프로젝트",
         "waiting": "에이전트 대기 {time}",
         "waitingNow": "에이전트 대기 중…"
     },

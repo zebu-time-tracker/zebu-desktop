@@ -904,7 +904,7 @@ watch(
         }
         try {
             getCurrentWindow()
-                .setSize(new LogicalSize(380, 240))
+                .setSize(new LogicalSize(475, 240)) // MAIN_WIDTH in lib.rs
                 .catch(() => {});
         } catch {
             // not inside Tauri (plain-browser vite dev) — nothing to resize
@@ -1320,12 +1320,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- one-click resume of the last managed timer when nothing runs -->
         <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
-            <!-- the work reads like an entry row: client / project · task -->
-            <span class="entry-text">
-                <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
-                <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
+            <span class="resume-label">{{ t('timer.lastActive') }}</span>
+            <span class="resume-row">
+                <!-- the work reads like an entry row: client / project · task -->
+                <span class="entry-text">
+                    <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
+                    <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
+                </span>
+                <span class="resume-action">▶ {{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
             </span>
-            <span class="resume-action">▶ {{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
         </button>
 
         <!-- a timer running on a different day than the one shown: pinned
@@ -1889,12 +1892,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     background: rgba(22, 163, 74, 0.3);
 }
 .resume-last {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 12px 10px;
     background: var(--bg-raised);
     border-color: var(--border);
+}
+.resume-label {
+    align-self: center;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.2;
+}
+.resume-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 .resume-last .resume-action {
     color: var(--accent);

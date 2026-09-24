@@ -56,6 +56,7 @@
         "startHint": "Starten (stopt andere timers)",
         "startTimer": "Timer starten",
         "addEntry": "Nieuwe registratie",
+        "lastActive": "Laatst actieve project",
         "waiting": "{time} wachten op agent",
         "waitingNow": "wacht op agent…"
     },
