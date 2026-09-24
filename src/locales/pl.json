@@ -56,6 +56,7 @@
         "startHint": "Start (zatrzymuje inne stopery)",
         "startTimer": "Uruchom stoper",
         "addEntry": "Nowy wpis",
+        "lastActive": "Ostatnio aktywny projekt",
         "waiting": "{time} oczekiwania na agenta",
         "waitingNow": "oczekiwanie na agenta…"
     },

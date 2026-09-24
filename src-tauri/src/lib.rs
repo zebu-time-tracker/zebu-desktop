@@ -114,7 +114,7 @@ fn hide_popover(app: tauri::AppHandle) {
 // numbers stay honest whatever a locale or font does to a row.
 
 /// Logical width of the popover, matching tauri.conf.json.
-const MAIN_WIDTH: f64 = 380.0;
+const MAIN_WIDTH: f64 = 475.0;
 /// The list is never shorter than this many rows…
 const MIN_ROWS: f64 = 3.5;
 /// …and never taller than this many; beyond that it scrolls.
@@ -1613,12 +1613,12 @@ mod beside_position_tests {
 
     /// The popover, hanging from a menubar icon at `x`.
     fn popover(x: f64) -> ScreenRect {
-        ScreenRect { x, y: 25.0, width: 380.0, height: 330.0 }
+        ScreenRect { x, y: 25.0, width: 475.0, height: 330.0 }
     }
 
     #[test]
     fn sits_to_the_right_of_the_popover_with_its_top_aligned() {
-        assert_eq!(beside_position(popover(300.0), SIZE, WORK, 8.0), (688.0, 25.0));
+        assert_eq!(beside_position(popover(300.0), SIZE, WORK, 8.0), (783.0, 25.0));
     }
 
     #[test]
@@ -1644,7 +1644,7 @@ mod beside_position_tests {
     #[test]
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
-        assert_eq!(beside_position(popover(1450.0), SIZE, right, 8.0), (1838.0, 25.0));
+        assert_eq!(beside_position(popover(1450.0), SIZE, right, 8.0), (1933.0, 25.0));
     }
 }
 
