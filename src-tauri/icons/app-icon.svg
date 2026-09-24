@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Source of every app icon size (board #422): regenerate with
+       `npx tauri icon src-tauri/icons/app-icon.svg`. The Zebu mark from the
+       web app's favicon (a white Z crossed by a diagonal: the hourglass) on
+       the app's green, laid out on Apple's macOS grid: an 824px rounded body
+       centred in the 1024px canvas, with room for the soft shadow below. -->
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#16a34a" filter="url(#shadow)"/>
+  <g transform="translate(100 100) scale(0.80626)">
+    <line x1="700.463" y1="748.512" x2="330.463" y2="282.512" stroke-width="50" stroke="#fff" opacity="0.45"/>
+    <path fill="#fff" d="M300.309 802V741.33L631.599 259.962L657.144 296.683H309.889V227.232H713.823V287.902L384.13 767.674L359.383 732.549H720.209V802H300.309Z"/>
+  </g>
+</svg>
