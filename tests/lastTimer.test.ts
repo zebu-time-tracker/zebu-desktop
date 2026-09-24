@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ProjectOption } from '../src/api.ts';
-import { clientOf, lastTimerWork, resumeLabelKey } from '../src/lastTimer.ts';
+import { clientOf, lastTimerProject, resumeLabelKey } from '../src/lastTimer.ts';
 
 const project = (over: Partial<ProjectOption> = {}): ProjectOption => ({
     id: 'proj-1',
@@ -12,14 +12,10 @@ const project = (over: Partial<ProjectOption> = {}): ProjectOption => ({
     ...over,
 });
 
-test('the work line reads client – project · task', () => {
-    assert.equal(lastTimerWork({ client: 'Acme', project: 'Website', task: 'Design' }), 'Acme – Website · Design');
-    assert.equal(lastTimerWork({ client: 'Acme', project: 'Website', task: null }), 'Acme – Website');
-});
-
-test('a timer remembered before the client was stored shows the project alone', () => {
-    assert.equal(lastTimerWork({ project: 'Website', task: 'Design' }), 'Website · Design');
-    assert.equal(lastTimerWork({ client: null, project: 'Website', task: null }), 'Website');
+test('the project line reads project · task', () => {
+    assert.equal(lastTimerProject({ project: 'Website', task: 'Design' }), 'Website · Design');
+    assert.equal(lastTimerProject({ project: 'Website', task: null }), 'Website');
+    assert.equal(lastTimerProject({ project: null, task: 'Design' }), 'Design');
 });
 
 test('clientOf finds the client in the timesheet projects', () => {

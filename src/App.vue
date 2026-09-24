@@ -27,7 +27,7 @@ import {
     type Preset,
     type PresetRow,
 } from './presets';
-import { clientOf, lastTimerWork, resumeLabelKey } from './lastTimer';
+import { clientOf, lastTimerProject, resumeLabelKey } from './lastTimer';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
@@ -1301,11 +1301,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- one-click resume of the last managed timer when nothing runs -->
         <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
-            <span class="resume-play">▶</span>
-            <span class="resume-text">
-                <span class="resume-action">{{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
-                <span class="resume-work">{{ lastTimerWork(lastTimer) }}</span>
+            <!-- the work reads like an entry row: client / project · task -->
+            <span class="entry-text">
+                <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
+                <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
             </span>
+            <span class="resume-action">▶ {{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
         </button>
 
         <!-- a timer running on a different day than the one shown: pinned
@@ -1383,7 +1384,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="confirmNewDay" class="sheet-overlay" @click.self="confirmNewDay = false">
             <div class="sheet">
                 <p class="sheet-title">{{ t('newDay.title') }}</p>
-                <p v-if="lastTimer" class="new-day-work">{{ lastTimerWork(lastTimer) }}</p>
+                <div v-if="lastTimer" class="entry-text new-day-work">
+                    <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
+                    <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
+                </div>
                 <p class="muted">{{ t('newDay.body', { date: lastTimer ? shortDate(lastTimer.date) : '' }) }}</p>
                 <div class="sheet-actions">
                     <button class="btn-outline" @click="confirmNewDay = false">{{ t('common.cancel') }}</button>
@@ -1871,34 +1875,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     background: var(--bg-raised);
     border-color: var(--border);
 }
-.resume-last .resume-play {
+.resume-last .resume-action {
     color: var(--accent);
-    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
-.resume-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+.resume-last .entry-text {
     text-align: left;
 }
-.resume-action {
-    color: var(--muted);
-    font-size: 10px;
-    line-height: 1.2;
-}
-.resume-work {
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 .new-day-work {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin-bottom: 8px;
 }
 .resume-last:hover {
     border-color: var(--accent);
