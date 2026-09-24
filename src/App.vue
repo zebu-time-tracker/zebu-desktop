@@ -490,6 +490,14 @@ watch(intlLocale, () => updateTray());
 const confirmNewDay = ref(false);
 const newDayToday = ref(''); // "today" as of when the dialog opened: what {when} is counted from
 
+// Clicking ▶ on an entry from an earlier day starts a new timer today
+// (startFreshToday), so the button says so instead of "Resume" (#361). Reading
+// `now` re-checks the date on each tick, so an open popover relabels at midnight.
+const lastTimerLabelKey = computed(() => {
+    void now.value;
+    return lastTimer.value ? resumeLabelKey(lastTimer.value.date, todayStr()) : 'timer.resume';
+});
+
 /**
  * Starting or resuming a timer jumps to the entry's day (today, for a fresh
  * timer) so the running row is on screen; act() then refreshes that day.
@@ -1444,7 +1452,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <span v-if="lastTimer.client" class="entry-client">{{ lastTimer.client }}</span>
                     <span class="entry-project">{{ lastTimerProject(lastTimer) }}</span>
                 </span>
-                <span class="resume-action">▶ {{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
+                <span class="resume-action">▶ {{ t(lastTimerLabelKey) }}</span>
             </span>
         </button>
 
