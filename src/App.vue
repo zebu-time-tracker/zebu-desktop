@@ -27,6 +27,7 @@ import {
     type Preset,
     type PresetRow,
 } from './presets';
+import { clientOf, lastTimerWork, resumeLabelKey } from './lastTimer';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
@@ -418,6 +419,7 @@ interface LastTimer {
     notes: string | null;
     project: string | null;
     task: string | null;
+    client?: string | null; // absent on a timer remembered before board #411
     date: string;
     workspace?: string; // the timer only means something on the workspace it came from
 }
@@ -439,6 +441,9 @@ try {
 // offer to resume a project that does not exist here: drop it.
 if (lastTimer.value && lastTimer.value.workspace !== auth.workspace) forgetLastTimer();
 const rememberTimer = (e: Entry) => {
+    // The entry carries only the project's name; its client comes from the
+    // sheet's projects, or from what was remembered for the same project.
+    const prior = lastTimer.value?.project_id === e.project_id ? lastTimer.value.client : null;
     lastTimer.value = {
         entry_id: e.id,
         project_id: e.project_id,
@@ -446,6 +451,7 @@ const rememberTimer = (e: Entry) => {
         notes: e.notes,
         project: e.project,
         task: e.task,
+        client: clientOf(sheet.value?.projects, e.project_id) ?? prior ?? null,
         date: e.date,
         workspace: auth.workspace,
     };
@@ -1296,8 +1302,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- one-click resume of the last managed timer when nothing runs -->
         <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
             <span class="resume-play">▶</span>
-            <span class="running-elsewhere-text">
-                {{ t('timer.resume') }} — {{ lastTimer.project }}<template v-if="lastTimer.task"> · {{ lastTimer.task }}</template>
+            <span class="resume-text">
+                <span class="resume-action">{{ t(resumeLabelKey(lastTimer.date, todayStr())) }}</span>
+                <span class="resume-work">{{ lastTimerWork(lastTimer) }}</span>
             </span>
         </button>
 
@@ -1376,6 +1383,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="confirmNewDay" class="sheet-overlay" @click.self="confirmNewDay = false">
             <div class="sheet">
                 <p class="sheet-title">{{ t('newDay.title') }}</p>
+                <p v-if="lastTimer" class="new-day-work">{{ lastTimerWork(lastTimer) }}</p>
                 <p class="muted">{{ t('newDay.body', { date: lastTimer ? shortDate(lastTimer.date) : '' }) }}</p>
                 <div class="sheet-actions">
                     <button class="btn-outline" @click="confirmNewDay = false">{{ t('common.cancel') }}</button>
@@ -1866,6 +1874,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .resume-last .resume-play {
     color: var(--accent);
     font-size: 11px;
+}
+.resume-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+.resume-action {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.2;
+}
+.resume-work {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.new-day-work {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .resume-last:hover {
     border-color: var(--accent);

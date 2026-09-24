@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Riprendi",
+        "startNew": "Avvia nuovo timer",
         "runningSince": "Timer attivo dal {date}",
         "stop": "Ferma",
         "startHint": "Avvia (ferma gli altri timer)",

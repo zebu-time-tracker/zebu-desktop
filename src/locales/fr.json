@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Reprendre",
+        "startNew": "Démarrer un nouveau minuteur",
         "runningSince": "Minuteur en cours depuis le {date}",
         "stop": "Arrêter",
         "startHint": "Démarrer (arrête tout autre minuteur)",

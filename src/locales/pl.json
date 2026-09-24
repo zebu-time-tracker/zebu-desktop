@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Wznów",
+        "startNew": "Uruchom nowy stoper",
         "runningSince": "Stoper działa od {date}",
         "stop": "Zatrzymaj",
         "startHint": "Start (zatrzymuje inne stopery)",

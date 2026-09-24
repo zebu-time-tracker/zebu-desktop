@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Fortsetzen",
+        "startNew": "Neuen Timer starten",
         "runningSince": "Timer läuft seit {date}",
         "stop": "Stopp",
         "startHint": "Starten (stoppt andere Timer)",

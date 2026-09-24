@@ -50,6 +50,7 @@
     },
     "timer": {
         "resume": "Reanudar",
+        "startNew": "Iniciar nuevo temporizador",
         "runningSince": "Temporizador activo desde el {date}",
         "stop": "Detener",
         "startHint": "Iniciar (detiene otros temporizadores)",
