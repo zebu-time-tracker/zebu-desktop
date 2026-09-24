@@ -1,3 +1,4 @@
+mod focus;
 mod live;
 mod tray_icon;
 
@@ -1222,7 +1223,14 @@ pub fn run() {
             toggle_insights,
             close_insights,
             fit_insights,
-            set_shortcut
+            set_shortcut,
+            focus::set_focus_tracking,
+            focus::focus_spans,
+            focus::focus_titles_allowed,
+            focus::focus_request_titles,
+            focus::focus_clear,
+            focus::focus_supported,
+            focus::open_focus_suggestion
         ])
         .on_window_event(|window, event| {
             // "Hide when changing focus": the popover hides itself when focus
@@ -1304,6 +1312,8 @@ pub fn run() {
 
             spawn_idle_watcher(app.handle().clone());
             spawn_tray_ticker(app.handle().clone());
+            // samples nothing until the user opts in (see focus.rs)
+            focus::spawn_focus_watcher(app.handle().clone());
 
             Ok(())
         })
@@ -1321,7 +1331,11 @@ pub fn run() {
                 }
             }
             #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
+            let _ = app;
+            // the focus span in progress is only written when it ends; quitting ends it
+            if let tauri::RunEvent::Exit = event {
+                focus::flush();
+            }
         });
 }
 

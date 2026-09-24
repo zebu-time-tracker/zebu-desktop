@@ -116,6 +116,12 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   each one ends in the call a click already makes; the frontend only owns the
   bindings (`src/shortcuts.ts`). Adding an action means a name in both lists
   and a slot in `SHORTCUTS`.
+- Focus tracking (board #401) is opt-in and local: Rust's `spawn_focus_watcher`
+  (`src-tauri/src/focus.rs`) samples nothing until `set_focus_tracking` turns
+  it on, and writes spans only to `focus.jsonl` in the app data dir, pruned
+  after 14 days. Never send spans to the server. The grouping and suggestion
+  rules are in `src/focus.ts`; the Focus tab is `src/FocusPanel.vue` inside
+  Insights, and a suggestion only opens the new-entry sheet (`focus-log`).
 - Ten locales in `src/locales`; `npm run i18n:check` after touching text.
 
 ## Task board (lite-kan) — shared across the Zebu suite

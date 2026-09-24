@@ -16,6 +16,7 @@ import { listen } from '@tauri-apps/api/event';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api, elapsedMinutes, formatDurationHuman, formatMinutes, toDateString, type Entry, type Summary } from './api';
+import FocusPanel from './FocusPanel.vue';
 import { intlLocale, setLocalePreference } from './i18n';
 
 const { t } = useI18n();
@@ -23,6 +24,9 @@ const { t } = useI18n();
 const summary = ref<Summary | null>(null);
 const running = ref<Entry | null>(null);
 const now = ref(Date.now());
+/** Focus tracking is on (a preference of the main window); only then is there a Focus tab. */
+const focusEnabled = ref(false);
+const tab = ref<'summary' | 'focus'>('summary');
 
 /** Theme and language are the main window's preferences; both windows share localStorage. */
 const applyPrefs = () => {
@@ -31,6 +35,8 @@ const applyPrefs = () => {
         if (prefs.appearance && prefs.appearance !== 'system') document.documentElement.dataset.theme = prefs.appearance;
         else delete document.documentElement.dataset.theme;
         setLocalePreference(prefs.language ?? 'system');
+        focusEnabled.value = !!prefs.focusEnabled;
+        if (!focusEnabled.value) tab.value = 'summary';
     } catch {
         /* defaults are fine */
     }
@@ -120,6 +126,16 @@ const load = async () => {
     invoke('fit_insights', { height: document.documentElement.scrollHeight }).catch(() => {});
 };
 
+/** Re-measure after the content changed height (a tab switch, the focus list loading). */
+const refit = async () => {
+    await nextTick();
+    invoke('fit_insights', { height: document.documentElement.scrollHeight }).catch(() => {});
+};
+const pickTab = (next: 'summary' | 'focus') => {
+    tab.value = next;
+    refit();
+};
+
 const close = () => invoke('close_insights').catch(() => {});
 
 const onKey = (e: KeyboardEvent) => {
@@ -153,7 +169,17 @@ onUnmounted(() => {
             <button class="insights-close" :title="t('common.close')" :aria-label="t('common.close')" @click="close">×</button>
         </header>
 
-        <template v-if="liveSummary">
+        <div v-if="focusEnabled" class="insights-tabs" role="tablist">
+            <button class="insights-tab" :class="{ selected: tab === 'summary' }" role="tab" :aria-selected="tab === 'summary'" @click="pickTab('summary')">
+                {{ t('focus.tabSummary') }}
+            </button>
+            <button class="insights-tab" :class="{ selected: tab === 'focus' }" role="tab" :aria-selected="tab === 'focus'" @click="pickTab('focus')">
+                {{ t('focus.tab') }}
+            </button>
+        </div>
+
+        <FocusPanel v-if="focusEnabled && tab === 'focus'" @changed="refit" />
+        <template v-else-if="liveSummary">
             <div class="summary-grid">
                 <div><span>{{ t('summary.hoursToday') }}</span><strong>{{ formatMinutes(liveSummary.today) }}</strong></div>
                 <div><span>{{ t('summary.hoursYesterday') }}</span><strong>{{ formatMinutes(liveSummary.yesterday) }}</strong></div>
@@ -256,6 +282,28 @@ html[data-window='insights'] body {
 .insights-close:hover {
     background: var(--accent-soft);
     color: var(--text);
+}
+.insights-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin: -6px -4px 14px;
+}
+.insights-tab {
+    flex: 1 1 0;
+    padding: 5px 6px 6px;
+    font-size: 12px;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+.insights-tab:hover {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+.insights-tab.selected {
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom-color: var(--accent);
 }
 .insights-loading {
     text-align: center;

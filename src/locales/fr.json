@@ -166,5 +166,22 @@
         "minute": "min",
         "day": "j",
         "week": "sem"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Résumé",
+        "enable": "Suivre l'app et la fenêtre actives",
+        "privacy": "Je note dans quelle app et quelle fenêtre vous êtes. Cela reste sur ce Mac et je l'efface après 14 jours.",
+        "unsupported": "Je ne sais pas encore le faire sur ce système.",
+        "titlesBlocked": "Je ne vois que les noms d'apps tant que l'accessibilité n'est pas autorisée.",
+        "allowTitles": "Autoriser",
+        "exclude": "Ne jamais enregistrer ces apps",
+        "delete": "Effacer l'historique de focus",
+        "deleteConfirm": "Tout effacer ? Cliquez encore",
+        "deleted": "Historique de focus effacé",
+        "today": "Suivi aujourd'hui",
+        "other": "Autres",
+        "empty": "Rien pour l'instant aujourd'hui. Je compte une fenêtre après 20 secondes.",
+        "suggest": "Saisir {time} sur {target} ?"
     }
 }

@@ -166,5 +166,22 @@
         "minute": "min",
         "day": "g",
         "week": "sett"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Riepilogo",
+        "enable": "Traccia app e finestra attive",
+        "privacy": "Annoto in quale app e finestra ti trovi. Resta su questo Mac e lo cancello dopo 14 giorni.",
+        "unsupported": "Su questo sistema non posso ancora farlo.",
+        "titlesBlocked": "Vedo solo i nomi delle app finché non consenti l'accessibilità.",
+        "allowTitles": "Consenti",
+        "exclude": "Non registrare mai queste app",
+        "delete": "Elimina cronologia focus",
+        "deleteConfirm": "Eliminare tutto? Clicca di nuovo",
+        "deleted": "Cronologia focus eliminata",
+        "today": "Tracciato oggi",
+        "other": "Altro",
+        "empty": "Ancora niente oggi. Conto una finestra dopo 20 secondi.",
+        "suggest": "Registrare {time} su {target}?"
     }
 }

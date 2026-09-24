@@ -166,5 +166,22 @@
         "minute": "m",
         "day": "d",
         "week": "w"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Summary",
+        "enable": "Track app and window focus",
+        "privacy": "I note which app and window you're in. It stays on this Mac, and I delete it after 14 days.",
+        "unsupported": "I can't do this on this system yet.",
+        "titlesBlocked": "I can only see app names until you allow Accessibility.",
+        "allowTitles": "Allow",
+        "exclude": "Never record these apps",
+        "delete": "Delete focus history",
+        "deleteConfirm": "Delete all of it? Click again",
+        "deleted": "Focus history deleted",
+        "today": "Tracked today",
+        "other": "Other",
+        "empty": "Nothing yet today. I count a window after 20 seconds in it.",
+        "suggest": "Log {time} to {target}?"
     }
 }

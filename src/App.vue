@@ -12,6 +12,7 @@ import { editDurationToSave, isApplePlatform, isSaveShortcut, saveShortcutHint }
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
+import { DEFAULT_EXCLUDED, parseExcludeList } from './focus';
 import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
 import { liveSource, readBroadcast } from './live';
@@ -53,8 +54,22 @@ interface Prefs {
     idleMinutes: number;
     language: string; // 'system' or a locale code from SUPPORTED_LOCALES
     shortcuts: Shortcuts; // system-wide hotkeys, one accelerator per action ('' = unbound)
+    /** Focus tracking (board #401): off until the user turns it on. Rust samples nothing while false. */
+    focusEnabled: boolean;
+    /** Apps never recorded, one per line — the password managers by default. */
+    focusExclude: string;
 }
-const prefs = ref<Prefs>({ appearance: 'system', dock: false, hideOnBlur: true, idleEnabled: true, idleMinutes: 10, language: 'system', shortcuts: noShortcuts() });
+const prefs = ref<Prefs>({
+    appearance: 'system',
+    dock: false,
+    hideOnBlur: true,
+    idleEnabled: true,
+    idleMinutes: 10,
+    language: 'system',
+    shortcuts: noShortcuts(),
+    focusEnabled: false,
+    focusExclude: DEFAULT_EXCLUDED.join('\n'),
+});
 try {
     Object.assign(prefs.value, JSON.parse(localStorage.getItem('zebu.prefs') ?? '{}'));
 } catch {
@@ -76,6 +91,7 @@ watch(
         setLocalePreference(p.language);
         invoke('set_dock_visible', { visible: p.dock }).catch(() => {});
         invoke('set_hide_on_blur', { hide: p.hideOnBlur }).catch(() => {});
+        invoke('set_focus_tracking', { enabled: !!p.focusEnabled, exclude: parseExcludeList(p.focusExclude ?? '') }).catch(() => {});
     },
     { deep: true, immediate: true },
 );
@@ -969,11 +985,12 @@ const settingsOpen = ref(false);
 // preferences it has always held, and the five shortcut recorders that were
 // added underneath them. Everything else in the popout — who is signed in, the
 // links, the build line — is chrome for the whole thing and sits outside both.
-const SETTINGS_TABS = ['preferences', 'shortcuts'] as const;
+const SETTINGS_TABS = ['preferences', 'shortcuts', 'focus'] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
     preferences: 'settings.tabSettings',
     shortcuts: 'settings.tabShortcuts',
+    focus: 'focus.tab',
 };
 /**
  * The tab on show. It is reset every time the popout opens rather than
@@ -1148,6 +1165,62 @@ onMounted(() => {
     listen<boolean>('insights-visible', (e) => (insightsOpen.value = e.payload)).then((off) => (insightsUnlisten = off));
 });
 onUnmounted(() => insightsUnlisten?.());
+
+// ---- focus tracking --------------------------------------------------------
+//
+// Board card #401. Rust records which app and window were in front into a
+// local file (src-tauri/src/focus.rs); the Focus tab in Insights shows the day
+// and suggests entries. This window owns only the opt-in, the exclude list,
+// the delete button — and the new-entry sheet a suggestion opens, prefilled
+// but not saved.
+
+/** Whether the OS lets us read window titles (macOS: Accessibility); app names need nothing. */
+const focusTitlesAllowed = ref(true);
+const focusSupported = ref(true);
+/** "Delete focus history" asks once more before it deletes. */
+const focusDelete = ref<'idle' | 'confirm' | 'done'>('idle');
+
+const checkFocusPermission = async () => {
+    focusSupported.value = await invoke<boolean>('focus_supported').catch(() => true);
+    focusTitlesAllowed.value = await invoke<boolean>('focus_titles_allowed').catch(() => true);
+};
+const requestFocusTitles = () => {
+    invoke('focus_request_titles').catch(() => {});
+    // the answer arrives in System Settings, not here; look again when the user is back
+    setTimeout(checkFocusPermission, 4000);
+};
+const deleteFocusHistory = () => {
+    if (focusDelete.value !== 'confirm') {
+        focusDelete.value = 'confirm';
+        return;
+    }
+    invoke('focus_clear').catch(() => {});
+    focusDelete.value = 'done';
+};
+watch(settingsTab, (tab) => {
+    focusDelete.value = 'idle';
+    if (tab === 'focus') checkFocusPermission();
+});
+
+let focusLogUnlisten: UnlistenFn | null = null;
+/** A suggestion from the Focus tab: the sheet opens filled in, and nothing is saved until Log. */
+const openFocusSuggestion = (d: { project_id: string; task_id: string | null; minutes: number; notes: string }) => {
+    if (view.value !== 'main' || sheet.value?.week_locked) return;
+    settingsOpen.value = false;
+    closePresets();
+    const draft: EntryDraft = { project_id: d.project_id, task_id: d.task_id ?? '', notes: d.notes, duration: formatMinutes(d.minutes), date: toDateString(new Date()) };
+    editingEntry.value = null;
+    openedDuration = '';
+    openedForm = { ...draft };
+    draftRestored.value = false;
+    form.value = { ...draft };
+    formOpen.value = true;
+    nextTick(autosizeNotes);
+};
+onMounted(() => {
+    listen<{ project_id: string; task_id: string | null; minutes: number; notes: string }>('focus-log', (e) => openFocusSuggestion(e.payload)).then((off) => (focusLogUnlisten = off));
+});
+onUnmounted(() => focusLogUnlisten?.());
 
 // ---- presets ---------------------------------------------------------------
 //
@@ -1797,6 +1870,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </label>
             </div>
 
+            <!-- focus tracking (board #401): opt-in, local only; Rust samples, the Insights window shows it -->
+            <div v-else-if="settingsTab === 'focus'" id="settings-panel-focus" class="pref-panel" role="tabpanel" aria-labelledby="settings-tab-focus">
+                <label class="pref-row">
+                    <span>{{ t('focus.enable') }}</span>
+                    <input v-model="prefs.focusEnabled" type="checkbox" :disabled="!focusSupported" />
+                </label>
+                <p class="pref-note muted">{{ focusSupported ? t('focus.privacy') : t('focus.unsupported') }}</p>
+                <p v-if="prefs.focusEnabled && focusSupported && !focusTitlesAllowed" class="pref-note focus-permission">
+                    {{ t('focus.titlesBlocked') }}
+                    <button class="link" @click="requestFocusTitles">{{ t('focus.allowTitles') }}</button>
+                </p>
+                <label class="pref-stack">
+                    <span>{{ t('focus.exclude') }}</span>
+                    <textarea v-model="prefs.focusExclude" rows="3" class="pref-exclude" spellcheck="false"></textarea>
+                </label>
+                <button class="link danger" @click="deleteFocusHistory">
+                    {{ focusDelete === 'confirm' ? t('focus.deleteConfirm') : focusDelete === 'done' ? t('focus.deleted') : t('focus.delete') }}
+                </button>
+            </div>
+
             <!-- system-wide hotkeys; Rust registers them (src-tauri: set_shortcut) -->
             <div v-else id="settings-panel-shortcuts" class="pref-panel pref-shortcuts" role="tabpanel" aria-labelledby="settings-tab-shortcuts">
                 <div v-for="action in SHORTCUT_ACTIONS" :key="action" class="pref-shortcut">
@@ -2437,6 +2530,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     padding: 3px 6px;
     text-align: center;
     font-size: 12px;
+}
+
+/* ---- focus tracking (settings) ---- */
+.pref-note {
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 0 2px;
+}
+.focus-permission .link {
+    font-size: 11px;
+    margin-left: 2px;
+}
+.pref-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    padding: 1px 2px;
+}
+.pref-exclude {
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 4px 8px;
+    resize: none;
 }
 
 /* ---- keyboard shortcuts (settings) ---- */

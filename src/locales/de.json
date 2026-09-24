@@ -166,5 +166,22 @@
         "minute": "min",
         "day": "T",
         "week": "W"
+    },
+    "focus": {
+        "tab": "Fokus",
+        "tabSummary": "Übersicht",
+        "enable": "App- und Fensterfokus erfassen",
+        "privacy": "Ich notiere, in welcher App und welchem Fenster du bist. Das bleibt auf diesem Mac, und ich lösche es nach 14 Tagen.",
+        "unsupported": "Auf diesem System kann ich das noch nicht.",
+        "titlesBlocked": "Ich sehe nur App-Namen, bis du Bedienungshilfen erlaubst.",
+        "allowTitles": "Erlauben",
+        "exclude": "Diese Apps nie erfassen",
+        "delete": "Fokusverlauf löschen",
+        "deleteConfirm": "Alles löschen? Noch einmal klicken",
+        "deleted": "Fokusverlauf gelöscht",
+        "today": "Heute erfasst",
+        "other": "Sonstiges",
+        "empty": "Heute noch nichts. Ein Fenster zählt ab 20 Sekunden.",
+        "suggest": "{time} auf {target} buchen?"
     }
 }

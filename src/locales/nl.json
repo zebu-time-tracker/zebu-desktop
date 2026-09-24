@@ -166,5 +166,22 @@
         "minute": "m",
         "day": "d",
         "week": "w"
+    },
+    "focus": {
+        "tab": "Focus",
+        "tabSummary": "Overzicht",
+        "enable": "App- en vensterfocus bijhouden",
+        "privacy": "Ik noteer in welke app en welk venster je zit. Het blijft op deze Mac en ik wis het na 14 dagen.",
+        "unsupported": "Op dit systeem kan ik dit nog niet.",
+        "titlesBlocked": "Ik zie alleen appnamen tot je Toegankelijkheid toestaat.",
+        "allowTitles": "Toestaan",
+        "exclude": "Deze apps nooit vastleggen",
+        "delete": "Focusgeschiedenis wissen",
+        "deleteConfirm": "Alles wissen? Klik nogmaals",
+        "deleted": "Focusgeschiedenis gewist",
+        "today": "Vandaag bijgehouden",
+        "other": "Overig",
+        "empty": "Vandaag nog niets. Een venster telt na 20 seconden.",
+        "suggest": "{time} boeken op {target}?"
     }
 }
