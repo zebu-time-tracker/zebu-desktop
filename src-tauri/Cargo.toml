@@ -5,6 +5,7 @@ description = "Zebu menubar time tracker"
 homepage = "https://zebu.work"
 authors = ["Alan Woo"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "zebu_desktop_lib"
