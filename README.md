@@ -49,3 +49,7 @@ Releases are cut by tagging: `git tag v0.2.0 && git push origin v0.2.0` runs `.g
 The companion API ships with the Zebu server (`routes/api.php`): device-flow endpoints (`/api/device/*`), and Sanctum-authenticated `/api/timesheet`, `/api/timer/*`, `/api/time`, `/api/summary`.
 
 Live updates need the server's Laravel Reverb service: when `GET /api/me` returns a `broadcast` block the app subscribes to the person's private channel over a websocket (channel auth via `POST /api/broadcasting/auth`) and hears timer changes within about a hundred milliseconds; without the block it polls the pulse as before.
+
+## License
+
+[MIT](LICENSE). The Zebu name and logo are not covered by the license: forks must use their own.
