@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editDurationToSave, isApplePlatform, isSaveShortcut, saveShortcutHint, type KeyPress } from '../src/entryForm.ts';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, type KeyPress } from '../src/entryForm.ts';
 
-const press = (key: string, mods: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({ key, metaKey: false, ctrlKey: false, altKey: false, isComposing: false, ...mods });
+const press = (key: string, mods: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({ key, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, isComposing: false, ...mods });
 
 test('a running timer at 0:00 saves its notes without sending a duration (board #398)', () => {
     assert.deepEqual(editDurationToSave({ typed: '0:00', opened: '0:00', running: true }), { ok: true, minutes: null });
@@ -49,4 +49,19 @@ test('the hint follows the platform and the locale', () => {
     assert.equal(isApplePlatform('Linux x86_64'), false);
     assert.equal(saveShortcutHint(true, 'Ctrl'), '⌘↵');
     assert.equal(saveShortcutHint(false, 'Strg'), 'Strg+↵');
+});
+
+test('⌘N on a Mac and Ctrl+N elsewhere open a new entry, nothing else does (board #449)', () => {
+    assert.equal(isNewEntryShortcut(press('n', { metaKey: true }), true), true);
+    assert.equal(isNewEntryShortcut(press('N', { metaKey: true }), true), true);
+    assert.equal(isNewEntryShortcut(press('n', { ctrlKey: true }), false), true);
+    // the other platform's modifier, extra modifiers, or none
+    assert.equal(isNewEntryShortcut(press('n', { ctrlKey: true }), true), false);
+    assert.equal(isNewEntryShortcut(press('n', { metaKey: true }), false), false);
+    assert.equal(isNewEntryShortcut(press('n', { metaKey: true, shiftKey: true }), true), false);
+    assert.equal(isNewEntryShortcut(press('n', { metaKey: true, altKey: true }), true), false);
+    assert.equal(isNewEntryShortcut(press('n'), true), false);
+    assert.equal(isNewEntryShortcut(press('n', { metaKey: true, isComposing: true }), true), false);
+    assert.equal(newEntryShortcutHint(true, 'Ctrl'), '⌘N');
+    assert.equal(newEntryShortcutHint(false, 'Strg'), 'Strg+N');
 });

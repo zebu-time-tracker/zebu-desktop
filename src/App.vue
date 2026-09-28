@@ -8,7 +8,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { editDurationToSave, isApplePlatform, isSaveShortcut, saveShortcutHint } from './entryForm';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint } from './entryForm';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
@@ -1523,6 +1523,16 @@ const onKeydown = (e: KeyboardEvent) => {
         setShortcut(action, accel);
         return;
     }
+    // ⌘N / Ctrl+N does what the footer's ＋ does, from anywhere in the popover
+    // (board #449); not on the connect screen, a locked week or an open sheet.
+    if (isNewEntryShortcut(e, appleKeys)) {
+        e.preventDefault();
+        if (view.value !== 'main' || sheet.value?.week_locked || formOpen.value) return;
+        if (presetsOpen.value) closePresets();
+        settingsOpen.value = false;
+        openForm();
+        return;
+    }
     if (e.key !== 'Escape') return;
     if (presetsOpen.value) closePresets();
     else if (settingsOpen.value) settingsOpen.value = false;
@@ -1779,7 +1789,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- footer -->
         <footer class="footer">
             <div class="footer-left">
-                <button v-if="!sheet?.week_locked" :title="t('footer.newEntry')" @click="openForm()">＋</button>
+                <button v-if="!sheet?.week_locked" :title="`${t('footer.newEntry')} (${newEntryShortcutHint(appleKeys, t('form.ctrlKey'))})`" @click="openForm()">＋</button>
                 <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
                 <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
             </div>

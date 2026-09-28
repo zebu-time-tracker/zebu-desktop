@@ -38,7 +38,7 @@ export const editDurationToSave = ({ typed, opened, running }: EditDurationInput
 };
 
 /** The keys of a keydown that the save shortcut reads. */
-export type KeyPress = Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'isComposing'>;
+export type KeyPress = Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'isComposing'>;
 
 /** Whether the platform string (navigator.platform and the like) is Apple's, where ⌘ is the command key. */
 export const isApplePlatform = (platform: string): boolean => /mac|iphone|ipad|ipod/i.test(platform);
@@ -50,6 +50,17 @@ export const isApplePlatform = (platform: string): boolean => /mac|iphone|ipad|i
  */
 export const isSaveShortcut = (e: KeyPress, apple: boolean): boolean =>
     e.key === 'Enter' && !e.isComposing && !e.altKey && (apple ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey);
+
+/**
+ * ⌘N on a Mac, Ctrl+N elsewhere, opens a new entry, as the footer's ＋ does
+ * (board #449). Shift or Alt with it is some other shortcut, and so is ⌘N
+ * held with Ctrl.
+ */
+export const isNewEntryShortcut = (e: KeyPress, apple: boolean): boolean =>
+    e.key.toLowerCase() === 'n' && !e.isComposing && !e.altKey && !e.shiftKey && (apple ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey);
+
+/** The keycap for the ＋ button's tooltip, e.g. "⌘N" or "Ctrl+N". */
+export const newEntryShortcutHint = (apple: boolean, ctrl: string): string => (apple ? '⌘N' : `${ctrl}+N`);
 
 /** The keycap shown in the save button; `ctrl` is the locale's name for the Control key. */
 export const saveShortcutHint = (apple: boolean, ctrl: string): string => (apple ? '⌘↵' : `${ctrl}+↵`);
