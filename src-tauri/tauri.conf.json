@@ -45,8 +45,8 @@
         "category": "Productivity",
         "shortDescription": "Menubar time tracker for Zebu",
         "longDescription": "Start and stop timers, browse your week and see today's hours from the menubar, connected to your Zebu workspace.",
-        "copyright": "© Alan Woo. Elastic License 2.0.",
-        "licenseFile": "../LICENSE.md",
+        "copyright": "© Alan Woo. MIT License.",
+        "licenseFile": "../LICENSE",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",
