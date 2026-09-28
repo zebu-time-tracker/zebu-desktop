@@ -31,7 +31,7 @@ import {
     type Preset,
     type PresetRow,
 } from './presets';
-import { clientOf, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from './lastTimer';
+import { clientOf, lastTimerIsOnlyEntry, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from './lastTimer';
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
@@ -523,6 +523,8 @@ interface LastTimer {
     workspace?: string; // the timer only means something on the workspace it came from
 }
 const lastTimer = ref<LastTimer | null>(null);
+// The ▶ bar, unless the day on show lists only that timer's own entry (board #450).
+const showLastTimer = computed(() => !running.value && !!lastTimer.value && !lastTimerIsOnlyEntry(lastTimer.value, dayEntries.value, selectedDate.value));
 const forgetLastTimer = () => {
     lastTimer.value = null;
     try {
@@ -1126,7 +1128,7 @@ watch(
 // `settingsOpen` is in there because that popout sets a floor under the
 // window's height while it is up, and gives it back on the way out;
 // `settingsTab` because its two tabs are not the same height.
-watch([sheet, lastTimer, errorMessage, loading, intlLocale, settingsOpen, settingsTab], fitPopover, { flush: 'post' });
+watch([sheet, lastTimer, showLastTimer, errorMessage, loading, intlLocale, settingsOpen, settingsTab], fitPopover, { flush: 'post' });
 
 // who's signed in + which build — shown in the settings popout
 const me = ref<{ name: string; email: string; broadcast?: unknown } | null>(null);
@@ -1614,7 +1616,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <!-- one-click resume of the last managed timer when nothing runs -->
-        <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
+        <button v-if="showLastTimer && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
             <span class="resume-label">{{ t('timer.lastActive') }}</span>
             <span class="re-divider resume-divider"></span>
             <span class="resume-row">
@@ -1650,7 +1652,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
             <p v-if="sheet?.week_locked" class="muted locked-note">{{ t('entry.weekLocked') }}</p>
 
-            <div v-if="!dayEntries.length && !loading" class="empty" :class="{ raised: runningElsewhere || (!running && lastTimer) }">
+            <div v-if="!dayEntries.length && !loading" class="empty" :class="{ raised: runningElsewhere || showLastTimer }">
                 <button class="btn-outline" @click="openForm()">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
             </div>
 

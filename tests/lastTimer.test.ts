@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ProjectOption } from '../src/api.ts';
-import { clientOf, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from '../src/lastTimer.ts';
+import { clientOf, lastTimerIsOnlyEntry, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from '../src/lastTimer.ts';
 
 const project = (over: Partial<ProjectOption> = {}): ProjectOption => ({
     id: 'proj-1',
@@ -53,4 +53,14 @@ test('relativeDay speaks the app locale', () => {
 test('splitAround cuts a sentence around the placeholder value', () => {
     assert.deepEqual(splitAround('Resume the old timer from ⁣ or start?', '⁣'), ['Resume the old timer from ', ' or start?']);
     assert.deepEqual(splitAround('no mark', '⁣'), ['no mark', '']);
+});
+
+test('the ▶ bar is hidden when its entry is the only one on the day shown (board #450)', () => {
+    const last = { entry_id: 'e1', date: '2026-09-28' };
+    assert.equal(lastTimerIsOnlyEntry(last, [{ id: 'e1' }], '2026-09-28'), true);
+    // other entries that day, a different entry, another day, or an empty day keep it
+    assert.equal(lastTimerIsOnlyEntry(last, [{ id: 'e1' }, { id: 'e2' }], '2026-09-28'), false);
+    assert.equal(lastTimerIsOnlyEntry(last, [{ id: 'e2' }], '2026-09-28'), false);
+    assert.equal(lastTimerIsOnlyEntry(last, [{ id: 'e1' }], '2026-09-29'), false);
+    assert.equal(lastTimerIsOnlyEntry(last, [], '2026-09-28'), false);
 });

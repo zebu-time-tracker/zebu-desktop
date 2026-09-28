@@ -14,6 +14,14 @@ interface LastTimerWork {
 export const clientOf = (projects: ProjectOption[] | undefined, projectId: string): string | null =>
     projects?.find((p) => p.id === projectId)?.client ?? null;
 
+/**
+ * Whether the day on show lists nothing but the last timer's own entry: the
+ * ▶ bar would then repeat the one row right under it (board #450). A day with
+ * other entries keeps the bar, since the last timer is not the obvious one.
+ */
+export const lastTimerIsOnlyEntry = (last: { entry_id: string; date: string }, dayEntries: { id: string }[], shownDate: string): boolean =>
+    last.date === shownDate && dayEntries.length === 1 && dayEntries[0].id === last.entry_id;
+
 /** The line under the client: "Project · Task", leaving out whichever part is missing. */
 export const lastTimerProject = (last: Pick<LastTimerWork, 'project' | 'task'>): string => [last.project, last.task].filter(Boolean).join(' · ');
 
