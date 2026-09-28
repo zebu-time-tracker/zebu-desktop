@@ -1,6 +1,6 @@
 [package]
 name = "zebu-desktop"
-version = "0.1.9"
+version = "0.1.10"
 description = "Zebu menubar time tracker"
 homepage = "https://zebu.work"
 authors = ["Alan Woo"]
