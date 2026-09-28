@@ -56,7 +56,7 @@
         "startHint": "Iniciar (para outros timers)",
         "startTimer": "Iniciar",
         "addEntry": "Nova entrada",
-        "lastActive": "Último projeto ativo",
+        "lastActive": "Último temporizador",
         "waiting": "{time} esperando o agente",
         "waitingNow": "aguardando o agente…"
     },

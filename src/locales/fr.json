@@ -56,7 +56,7 @@
         "startHint": "Démarrer (arrête tout autre minuteur)",
         "startTimer": "Démarrer",
         "addEntry": "Nouvelle entrée",
-        "lastActive": "Dernier projet actif",
+        "lastActive": "Dernier minuteur",
         "waiting": "{time} d’attente de l’agent",
         "waitingNow": "en attente de l’agent…"
     },

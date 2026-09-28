@@ -1606,6 +1606,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- one-click resume of the last managed timer when nothing runs -->
         <button v-if="!running && lastTimer" class="running-elsewhere resume-last" @click="resumeLast">
             <span class="resume-label">{{ t('timer.lastActive') }}</span>
+            <span class="re-divider resume-divider"></span>
             <span class="resume-row">
                 <!-- the work reads like an entry row: client / project · task -->
                 <span class="entry-text">
@@ -1655,15 +1656,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <span class="entry-project">
                         <span v-if="projectOf(entry)?.code" class="entry-code">{{ projectOf(entry)!.code }}</span>
                         {{ entry.project }}
+                        <!-- opens the project in the browser, never the edit sheet -->
+                        <button
+                            v-if="entry.project_id"
+                            class="entry-open"
+                            :title="t('entry.viewProject')"
+                            :aria-label="t('entry.viewProject')"
+                            @click.stop="openUrl(projectUrl(entry.project_id))"
+                        >
+                            <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+                                <path d="M9 2.5h4.5V7M13.5 2.5 7 9M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
                         <span v-if="waitingLabel(entry)" class="entry-waiting" :class="{ live: entry.agent_waiting }">⏳ {{ waitingLabel(entry) }}</span>
                     </span>
                     <span class="entry-sub">{{ [entry.task, entry.notes].filter(Boolean).join(' — ') || '&nbsp;' }}</span>
                     <span v-if="statsFor(entry)" class="entry-stats">
-                        <!-- the link opens the project in the browser, never the edit sheet -->
-                        <button class="link entry-view" @click.stop="openUrl(projectUrl(entry.project_id))">
-                            {{ t('entry.viewProject') }}
-                        </button>
-                        <span class="entry-stats-dim"> · {{ t('entry.uninvoiced') }}: {{ formatHours(statsFor(entry)!.uninvoiced_minutes, intlLocale, t('units.hour')) }}</span>
+                        <span class="entry-stats-dim">{{ t('entry.uninvoiced') }}: {{ formatHours(statsFor(entry)!.uninvoiced_minutes, intlLocale, t('units.hour')) }}</span>
                         <!-- only projects with a budget get a budget part -->
                         <template v-if="statsFor(entry)!.budget_pct !== null">
                             <span class="entry-stats-dim"> · </span>
@@ -2218,6 +2227,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     font-size: 10px;
     line-height: 1.2;
 }
+.resume-divider {
+    border-top-color: var(--border);
+    margin: 0 -12px;
+}
 .resume-row {
     display: flex;
     align-items: center;
@@ -2304,7 +2317,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .entry-stats {
     color: var(--muted);
     font-size: 10px;
-    font-variant-numeric: tabular-nums; /* a ticking total must not jiggle the rest of the line */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2329,21 +2341,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .budget-pill.alarm {
     color: var(--danger); /* from 80% */
 }
-.entry-view {
-    font-size: inherit;
-    font-weight: 500;
+/* "open in browser" at the end of the project name (board #445) */
+.entry-open {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: -1px;
+    margin-left: 4px;
+    padding: 1px;
+    color: var(--muted);
     border-radius: 3px;
+    opacity: 0.7;
 }
-.entry-view:hover,
-.entry-view:focus-visible {
-    text-decoration: underline;
+.entry-open:hover,
+.entry-open:focus-visible {
+    color: var(--accent);
+    opacity: 1;
 }
-.entry-view:focus-visible {
+.entry-open:focus-visible {
     outline: 1px solid var(--accent);
     outline-offset: 1px;
 }
-/* pointing at the link is not pointing at the row's edit target */
-.entry-text.editable:has(.entry-view:hover) .entry-project {
+/* pointing at the icon is not pointing at the row's edit target */
+.entry-text.editable:has(.entry-open:hover) .entry-project {
     text-decoration: none;
 }
 .entry-sub {

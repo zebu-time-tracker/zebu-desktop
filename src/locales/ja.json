@@ -56,7 +56,7 @@
         "startHint": "開始 (他のタイマーは停止)",
         "startTimer": "開始",
         "addEntry": "新規エントリ",
-        "lastActive": "最後に作業したプロジェクト",
+        "lastActive": "前回のタイマー",
         "waiting": "エージェント待ち {time}",
         "waitingNow": "エージェント待ち…"
     },

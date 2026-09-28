@@ -56,7 +56,7 @@
         "startHint": "Start (stops any other timer)",
         "startTimer": "Start",
         "addEntry": "Add new entry",
-        "lastActive": "Last active project",
+        "lastActive": "Last timer",
         "waiting": "{time} waiting on agent",
         "waitingNow": "waiting for agent…"
     },

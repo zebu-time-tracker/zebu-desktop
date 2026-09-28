@@ -56,7 +56,7 @@
         "startHint": "开始 (将停止其他计时器)",
         "startTimer": "开始",
         "addEntry": "新建条目",
-        "lastActive": "最近活动的项目",
+        "lastActive": "上一个计时器",
         "waiting": "等待智能体 {time}",
         "waitingNow": "等待智能体…"
     },
