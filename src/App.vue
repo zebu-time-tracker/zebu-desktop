@@ -1728,7 +1728,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- new entry sheet -->
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
             <div class="sheet" @keydown="onSheetKeydown">
-                <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
+                <div class="sheet-head">
+                    <p class="sheet-title">{{ editingEntry ? t('form.editTitle') : t('form.newTitle') }}</p>
+                    <button class="link sheet-head-link" @click="openUrl(`${auth.workspace}/projects`)">{{ t('form.viewProjects') }}</button>
+                </div>
                 <!-- the popover was put away mid-entry: this is what was typed then, not a fresh sheet -->
                 <p v-if="draftRestored" class="muted">{{ t('form.draftRestored') }}</p>
                 <ProjectPicker
@@ -2439,6 +2442,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-title {
     text-align: center;
     font-weight: 600;
+}
+/* the entry sheet's title sits left, the projects link right (board #446) */
+.sheet-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.sheet-head .sheet-title {
+    text-align: left;
+}
+.sheet-head-link {
+    font-size: 11px;
+    white-space: nowrap;
 }
 .sheet-row {
     display: flex;

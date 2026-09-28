@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Edit time entry",
         "newTitle": "New time entry",
+        "viewProjects": "View projects on web",
         "draftRestored": "Restored your unsaved entry.",
         "addProject": "Select project…",
         "addTask": "Select task…",

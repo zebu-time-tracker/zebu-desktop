@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Modifica voce",
         "newTitle": "Nuova voce",
+        "viewProjects": "Vedi i progetti sul web",
         "draftRestored": "La voce non salvata è stata ripristinata.",
         "addProject": "Scegli progetto…",
         "addTask": "Scegli attività…",

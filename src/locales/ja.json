@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "エントリを編集",
         "newTitle": "新規エントリ",
+        "viewProjects": "Webでプロジェクトを見る",
         "draftRestored": "保存していないエントリを復元しました。",
         "addProject": "プロジェクトを選択…",
         "addTask": "タスクを選択…",
