@@ -181,7 +181,11 @@
         "deleted": "Focusgeschiedenis gewist",
         "today": "Vandaag bijgehouden",
         "other": "Overig",
-        "empty": "Vandaag nog niets. Een venster telt na 20 seconden.",
-        "suggest": "{time} boeken op {target}?"
+        "empty": "Nog niets vastgelegd.",
+        "suggest": "{time} boeken op {target}?",
+        "emptyHint": "Apps moeten {seconds} seconden op de voorgrond staan om te worden vastgelegd.",
+        "emptyEdit": "Klik hier om te wijzigen",
+        "minSeconds": "Focus vastleggen na",
+        "seconds": "seconden"
     }
 }

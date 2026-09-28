@@ -181,7 +181,11 @@
         "deleted": "Focus history deleted",
         "today": "Tracked today",
         "other": "Other",
-        "empty": "Nothing yet today. I count a window after 20 seconds in it.",
-        "suggest": "Log {time} to {target}?"
+        "empty": "Nothing recorded so far.",
+        "suggest": "Log {time} to {target}?",
+        "emptyHint": "Apps must be in focus for {seconds} seconds to be logged.",
+        "emptyEdit": "Click here to edit",
+        "minSeconds": "Log focus after",
+        "seconds": "seconds"
     }
 }

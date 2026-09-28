@@ -181,7 +181,11 @@
         "deleted": "フォーカス履歴を削除しました",
         "today": "今日の記録",
         "other": "その他",
-        "empty": "今日はまだ何もありません。同じウィンドウに20秒いると記録します。",
-        "suggest": "{time} を {target} に記録しますか？"
+        "empty": "まだ記録はありません。",
+        "suggest": "{time} を {target} に記録しますか？",
+        "emptyHint": "アプリが{seconds}秒以上前面にあると記録されます。",
+        "emptyEdit": "ここをクリックして変更",
+        "minSeconds": "フォーカスを記録するまで",
+        "seconds": "秒"
     }
 }

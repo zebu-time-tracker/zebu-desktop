@@ -58,6 +58,8 @@ interface Prefs {
     focusEnabled: boolean;
     /** Apps never recorded, one per line — the password managers by default. */
     focusExclude: string;
+    /** Seconds a window needs in front before it is logged (board #445). */
+    focusMinSeconds: number;
 }
 const prefs = ref<Prefs>({
     appearance: 'system',
@@ -69,6 +71,7 @@ const prefs = ref<Prefs>({
     shortcuts: noShortcuts(),
     focusEnabled: false,
     focusExclude: DEFAULT_EXCLUDED.join('\n'),
+    focusMinSeconds: 30,
 });
 try {
     Object.assign(prefs.value, JSON.parse(localStorage.getItem('zebu.prefs') ?? '{}'));
@@ -91,7 +94,11 @@ watch(
         setLocalePreference(p.language);
         invoke('set_dock_visible', { visible: p.dock }).catch(() => {});
         invoke('set_hide_on_blur', { hide: p.hideOnBlur }).catch(() => {});
-        invoke('set_focus_tracking', { enabled: !!p.focusEnabled, exclude: parseExcludeList(p.focusExclude ?? '') }).catch(() => {});
+        invoke('set_focus_tracking', {
+            enabled: !!p.focusEnabled,
+            exclude: parseExcludeList(p.focusExclude ?? ''),
+            minSeconds: Number.isFinite(p.focusMinSeconds) && p.focusMinSeconds > 0 ? Math.round(p.focusMinSeconds) : 30,
+        }).catch(() => {});
     },
     { deep: true, immediate: true },
 );
@@ -1207,6 +1214,15 @@ watch(settingsTab, (tab) => {
 });
 
 let focusLogUnlisten: UnlistenFn | null = null;
+let focusSettingsUnlisten: UnlistenFn | null = null;
+// "Click here to edit" under an empty Focus tab: open the popout on Focus.
+// The settingsOpen watcher lands every opening on Settings, so the tab is
+// switched after it has run.
+const openFocusSettings = async () => {
+    settingsOpen.value = true;
+    await nextTick();
+    settingsTab.value = 'focus';
+};
 /** A suggestion from the Focus tab: the sheet opens filled in, and nothing is saved until Log. */
 const openFocusSuggestion = (d: { project_id: string; task_id: string | null; minutes: number; notes: string }) => {
     if (view.value !== 'main' || sheet.value?.week_locked) return;
@@ -1224,7 +1240,13 @@ const openFocusSuggestion = (d: { project_id: string; task_id: string | null; mi
 onMounted(() => {
     listen<{ project_id: string; task_id: string | null; minutes: number; notes: string }>('focus-log', (e) => openFocusSuggestion(e.payload)).then((off) => (focusLogUnlisten = off));
 });
-onUnmounted(() => focusLogUnlisten?.());
+onMounted(() => {
+    listen('open-focus-settings', () => openFocusSettings()).then((off) => (focusSettingsUnlisten = off));
+});
+onUnmounted(() => {
+    focusLogUnlisten?.();
+    focusSettingsUnlisten?.();
+});
 
 // ---- presets ---------------------------------------------------------------
 //
@@ -1885,6 +1907,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     {{ t('focus.titlesBlocked') }}
                     <button class="link" @click="requestFocusTitles">{{ t('focus.allowTitles') }}</button>
                 </p>
+                <label class="pref-row">
+                    <span>{{ t('focus.minSeconds') }}</span>
+                    <span class="pref-idle">
+                        <input v-model.number="prefs.focusMinSeconds" type="number" min="5" max="3600" class="pref-num" />
+                        {{ t('focus.seconds') }}
+                    </span>
+                </label>
                 <label class="pref-stack">
                     <span>{{ t('focus.exclude') }}</span>
                     <textarea v-model="prefs.focusExclude" rows="3" class="pref-exclude" spellcheck="false"></textarea>

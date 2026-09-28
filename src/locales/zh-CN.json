@@ -181,7 +181,11 @@
         "deleted": "专注记录已删除",
         "today": "今日已记录",
         "other": "其他",
-        "empty": "今天还没有记录。在一个窗口停留 20 秒后开始计入。",
-        "suggest": "将 {time} 记到 {target}？"
+        "empty": "目前还没有记录。",
+        "suggest": "将 {time} 记到 {target}？",
+        "emptyHint": "应用需在前台停留 {seconds} 秒才会被记录。",
+        "emptyEdit": "点此修改",
+        "minSeconds": "记录焦点的时长",
+        "seconds": "秒后"
     }
 }

@@ -21,15 +21,25 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 use tauri::{Emitter, Manager};
 
 /// How often the frontmost window is sampled.
 const SAMPLE_S: u64 = 5;
-/// Spans shorter than this are glances, not focus, and are dropped.
-pub const MIN_SPAN_MS: u64 = 20_000;
+/// Spans shorter than the minimum are glances, not focus, and are dropped.
+/// The user sets it in the Focus settings ("Log focus after _ seconds",
+/// board #445); this is the default and the bounds it is held to.
+pub const DEFAULT_MIN_SPAN_MS: u64 = 30_000;
+const MIN_SPAN_FLOOR_MS: u64 = SAMPLE_S * 1000;
+const MIN_SPAN_CEIL_MS: u64 = 60 * 60 * 1000;
+
+/// The setting in seconds, held to what the sampler can honour: nothing
+/// shorter than one sample, nothing longer than an hour.
+pub fn min_span_ms(seconds: u64) -> u64 {
+    (seconds.saturating_mul(1000)).clamp(MIN_SPAN_FLOOR_MS, MIN_SPAN_CEIL_MS)
+}
 /// Two samples further apart than this belong to different spans: the Mac
 /// slept, or the thread was suspended, in between.
 const MAX_GAP_MS: u64 = 3 * SAMPLE_S * 1000;
@@ -67,12 +77,31 @@ pub struct Sample {
 /// Turns a stream of samples into spans. `observe` is fed every tick — `None`
 /// when there is nothing to record (idle, excluded, tracking off) — and hands
 /// back a span each time one closes and is long enough to keep.
-#[derive(Default)]
 pub struct Coalescer {
     current: Option<Span>,
+    min_ms: u64,
+}
+
+impl Default for Coalescer {
+    fn default() -> Self {
+        Self::with_min(DEFAULT_MIN_SPAN_MS)
+    }
 }
 
 impl Coalescer {
+    pub fn with_min(min_ms: u64) -> Self {
+        Coalescer { current: None, min_ms }
+    }
+
+    /// Change the minimum; it applies to the span in progress as well.
+    pub fn set_min(&mut self, min_ms: u64) {
+        self.min_ms = min_ms;
+    }
+
+    fn long_enough(&self, s: &Span) -> bool {
+        s.duration_ms() >= self.min_ms
+    }
+
     pub fn observe(&mut self, sample: Option<&Sample>, now: u64) -> Option<Span> {
         let Some(sample) = sample else {
             return self.close();
@@ -89,21 +118,29 @@ impl Coalescer {
                 // span picks up where the old one stopped so the day has no holes
                 let start = cur.end;
                 let done = self.current.replace(Span { app: sample.app.clone(), title, start, end: now });
-                return done.filter(|s| s.duration_ms() >= MIN_SPAN_MS);
+                return done.filter(|s| self.long_enough(s));
             }
         }
         let done = self.current.replace(Span { app: sample.app.clone(), title, start: now, end: now });
-        done.filter(|s| s.duration_ms() >= MIN_SPAN_MS)
+        done.filter(|s| self.long_enough(s))
     }
 
     /// End the span in progress, keeping it if it is long enough.
     pub fn close(&mut self) -> Option<Span> {
-        self.current.take().filter(|s| s.duration_ms() >= MIN_SPAN_MS)
+        let done = self.current.take();
+        done.filter(|s| self.long_enough(s))
     }
 
-    /// The span in progress, for a live view of today. Not yet filtered.
+    /// The span in progress, not yet filtered. The watcher only needs
+    /// `current_counted`; the tests look at the raw span.
+    #[cfg(test)]
     pub fn current(&self) -> Option<&Span> {
         self.current.as_ref()
+    }
+
+    /// The span in progress when it is already long enough to count.
+    pub fn current_counted(&self) -> Option<&Span> {
+        self.current.as_ref().filter(|s| self.long_enough(s))
     }
 
     /// Forget the span in progress without keeping it.
@@ -216,6 +253,7 @@ impl Store {
 // ---- the watcher -----------------------------------------------------------
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
+static MIN_SPAN: AtomicU64 = AtomicU64::new(DEFAULT_MIN_SPAN_MS);
 static EXCLUDE: Mutex<Vec<String>> = Mutex::new(Vec::new());
 static COALESCER: Mutex<Option<Coalescer>> = Mutex::new(None);
 static STORE: Mutex<Option<Store>> = Mutex::new(None);
@@ -237,7 +275,12 @@ fn record(sample: Option<&Sample>, now: u64) {
     let done = COALESCER
         .lock()
         .ok()
-        .and_then(|mut c| c.get_or_insert_with(Coalescer::default).observe(sample, now));
+        .and_then(|mut c| {
+            let min = MIN_SPAN.load(Ordering::SeqCst);
+            let c = c.get_or_insert_with(|| Coalescer::with_min(min));
+            c.set_min(min);
+            c.observe(sample, now)
+        });
     if let Some(span) = done {
         with_store(|s| s.append(&span));
     }
@@ -274,13 +317,16 @@ pub fn spawn_focus_watcher(app: tauri::AppHandle) {
 
 // ---- commands --------------------------------------------------------------
 
-/// The frontend's preference: on or off, and the apps never to record.
-/// Turning it off closes (and keeps) the span in progress.
+/// The frontend's preference: on or off, the apps never to record, and how
+/// many seconds a window needs in front before it counts (absent from an
+/// older frontend: the default). Turning it off closes (and keeps) the span
+/// in progress.
 #[tauri::command]
-pub fn set_focus_tracking(enabled: bool, exclude: Vec<String>) {
+pub fn set_focus_tracking(enabled: bool, exclude: Vec<String>, min_seconds: Option<u64>) {
     if let Ok(mut e) = EXCLUDE.lock() {
         *e = exclude;
     }
+    MIN_SPAN.store(min_seconds.map(min_span_ms).unwrap_or(DEFAULT_MIN_SPAN_MS), Ordering::SeqCst);
     let was = ENABLED.swap(enabled, Ordering::SeqCst);
     if was && !enabled {
         record(None, now_ms());
@@ -294,10 +340,8 @@ pub fn focus_spans(from: u64, to: u64) -> Vec<Span> {
     let mut spans = Vec::new();
     with_store(|s| spans = s.read(retention_cutoff(now_ms()).max(from)));
     if let Ok(c) = COALESCER.lock() {
-        if let Some(cur) = c.as_ref().and_then(|c| c.current()) {
-            if cur.duration_ms() >= MIN_SPAN_MS {
-                spans.push(cur.clone());
-            }
+        if let Some(cur) = c.as_ref().and_then(|c| c.current_counted()) {
+            spans.push(cur.clone());
         }
     }
     spans.retain(|s| s.end >= from && s.start <= to);
@@ -341,6 +385,14 @@ pub fn focus_clear() {
 pub fn open_focus_suggestion(app: tauri::AppHandle, draft: serde_json::Value) {
     crate::show_popover(&app);
     let _ = app.emit_to("main", "focus-log", draft);
+}
+
+/// "Click here to edit" under an empty Focus tab: bring the popover up on
+/// its Focus settings, which the main window owns.
+#[tauri::command]
+pub fn open_focus_settings(app: tauri::AppHandle) {
+    crate::show_popover(&app);
+    let _ = app.emit_to("main", "open-focus-settings", ());
 }
 
 // ---- platform --------------------------------------------------------------
@@ -510,6 +562,12 @@ mod tests {
         Sample { app: app.into(), title: Some(title.into()) }
     }
 
+    /// The tests below were written against a 20 s minimum; the default is
+    /// covered on its own.
+    fn coalescer() -> Coalescer {
+        Coalescer::with_min(20_000)
+    }
+
     /// Feed `ticks` samples of one window, 5 s apart from `start`.
     fn feed(c: &mut Coalescer, s: &Sample, start: u64, ticks: u64) -> Vec<Span> {
         (0..ticks).filter_map(|i| c.observe(Some(s), start + i * 5_000)).collect()
@@ -517,7 +575,7 @@ mod tests {
 
     #[test]
     fn consecutive_identical_samples_become_one_span() {
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         let code = sample("Code", "lib.rs — zebu-desktop");
         assert!(feed(&mut c, &code, T0, 13).is_empty()); // 0..60 s
         let span = c.close().expect("a minute is long enough");
@@ -526,7 +584,7 @@ mod tests {
 
     #[test]
     fn a_new_window_closes_the_span_and_starts_where_it_ended() {
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         feed(&mut c, &sample("Code", "a"), T0, 7); // 0..30 s
         let done = c.observe(Some(&sample("Safari", "GitHub")), T0 + 35_000).expect("30 s span kept");
         assert_eq!((done.start, done.end), (T0, T0 + 30_000));
@@ -535,25 +593,53 @@ mod tests {
 
     #[test]
     fn a_title_change_in_the_same_app_is_a_new_span() {
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         feed(&mut c, &sample("Safari", "Inbox"), T0, 6);
         assert!(c.observe(Some(&sample("Safari", "Calendar")), T0 + 30_000).is_some());
     }
 
     #[test]
     fn spans_under_twenty_seconds_are_dropped() {
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         feed(&mut c, &sample("Slack", "general"), T0, 4); // 0..15 s
         assert_eq!(c.observe(Some(&sample("Code", "x")), T0 + 20_000), None, "15 s is a glance");
         // exactly the minimum is kept
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         feed(&mut c, &sample("Slack", "general"), T0, 5); // 0..20 s
         assert!(c.close().is_some());
     }
 
     #[test]
-    fn idle_or_nothing_to_record_ends_the_span() {
+    fn the_default_minimum_is_thirty_seconds() {
         let mut c = Coalescer::default();
+        feed(&mut c, &sample("Slack", "general"), T0, 6); // 0..25 s
+        assert_eq!(c.close(), None, "25 s is under the default");
+        let mut c = Coalescer::default();
+        feed(&mut c, &sample("Slack", "general"), T0, 7); // 0..30 s
+        assert!(c.close().is_some());
+    }
+
+    #[test]
+    fn a_new_minimum_applies_to_the_span_in_progress() {
+        let mut c = Coalescer::with_min(60_000);
+        feed(&mut c, &sample("Code", "a"), T0, 9); // 0..40 s
+        assert!(c.current_counted().is_none());
+        c.set_min(30_000);
+        assert!(c.current_counted().is_some());
+    }
+
+    #[test]
+    fn the_setting_is_held_to_one_sample_and_an_hour() {
+        assert_eq!(min_span_ms(30), 30_000);
+        assert_eq!(min_span_ms(0), 5_000);
+        assert_eq!(min_span_ms(2), 5_000);
+        assert_eq!(min_span_ms(7200), 3_600_000);
+        assert_eq!(min_span_ms(u64::MAX), 3_600_000);
+    }
+
+    #[test]
+    fn idle_or_nothing_to_record_ends_the_span() {
+        let mut c = coalescer();
         feed(&mut c, &sample("Code", "a"), T0, 10);
         assert!(c.observe(None, T0 + 50_000).is_some());
         assert!(c.current().is_none());
@@ -562,7 +648,7 @@ mod tests {
 
     #[test]
     fn a_long_gap_such_as_sleep_splits_the_same_window() {
-        let mut c = Coalescer::default();
+        let mut c = coalescer();
         let s = sample("Code", "a");
         feed(&mut c, &s, T0, 10); // 0..45 s
         let done = c.observe(Some(&s), T0 + 45_000 + 10 * 60_000).expect("the stretch before the lid closed");

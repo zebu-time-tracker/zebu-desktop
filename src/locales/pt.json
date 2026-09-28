@@ -181,7 +181,11 @@
         "deleted": "Histórico de foco apagado",
         "today": "Registrado hoje",
         "other": "Outros",
-        "empty": "Nada ainda hoje. Conto uma janela depois de 20 segundos nela.",
-        "suggest": "Registrar {time} em {target}?"
+        "empty": "Nada registado até agora.",
+        "suggest": "Registrar {time} em {target}?",
+        "emptyHint": "As apps têm de estar em primeiro plano durante {seconds} segundos para serem registadas.",
+        "emptyEdit": "Clique aqui para alterar",
+        "minSeconds": "Registar o foco após",
+        "seconds": "segundos"
     }
 }
