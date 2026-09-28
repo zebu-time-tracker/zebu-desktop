@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "항목 편집",
         "newTitle": "새 시간 항목",
+        "viewProjects": "웹에서 프로젝트 보기",
         "draftRestored": "저장하지 않은 항목을 복원했습니다.",
         "addProject": "프로젝트 선택…",
         "addTask": "작업 선택…",

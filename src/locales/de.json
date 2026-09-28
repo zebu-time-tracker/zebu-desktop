@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Eintrag bearbeiten",
         "newTitle": "Neuer Zeiteintrag",
+        "viewProjects": "Projekte im Web ansehen",
         "draftRestored": "Dein nicht gespeicherter Eintrag wurde wiederhergestellt.",
         "addProject": "Projekt wählen…",
         "addTask": "Aufgabe wählen…",

@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "编辑时间条目",
         "newTitle": "新建时间条目",
+        "viewProjects": "在网页上查看项目",
         "draftRestored": "已恢复未保存的记录。",
         "addProject": "选择项目…",
         "addTask": "选择任务…",

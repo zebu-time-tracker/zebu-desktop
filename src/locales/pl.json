@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Edytuj wpis",
         "newTitle": "Nowy wpis",
+        "viewProjects": "Zobacz projekty w przeglądarce",
         "draftRestored": "Przywrócono niezapisany wpis.",
         "addProject": "Wybierz projekt…",
         "addTask": "Wybierz zadanie…",

@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Modifier l'entrée",
         "newTitle": "Nouvelle entrée",
+        "viewProjects": "Voir les projets sur le web",
         "draftRestored": "Votre entrée non enregistrée a été restaurée.",
         "addProject": "Choisir un projet…",
         "addTask": "Choisir une tâche…",

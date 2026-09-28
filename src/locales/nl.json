@@ -83,6 +83,7 @@
     "form": {
         "editTitle": "Registratie bewerken",
         "newTitle": "Nieuwe registratie",
+        "viewProjects": "Projecten op het web bekijken",
         "draftRestored": "Je niet-opgeslagen registratie is hersteld.",
         "addProject": "Project kiezen…",
         "addTask": "Taak kiezen…",
