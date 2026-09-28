@@ -2969,6 +2969,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     max-height: calc(100vh - 50px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    /* Only ever scrolls down. With a mouse attached macOS shows classic
+       scrollbars, and WebKit then offered a sideways one as well (board
+       #454); the gutter keeps the width the same whether it scrolls or not. */
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
 }
 
 /* ---- shared buttons ---- */
