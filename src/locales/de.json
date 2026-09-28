@@ -56,7 +56,7 @@
         "startHint": "Starten (stoppt andere Timer)",
         "startTimer": "Starten",
         "addEntry": "Neuer Eintrag",
-        "lastActive": "Zuletzt aktives Projekt",
+        "lastActive": "Letzter Timer",
         "waiting": "{time} Wartezeit auf Agenten",
         "waitingNow": "wartet auf Agenten…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Fokusverlauf gelöscht",
         "today": "Heute erfasst",
         "other": "Sonstiges",
-        "empty": "Heute noch nichts. Ein Fenster zählt ab 20 Sekunden.",
-        "suggest": "{time} auf {target} buchen?"
+        "empty": "Bisher nichts erfasst.",
+        "suggest": "{time} auf {target} buchen?",
+        "emptyHint": "Apps müssen {seconds} Sekunden im Vordergrund sein, damit sie erfasst werden.",
+        "emptyEdit": "Hier ändern",
+        "minSeconds": "Fokus erfassen nach",
+        "seconds": "Sekunden"
     }
 }

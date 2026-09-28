@@ -56,7 +56,7 @@
         "startHint": "Start (zatrzymuje inne stopery)",
         "startTimer": "Start",
         "addEntry": "Nowy wpis",
-        "lastActive": "Ostatnio aktywny projekt",
+        "lastActive": "Ostatni timer",
         "waiting": "{time} oczekiwania na agenta",
         "waitingNow": "oczekiwanie na agenta…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Historia skupienia usunięta",
         "today": "Śledzone dziś",
         "other": "Inne",
-        "empty": "Dziś jeszcze nic. Liczę okno po 20 sekundach.",
-        "suggest": "Zapisać {time} w {target}?"
+        "empty": "Na razie nic nie zapisano.",
+        "suggest": "Zapisać {time} w {target}?",
+        "emptyHint": "Aplikacja musi być na pierwszym planie przez {seconds} sekund, aby została zapisana.",
+        "emptyEdit": "Kliknij tutaj, aby zmienić",
+        "minSeconds": "Zapisuj fokus po",
+        "seconds": "sekundach"
     }
 }

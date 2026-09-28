@@ -56,7 +56,7 @@
         "startHint": "Démarrer (arrête tout autre minuteur)",
         "startTimer": "Démarrer",
         "addEntry": "Nouvelle entrée",
-        "lastActive": "Dernier projet actif",
+        "lastActive": "Dernier minuteur",
         "waiting": "{time} d’attente de l’agent",
         "waitingNow": "en attente de l’agent…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Historique de focus effacé",
         "today": "Suivi aujourd'hui",
         "other": "Autres",
-        "empty": "Rien pour l'instant aujourd'hui. Je compte une fenêtre après 20 secondes.",
-        "suggest": "Saisir {time} sur {target} ?"
+        "empty": "Rien d’enregistré pour l’instant.",
+        "suggest": "Saisir {time} sur {target} ?",
+        "emptyHint": "Une app doit être au premier plan pendant {seconds} secondes pour être enregistrée.",
+        "emptyEdit": "Cliquez ici pour modifier",
+        "minSeconds": "Enregistrer le focus après",
+        "seconds": "secondes"
     }
 }

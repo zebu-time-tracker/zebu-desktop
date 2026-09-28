@@ -56,7 +56,7 @@
         "startHint": "Iniciar (detiene otros temporizadores)",
         "startTimer": "Iniciar",
         "addEntry": "Nueva entrada",
-        "lastActive": "Último proyecto activo",
+        "lastActive": "Último temporizador",
         "waiting": "{time} esperando al agente",
         "waitingNow": "esperando al agente…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Historial de enfoque borrado",
         "today": "Registrado hoy",
         "other": "Otros",
-        "empty": "Nada todavía hoy. Cuento una ventana tras 20 segundos en ella.",
-        "suggest": "¿Registrar {time} en {target}?"
+        "empty": "Aún no hay nada registrado.",
+        "suggest": "¿Registrar {time} en {target}?",
+        "emptyHint": "Las apps deben estar en primer plano {seconds} segundos para registrarse.",
+        "emptyEdit": "Haz clic aquí para cambiarlo",
+        "minSeconds": "Registrar el foco tras",
+        "seconds": "segundos"
     }
 }

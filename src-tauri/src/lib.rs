@@ -1230,7 +1230,8 @@ pub fn run() {
             focus::focus_request_titles,
             focus::focus_clear,
             focus::focus_supported,
-            focus::open_focus_suggestion
+            focus::open_focus_suggestion,
+            focus::open_focus_settings
         ])
         .on_window_event(|window, event| {
             // "Hide when changing focus": the popover hides itself when focus

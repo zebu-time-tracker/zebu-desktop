@@ -18,6 +18,18 @@ import { intlLocale } from './i18n';
 const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
 
+// The popover owns the preference; this window only reads it for the empty
+// state's line, and asks the popover to open its Focus settings to change it.
+const minSeconds = (() => {
+    try {
+        const n = Number(JSON.parse(localStorage.getItem('zebu.prefs') ?? '{}').focusMinSeconds);
+        return Number.isFinite(n) && n > 0 ? Math.round(n) : 30;
+    } catch {
+        return 30;
+    }
+})();
+const editThreshold = () => invoke('open_focus_settings').catch(() => {});
+
 const spans = ref<FocusSpan[]>([]);
 const titlesAllowed = ref(true);
 const loaded = ref(false);
@@ -138,7 +150,13 @@ onUnmounted(() => {
                 </div>
             </div>
         </template>
-        <p v-else-if="loaded" class="muted focus-empty">{{ t('focus.empty') }}</p>
+        <div v-else-if="loaded" class="focus-empty">
+            <p class="muted">{{ t('focus.empty') }}</p>
+            <p class="muted focus-empty-hint">
+                {{ t('focus.emptyHint', { seconds: minSeconds }) }}
+                <button class="link" @click="editThreshold">{{ t('focus.emptyEdit') }}</button>
+            </p>
+        </div>
         <p v-else class="muted focus-empty">{{ t('common.loading') }}</p>
     </div>
 </template>
@@ -248,6 +266,13 @@ onUnmounted(() => {
     text-align: center;
     padding: 30px 0;
     font-size: 12px;
+}
+.focus-empty p {
+    margin: 0;
+}
+.focus-empty-hint {
+    margin-top: 6px !important;
+    font-size: 11px;
 }
 .link {
     color: var(--accent);

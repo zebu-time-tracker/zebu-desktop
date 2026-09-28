@@ -56,7 +56,7 @@
         "startHint": "Avvia (ferma gli altri timer)",
         "startTimer": "Avvia",
         "addEntry": "Nuova voce",
-        "lastActive": "Ultimo progetto attivo",
+        "lastActive": "Ultimo timer",
         "waiting": "{time} in attesa dell’agente",
         "waitingNow": "in attesa dell’agente…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Cronologia focus eliminata",
         "today": "Tracciato oggi",
         "other": "Altro",
-        "empty": "Ancora niente oggi. Conto una finestra dopo 20 secondi.",
-        "suggest": "Registrare {time} su {target}?"
+        "empty": "Ancora nulla di registrato.",
+        "suggest": "Registrare {time} su {target}?",
+        "emptyHint": "Le app devono restare in primo piano per {seconds} secondi per essere registrate.",
+        "emptyEdit": "Clicca qui per modificare",
+        "minSeconds": "Registra il focus dopo",
+        "seconds": "secondi"
     }
 }

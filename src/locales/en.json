@@ -56,7 +56,7 @@
         "startHint": "Start (stops any other timer)",
         "startTimer": "Start",
         "addEntry": "Add new entry",
-        "lastActive": "Last active project",
+        "lastActive": "Last timer",
         "waiting": "{time} waiting on agent",
         "waitingNow": "waiting for agent…"
     },
@@ -181,7 +181,11 @@
         "deleted": "Focus history deleted",
         "today": "Tracked today",
         "other": "Other",
-        "empty": "Nothing yet today. I count a window after 20 seconds in it.",
-        "suggest": "Log {time} to {target}?"
+        "empty": "Nothing recorded so far.",
+        "suggest": "Log {time} to {target}?",
+        "emptyHint": "Apps must be in focus for {seconds} seconds to be logged.",
+        "emptyEdit": "Click here to edit",
+        "minSeconds": "Log focus after",
+        "seconds": "seconds"
     }
 }
