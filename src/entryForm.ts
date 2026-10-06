@@ -64,3 +64,10 @@ export const newEntryShortcutHint = (apple: boolean, ctrl: string): string => (a
 
 /** The keycap shown in the save button; `ctrl` is the locale's name for the Control key. */
 export const saveShortcutHint = (apple: boolean, ctrl: string): string => (apple ? '⌘↵' : `${ctrl}+↵`);
+
+/**
+ * The task to keep when the project changes (board #501): the same one if the
+ * new project has it, else none — a task belongs to its project, and one left
+ * over from the last project would be saved against the wrong one.
+ */
+export const taskForProject = (tasks: readonly { id: string }[], taskId: string): string => (taskId && tasks.some((t) => t.id === taskId) ? taskId : '');

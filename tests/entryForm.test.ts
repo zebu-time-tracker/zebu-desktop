@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, type KeyPress } from '../src/entryForm.ts';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, taskForProject, type KeyPress } from '../src/entryForm.ts';
 
 const press = (key: string, mods: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({ key, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, isComposing: false, ...mods });
 
@@ -64,4 +64,13 @@ test('⌘N on a Mac and Ctrl+N elsewhere open a new entry, nothing else does (bo
     assert.equal(isNewEntryShortcut(press('n', { metaKey: true, isComposing: true }), true), false);
     assert.equal(newEntryShortcutHint(true, 'Ctrl'), '⌘N');
     assert.equal(newEntryShortcutHint(false, 'Strg'), 'Strg+N');
+});
+
+test('a new project keeps the task only when it has that task', () => {
+    const tasks = [{ id: 't1' }, { id: 't2' }];
+
+    assert.equal(taskForProject(tasks, 't2'), 't2');
+    assert.equal(taskForProject(tasks, 't9'), '');
+    assert.equal(taskForProject([], 't1'), '');
+    assert.equal(taskForProject(tasks, ''), '');
 });
