@@ -184,10 +184,18 @@
         "today": "今日已记录",
         "other": "其他",
         "empty": "目前还没有记录。",
-        "suggest": "将 {time} 记到 {target}？",
         "emptyHint": "应用需在前台停留 {seconds} 秒才会被记录。",
         "emptyEdit": "点此修改",
         "minSeconds": "记录焦点的时长",
-        "seconds": "秒后"
+        "seconds": "秒后",
+        "byApp": "按应用",
+        "byProject": "按项目",
+        "unassigned": "未分配",
+        "assign": "分配",
+        "log": "记录 {time}",
+        "edit": "编辑",
+        "logged": "已记录",
+        "rules": "规则",
+        "removeRule": "移除"
     }
 }

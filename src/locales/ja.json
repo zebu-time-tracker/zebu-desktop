@@ -184,10 +184,18 @@
         "today": "今日の記録",
         "other": "その他",
         "empty": "まだ記録はありません。",
-        "suggest": "{time} を {target} に記録しますか？",
         "emptyHint": "アプリが{seconds}秒以上前面にあると記録されます。",
         "emptyEdit": "ここをクリックして変更",
         "minSeconds": "フォーカスを記録するまで",
-        "seconds": "秒"
+        "seconds": "秒",
+        "byApp": "アプリ別",
+        "byProject": "プロジェクト別",
+        "unassigned": "未割り当て",
+        "assign": "割り当て",
+        "log": "{time} を記録",
+        "edit": "編集",
+        "logged": "記録済み",
+        "rules": "ルール",
+        "removeRule": "削除"
     }
 }

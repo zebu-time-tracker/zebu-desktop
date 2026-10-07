@@ -184,10 +184,18 @@
         "today": "Suivi aujourd'hui",
         "other": "Autres",
         "empty": "Rien d’enregistré pour l’instant.",
-        "suggest": "Saisir {time} sur {target} ?",
         "emptyHint": "Une app doit être au premier plan pendant {seconds} secondes pour être enregistrée.",
         "emptyEdit": "Cliquez ici pour modifier",
         "minSeconds": "Enregistrer le focus après",
-        "seconds": "secondes"
+        "seconds": "secondes",
+        "byApp": "Par app",
+        "byProject": "Par projet",
+        "unassigned": "Non attribué",
+        "assign": "Attribuer",
+        "log": "Consigner {time}",
+        "edit": "Modifier",
+        "logged": "Consigné",
+        "rules": "Règles",
+        "removeRule": "Retirer"
     }
 }

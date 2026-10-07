@@ -184,10 +184,18 @@
         "today": "Heute erfasst",
         "other": "Sonstiges",
         "empty": "Bisher nichts erfasst.",
-        "suggest": "{time} auf {target} buchen?",
         "emptyHint": "Apps müssen {seconds} Sekunden im Vordergrund sein, damit sie erfasst werden.",
         "emptyEdit": "Hier ändern",
         "minSeconds": "Fokus erfassen nach",
-        "seconds": "Sekunden"
+        "seconds": "Sekunden",
+        "byApp": "Nach App",
+        "byProject": "Nach Projekt",
+        "unassigned": "Nicht zugeordnet",
+        "assign": "Zuordnen",
+        "log": "{time} erfassen",
+        "edit": "Bearbeiten",
+        "logged": "Erfasst",
+        "rules": "Regeln",
+        "removeRule": "Entfernen"
     }
 }

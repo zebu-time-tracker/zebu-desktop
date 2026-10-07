@@ -184,10 +184,18 @@
         "today": "Vandaag bijgehouden",
         "other": "Overig",
         "empty": "Nog niets vastgelegd.",
-        "suggest": "{time} boeken op {target}?",
         "emptyHint": "Apps moeten {seconds} seconden op de voorgrond staan om te worden vastgelegd.",
         "emptyEdit": "Klik hier om te wijzigen",
         "minSeconds": "Focus vastleggen na",
-        "seconds": "seconden"
+        "seconds": "seconden",
+        "byApp": "Per app",
+        "byProject": "Per project",
+        "unassigned": "Niet toegewezen",
+        "assign": "Toewijzen",
+        "log": "{time} vastleggen",
+        "edit": "Bewerken",
+        "logged": "Vastgelegd",
+        "rules": "Regels",
+        "removeRule": "Verwijderen"
     }
 }

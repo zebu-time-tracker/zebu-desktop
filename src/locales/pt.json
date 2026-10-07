@@ -184,10 +184,18 @@
         "today": "Registrado hoje",
         "other": "Outros",
         "empty": "Nada registado até agora.",
-        "suggest": "Registrar {time} em {target}?",
         "emptyHint": "As apps têm de estar em primeiro plano durante {seconds} segundos para serem registadas.",
         "emptyEdit": "Clique aqui para alterar",
         "minSeconds": "Registar o foco após",
-        "seconds": "segundos"
+        "seconds": "segundos",
+        "byApp": "Por app",
+        "byProject": "Por projeto",
+        "unassigned": "Sem projeto",
+        "assign": "Atribuir",
+        "log": "Registrar {time}",
+        "edit": "Editar",
+        "logged": "Registrado",
+        "rules": "Regras",
+        "removeRule": "Remover"
     }
 }
