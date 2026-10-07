@@ -4,7 +4,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getVersion } from '@tauri-apps/api/app';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import SearchSelect from './SearchSelect.vue';
@@ -672,7 +672,11 @@ const shortDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString(in
 // which the window frame clipped); its four answers come back as an
 // `idle-choice` event, and what they mean stays here.
 
-const idleAsk = ref<IdleAsk | null>(null);
+// A shallowRef, not a ref (board #513): presentIdlePrompt checks the prompt is
+// still the one it was asked to show by identity, and a ref hands back a
+// reactive proxy that is never === the object put in — so every prompt since
+// 0.1.8 stopped there, before the window was ever asked for.
+const idleAsk = shallowRef<IdleAsk | null>(null);
 let idleUnlisten: UnlistenFn | null = null;
 let idleChoiceUnlisten: UnlistenFn | null = null;
 let inputUnlisten: UnlistenFn | null = null;
