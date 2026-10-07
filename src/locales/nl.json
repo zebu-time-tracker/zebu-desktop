@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nieuwe registratie",
+        "newTimer": "Nieuwe timer",
         "presets": "Sjablonen",
         "settings": "Instellingen"
     },

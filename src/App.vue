@@ -1819,7 +1819,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <!-- footer -->
         <footer class="footer">
             <div class="footer-left">
-                <button v-if="!sheet?.week_locked" :title="`${t('footer.newEntry')} (${newEntryShortcutHint(appleKeys, t('form.ctrlKey'))})`" @click="openForm()">＋</button>
+                <button v-if="!sheet?.week_locked" class="new-timer" :title="t('footer.newEntry')" aria-keyshortcuts="Meta+N Control+N" @click="openForm()">
+                    ＋ {{ t('footer.newTimer') }}<kbd class="kbd-hint" aria-hidden="true">{{ newEntryShortcutHint(appleKeys, t('form.ctrlKey')) }}</kbd>
+                </button>
                 <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
                 <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
             </div>
@@ -2962,6 +2964,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     padding: 3px 8px;
     border-radius: 6px;
 }
+.footer button.new-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 6px 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.footer button.new-timer .kbd-hint {
+    margin-left: 2px;
+    color: var(--muted);
+}
 .footer button:hover,
 .footer button.active {
     background: var(--accent-soft);
@@ -3017,17 +3034,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-actions .btn-outline {
     width: auto;
 }
-/* the save shortcut, as quiet text inside the button (board #398); no keycap
-   outline since board #501 */
+/* a shortcut inside its button (board #398): a soft filled pill, no outline
+   (board #501, #511), tinted from the button's own text colour */
 .kbd-hint {
     margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, currentColor 16%, transparent);
     font: inherit;
     font-size: 10px;
     font-weight: 500;
     line-height: 16px;
     vertical-align: 1px;
     white-space: nowrap;
-    opacity: 0.8;
 }
 .sheet-error {
     padding: 0;

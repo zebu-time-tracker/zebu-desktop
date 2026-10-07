@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nowy wpis",
+        "newTimer": "Nowy timer",
         "presets": "Szablony",
         "settings": "Ustawienia"
     },

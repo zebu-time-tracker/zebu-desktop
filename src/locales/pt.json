@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nova entrada",
+        "newTimer": "Novo temporizador",
         "presets": "Modelos",
         "settings": "Configurações"
     },

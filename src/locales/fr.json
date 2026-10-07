@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nouvelle entrée",
+        "newTimer": "Nouveau minuteur",
         "presets": "Modèles",
         "settings": "Réglages"
     },
