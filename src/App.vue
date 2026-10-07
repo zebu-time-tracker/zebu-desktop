@@ -475,7 +475,7 @@ onMounted(() => {
         if (view.value === 'main') refresh();
         maybeCheckForUpdates();
     });
-    listen('idle-return', () => onReturn()).then((off) => (idleUnlisten = off));
+    listen('idle-return', () => onReturn('idle-return')).then((off) => (idleUnlisten = off));
     listen<{ at_ms: number }>('input-seen', (e) => reportActivity(e.payload.at_ms)).then((off) => (inputUnlisten = off));
     // the answer comes back from the prompt's own window, via Rust
     listen<{ choice: string }>('idle-choice', (e) => applyIdleChoice(e.payload.choice)).then((off) => (idleChoiceUnlisten = off));
@@ -717,20 +717,35 @@ const reportActivity = async (atMs: number) => {
     api.timerActivity(at).catch(() => {});
 };
 
+/** One step of the idle trail (board #513), into idle.log next to the app's other logs. */
+const trail = (line: string) => {
+    invoke('idle_trail', { line }).catch(() => {});
+};
+
 /** Ask the server whether the absence that just ended is worth a prompt, and show it if so. */
-const askServerAboutIdle = async () => {
-    if (view.value !== 'main' || !running.value || idleAsk.value) return;
+const askServerAboutIdle = async (why: string) => {
+    if (view.value !== 'main' || !running.value || idleAsk.value) {
+        trail(`ask ${why} skipped view=${view.value} running=${!!running.value} open=${!!idleAsk.value}`);
+        return;
+    }
     const seq = ++idleSeq;
-    const answer = await api.idleState().catch(() => null);
+    const answer = await api.idleState().catch((e) => {
+        trail(`ask ${why} failed ${e instanceof Error ? e.message : String(e)}`);
+        return null;
+    });
     if (!answer || seq !== idleSeq || idleAsk.value) return;
     const ask = idleQuestion(answer, running.value, idleThreshold());
+    trail(
+        `ask ${why} answer idle_s=${answer.idle_seconds} pending=${answer.pending} same_entry=${answer.entry_id === running.value?.id} threshold=${idleThreshold()} prompt=${!!ask}`,
+    );
     if (ask) presentIdlePrompt(ask);
 };
 
 /** The person is back (input after a pause, wake, or launch): ask first, then report the input. */
-const onReturn = () => {
+const onReturn = (why = 'return') => {
+    trail(`return ${why} running=${!!running.value}`);
     if (!running.value) return;
-    const check = askServerAboutIdle().finally(() => {
+    const check = askServerAboutIdle(why).finally(() => {
         if (idleCheck === check) idleCheck = null;
     });
     idleCheck = check;
@@ -752,6 +767,7 @@ const presentIdlePrompt = async (ask: IdleAsk) => {
     // (a timer left running overnight sits on yesterday) and bring it into view
     if (running.value && running.value.date !== selectedDate.value) goDate(running.value.date);
     const button = await runningStopButton();
+    trail(`present minutes=${ask.minutes} anchor=${!!button}`);
     if (idleAsk.value !== ask) return; // closed while the row was on its way
     button?.scrollIntoView({ block: 'nearest' });
     // Hand Rust that button's rect in CSS pixels: it places the prompt window
@@ -792,7 +808,7 @@ watch(
     (id) => {
         if (id && !launchChecked) {
             launchChecked = true;
-            onReturn();
+            onReturn('launch');
         }
     },
 );
@@ -1511,6 +1527,15 @@ const onPopoverVisible = (visible: boolean) => {
     const away = hiddenAt ? Date.now() - hiddenAt : 0;
     hiddenAt = 0;
     settleAfterAbsence(away);
+    // A safety net under the watcher (board #513): opening the popover after a
+    // while asks about any absence still unanswered, so a return the watcher
+    // missed is caught the moment the timesheet is looked at.
+    if (away >= 60_000 && running.value && !idleAsk.value && !idleCheck) {
+        const check = askServerAboutIdle('popover').finally(() => {
+            if (idleCheck === check) idleCheck = null;
+        });
+        idleCheck = check;
+    }
 };
 
 onMounted(() => {
