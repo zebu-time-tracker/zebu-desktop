@@ -140,7 +140,7 @@
         "recording": "Press keys…",
         "clearShortcut": "Clear shortcut",
         "shortcutTaken": "Another app is already using that combination.",
-        "openInBrowser": "Open Zebu in the browser",
+        "openDashboard": "Open dashboard",
         "disconnect": "Disconnect this device",
         "quit": "Quit Zebu",
         "live": "Live updates"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Focus",
         "tabSummary": "Summary",
-        "enable": "Track app and window focus",
-        "privacy": "I note which app and window you're in. It stays on this Mac, and I delete it after 14 days.",
+        "enable": "Track active app and window titles — stored locally, never shared",
         "unsupported": "I can't do this on this system yet.",
         "titlesBlocked": "I can only see app names until you allow Accessibility.",
         "allowTitles": "Allow",

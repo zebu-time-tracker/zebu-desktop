@@ -1886,11 +1886,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <div v-if="settingsOpen" class="popover-backdrop" @click="settingsOpen = false"></div>
         <div v-if="settingsOpen" class="settings">
-            <div v-if="me" class="settings-user">
-                <strong>{{ me.name }}</strong>
-                <span class="muted">{{ me.email }}</span>
+            <!-- who is signed in, with the way out to the web app across from them (board #516) -->
+            <div class="settings-head">
+                <div v-if="me" class="settings-user">
+                    <strong>{{ me.name }}</strong>
+                    <span class="muted">{{ me.email }}</span>
+                </div>
+                <button class="link settings-dashboard" @click="openUrl(auth.workspace || CENTRAL_URL)">{{ t('settings.openDashboard') }}</button>
             </div>
-            <hr v-if="me" class="sep" />
+            <hr class="sep" />
             <!-- Two tabs over one panel (board card #145). Only the preferences
                  are split; who is signed in, the links and the build line below
                  belong to neither tab and stay put. -->
@@ -1951,7 +1955,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <span>{{ t('focus.enable') }}</span>
                     <input v-model="prefs.focusEnabled" type="checkbox" :disabled="!focusSupported" />
                 </label>
-                <p class="pref-note muted">{{ focusSupported ? t('focus.privacy') : t('focus.unsupported') }}</p>
+                <p v-if="!focusSupported" class="pref-note muted">{{ t('focus.unsupported') }}</p>
                 <p v-if="prefs.focusEnabled && focusSupported && !focusTitlesAllowed" class="pref-note focus-permission">
                     {{ t('focus.titlesBlocked') }}
                     <button class="link" @click="requestFocusTitles">{{ t('focus.allowTitles') }}</button>
@@ -1995,20 +1999,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
 
             <hr class="sep" />
-            <button class="link" @click="openUrl(auth.workspace || CENTRAL_URL)">{{ t('settings.openInBrowser') }}</button>
-            <button class="link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
-            <button class="link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
-            <hr class="sep" />
+            <!-- the build and the update check on the left, leaving and quitting on the right, all in the small print (board #516) -->
             <div class="build-row">
-                <span class="build-line">Zebu Desktop{{ appVersion ? ` v${appVersion}` : '' }}<span v-if="live" class="live-dot" :title="t('settings.live')" /></span>
-                <button v-if="updateStatus === 'available'" class="link update-link" @click="installUpdate">{{ t('update.installVersion', { version: updateVersion }) }}</button>
-                <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
-                <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
-                <span v-else-if="updateStatus === 'installing'" class="muted update-status">{{ t('update.installing') }}</span>
-                <!-- a finished check is itself the button to check again -->
-                <button v-else-if="updateStatus === 'upToDate'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.upToDate') }}</button>
-                <button v-else-if="updateStatus === 'error'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.failed') }}</button>
-                <button v-else class="link update-link" @click="checkForUpdates(true)">{{ t('update.check') }}</button>
+                <span class="build-left">
+                    <span class="build-line">{{ appVersion ? `v${appVersion}` : '' }}<span v-if="live" class="live-dot" :title="t('settings.live')" /></span>
+                    <button v-if="updateStatus === 'available'" class="link update-link" @click="installUpdate">{{ t('update.installVersion', { version: updateVersion }) }}</button>
+                    <span v-else-if="updateStatus === 'checking'" class="muted update-status">{{ t('update.checking') }}</span>
+                    <span v-else-if="updateStatus === 'downloading'" class="muted update-status">{{ t('update.downloading') }}{{ updateProgress !== null ? ` ${updateProgress}%` : '' }}</span>
+                    <span v-else-if="updateStatus === 'installing'" class="muted update-status">{{ t('update.installing') }}</span>
+                    <!-- a finished check is itself the button to check again -->
+                    <button v-else-if="updateStatus === 'upToDate'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.upToDate') }}</button>
+                    <button v-else-if="updateStatus === 'error'" class="link update-link" :title="t('update.check')" @click="checkForUpdates(true)">{{ t('update.failed') }}</button>
+                    <button v-else class="link update-link" @click="checkForUpdates(true)">{{ t('update.check') }}</button>
+                </span>
+                <span class="build-right">
+                    <button class="link small-link" @click="disconnect()">{{ t('settings.disconnect') }}</button>
+                    <button class="link small-link" @click="invoke('quit')">{{ t('settings.quit') }}</button>
+                </span>
             </div>
         </div>
     </div>
@@ -2548,10 +2555,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     inset: 0;
     z-index: 25;
 }
+.settings-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
 .settings-user {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     padding: 2px 2px 0;
+}
+.settings-dashboard {
+    flex: none;
+    margin-left: auto;
+    padding-top: 3px;
+    font-size: 12px;
 }
 .settings-user .muted {
     font-size: 11px;
@@ -2756,10 +2776,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .build-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 8px;
+    gap: 4px 12px;
     min-width: 0;
+}
+.build-left,
+.build-right {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+.build-right {
+    margin-left: auto;
+}
+.small-link {
+    font-size: 10px;
+    white-space: nowrap;
+}
+.small-link:hover,
+.settings-dashboard:hover {
+    text-decoration: underline;
 }
 /* pushes are arriving: the pill follows the workspace within a blink */
 .live-dot {
@@ -2999,6 +3038,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
        #454); the gutter keeps the width the same whether it scrolls or not. */
     overflow-x: hidden;
     scrollbar-gutter: stable;
+    /* The gutter is a thin scrollbar of our own, taken off the right padding,
+       so the content sits as far from the right edge as from the left (board
+       #516). The system's classic scrollbar reserved 15px there on a Mac with
+       a mouse attached, scrolling or not. */
+    padding-right: 6px;
+}
+.settings::-webkit-scrollbar {
+    width: 6px;
+}
+.settings::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+.settings::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 /* ---- shared buttons ---- */

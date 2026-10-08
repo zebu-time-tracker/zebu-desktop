@@ -140,7 +140,7 @@
         "recording": "Tasten drücken…",
         "clearShortcut": "Kurzbefehl löschen",
         "shortcutTaken": "Eine andere App belegt diese Kombination bereits.",
-        "openInBrowser": "Zebu im Browser öffnen",
+        "openDashboard": "Dashboard öffnen",
         "disconnect": "Gerät trennen",
         "quit": "Zebu beenden",
         "live": "Live-Updates"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Fokus",
         "tabSummary": "Übersicht",
-        "enable": "App- und Fensterfokus erfassen",
-        "privacy": "Ich notiere, in welcher App und welchem Fenster du bist. Das bleibt auf diesem Mac, und ich lösche es nach 14 Tagen.",
+        "enable": "Aktive App und Fenstertitel erfassen – nur lokal gespeichert, nie geteilt",
         "unsupported": "Auf diesem System kann ich das noch nicht.",
         "titlesBlocked": "Ich sehe nur App-Namen, bis du Bedienungshilfen erlaubst.",
         "allowTitles": "Erlauben",

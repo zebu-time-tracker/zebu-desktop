@@ -140,7 +140,7 @@
         "recording": "Premi i tasti…",
         "clearShortcut": "Cancella scorciatoia",
         "shortcutTaken": "Un'altra app usa già questa combinazione.",
-        "openInBrowser": "Apri Zebu nel browser",
+        "openDashboard": "Apri la dashboard",
         "disconnect": "Disconnetti questo dispositivo",
         "quit": "Esci da Zebu",
         "live": "Aggiornamenti in tempo reale"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Focus",
         "tabSummary": "Riepilogo",
-        "enable": "Traccia app e finestra attive",
-        "privacy": "Annoto in quale app e finestra ti trovi. Resta su questo Mac e lo cancello dopo 14 giorni.",
+        "enable": "Registra l'app attiva e i titoli delle finestre: salvati in locale, mai condivisi",
         "unsupported": "Su questo sistema non posso ancora farlo.",
         "titlesBlocked": "Vedo solo i nomi delle app finché non consenti l'accessibilità.",
         "allowTitles": "Consenti",

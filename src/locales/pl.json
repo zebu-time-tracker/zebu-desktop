@@ -140,7 +140,7 @@
         "recording": "Naciśnij…",
         "clearShortcut": "Wyczyść skrót",
         "shortcutTaken": "Inna aplikacja już używa tej kombinacji.",
-        "openInBrowser": "Otwórz Zebu w przeglądarce",
+        "openDashboard": "Otwórz panel",
         "disconnect": "Odłącz to urządzenie",
         "quit": "Zakończ Zebu",
         "live": "Aktualizacje na żywo"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Skupienie",
         "tabSummary": "Podsumowanie",
-        "enable": "Śledź aktywną aplikację i okno",
-        "privacy": "Zapisuję, w której aplikacji i oknie jesteś. Zostaje to na tym Macu, a po 14 dniach to usuwam.",
+        "enable": "Śledź aktywną aplikację i tytuły okien — zapisywane lokalnie, nigdy nie udostępniane",
         "unsupported": "Na tym systemie jeszcze tego nie potrafię.",
         "titlesBlocked": "Widzę tylko nazwy aplikacji, dopóki nie zezwolisz na dostępność.",
         "allowTitles": "Zezwól",

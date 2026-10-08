@@ -140,7 +140,7 @@
         "recording": "Appuyez…",
         "clearShortcut": "Effacer le raccourci",
         "shortcutTaken": "Une autre app utilise déjà cette combinaison.",
-        "openInBrowser": "Ouvrir Zebu dans le navigateur",
+        "openDashboard": "Ouvrir le tableau de bord",
         "disconnect": "Déconnecter cet appareil",
         "quit": "Quitter Zebu",
         "live": "Mises à jour en direct"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Focus",
         "tabSummary": "Résumé",
-        "enable": "Suivre l'app et la fenêtre actives",
-        "privacy": "Je note dans quelle app et quelle fenêtre vous êtes. Cela reste sur ce Mac et je l'efface après 14 jours.",
+        "enable": "Suivre l'app active et les titres de fenêtre — stocké en local, jamais partagé",
         "unsupported": "Je ne sais pas encore le faire sur ce système.",
         "titlesBlocked": "Je ne vois que les noms d'apps tant que l'accessibilité n'est pas autorisée.",
         "allowTitles": "Autoriser",

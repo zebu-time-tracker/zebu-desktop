@@ -140,7 +140,7 @@
         "recording": "Druk op toetsen…",
         "clearShortcut": "Sneltoets wissen",
         "shortcutTaken": "Een andere app gebruikt die combinatie al.",
-        "openInBrowser": "Open Zebu in de browser",
+        "openDashboard": "Dashboard openen",
         "disconnect": "Dit apparaat loskoppelen",
         "quit": "Zebu afsluiten",
         "live": "Live-updates"
@@ -172,8 +172,7 @@
     "focus": {
         "tab": "Focus",
         "tabSummary": "Overzicht",
-        "enable": "App- en vensterfocus bijhouden",
-        "privacy": "Ik noteer in welke app en welk venster je zit. Het blijft op deze Mac en ik wis het na 14 dagen.",
+        "enable": "Actieve app en venstertitels bijhouden — lokaal opgeslagen, nooit gedeeld",
         "unsupported": "Op dit systeem kan ik dit nog niet.",
         "titlesBlocked": "Ik zie alleen appnamen tot je Toegankelijkheid toestaat.",
         "allowTitles": "Toestaan",
