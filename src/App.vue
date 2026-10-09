@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import SearchSelect from './SearchSelect.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, taskForProject } from './entryForm';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutKeys, saveShortcutKeys, taskForProject } from './entryForm';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
@@ -875,7 +875,8 @@ let openedDuration = ''; // the prefill — only a changed duration rebases a li
 const formError = ref('');
 // ⌘↵ / Ctrl+↵ saves the sheet from any field (board #398); the keycap in the button says so.
 const appleKeys = isApplePlatform((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform);
-const saveHint = computed(() => saveShortcutHint(appleKeys, t('form.ctrlKey')));
+const saveKeys = computed(() => saveShortcutKeys(appleKeys, t('form.ctrlKey')));
+const newEntryKeys = computed(() => newEntryShortcutKeys(appleKeys, t('form.ctrlKey')));
 const onSheetKeydown = (e: KeyboardEvent) => {
     if (!isSaveShortcut(e, appleKeys)) return;
     e.preventDefault();
@@ -1810,7 +1811,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </button>
                     <button class="btn-outline" @click="formOpen = false">{{ t('common.cancel') }}</button>
                     <button class="btn-primary" :disabled="!form.project_id" :aria-keyshortcuts="appleKeys ? 'Meta+Enter' : 'Control+Enter'" @click="submitForm">
-                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}<kbd class="kbd-hint" aria-hidden="true">{{ saveHint }}</kbd>
+                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}<span class="kbd-keys" aria-hidden="true"><kbd v-for="key in saveKeys" :key="key" class="kbd-hint">{{ key }}</kbd></span>
                     </button>
                 </div>
             </div>
@@ -1820,7 +1821,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <footer class="footer">
             <div class="footer-left">
                 <button v-if="!sheet?.week_locked" class="new-timer" :title="t('footer.newEntry')" aria-keyshortcuts="Meta+N Control+N" @click="openForm()">
-                    ＋ {{ t('footer.newTimer') }}<kbd class="kbd-hint" aria-hidden="true">{{ newEntryShortcutHint(appleKeys, t('form.ctrlKey')) }}</kbd>
+                    ＋ {{ t('footer.newTimer') }}<span class="kbd-keys" aria-hidden="true"><kbd v-for="key in newEntryKeys" :key="key" class="kbd-hint">{{ key }}</kbd></span>
                 </button>
                 <!-- saved starting points; also reachable by hotkey (src-tauri: show_presets) -->
                 <button v-if="!sheet?.week_locked" :title="t('footer.presets')" :class="{ active: presetsOpen }" @click="togglePresets">☆</button>
@@ -2975,8 +2976,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     border: 1px solid var(--border);
     color: var(--text);
 }
-.footer button.new-timer .kbd-hint {
+.footer button.new-timer .kbd-keys {
     margin-left: 2px;
+}
+.footer button.new-timer .kbd-hint {
     color: var(--muted);
 }
 .footer button:hover,
@@ -3036,8 +3039,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 /* a shortcut inside its button (board #398): a soft filled pill, no outline
    (board #501, #511), tinted from the button's own text colour */
-.kbd-hint {
+/* one keycap per key, side by side (board #517) */
+.kbd-keys {
+    display: inline-flex;
+    gap: 2px;
     margin-left: 6px;
+    vertical-align: 1px;
+}
+.kbd-hint {
     padding: 0 5px;
     border-radius: 4px;
     background: color-mix(in srgb, currentColor 16%, transparent);

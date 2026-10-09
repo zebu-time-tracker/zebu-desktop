@@ -66,6 +66,13 @@ export const newEntryShortcutHint = (apple: boolean, ctrl: string): string => (a
 export const saveShortcutHint = (apple: boolean, ctrl: string): string => (apple ? '⌘↵' : `${ctrl}+↵`);
 
 /**
+ * The same two shortcuts as one keycap per key (board #517): ⌘ ↵ and ⌘ N on a
+ * Mac, the locale's Ctrl name with ↵ or N elsewhere.
+ */
+export const saveShortcutKeys = (apple: boolean, ctrl: string): string[] => [apple ? '⌘' : ctrl, '↵'];
+export const newEntryShortcutKeys = (apple: boolean, ctrl: string): string[] => [apple ? '⌘' : ctrl, 'N'];
+
+/**
  * The task to keep when the project changes (board #501): the same one if the
  * new project has it, else none — a task belongs to its project, and one left
  * over from the last project would be saved against the wrong one.
