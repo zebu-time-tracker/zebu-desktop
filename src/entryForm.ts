@@ -78,3 +78,17 @@ export const newEntryShortcutKeys = (apple: boolean, ctrl: string): string[] => 
  * over from the last project would be saved against the wrong one.
  */
 export const taskForProject = (tasks: readonly { id: string }[], taskId: string): string => (taskId && tasks.some((t) => t.id === taskId) ? taskId : '');
+
+/**
+ * What a new timer starts from: the last timer's project and task, so ＋ is a
+ * copy of the work just done (board #522). The task only when that project
+ * still has it; a project that is gone falls back to the first on the list.
+ */
+export const newTimerPrefill = (
+    projects: readonly { id: string; tasks?: readonly { id: string }[] }[],
+    last: { project_id: string; task_id: string | null } | null,
+): { project_id: string; task_id: string } => {
+    const project = last ? projects.find((p) => p.id === last.project_id) : undefined;
+    if (project) return { project_id: project.id, task_id: taskForProject(project.tasks ?? [], last?.task_id ?? '') };
+    return { project_id: projects[0]?.id ?? '', task_id: '' };
+};
