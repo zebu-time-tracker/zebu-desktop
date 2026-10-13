@@ -136,3 +136,146 @@ test('a title that is only noise still names the group, unless it is just the ap
     assert.equal(groupKey('Terminal', '-zsh'), '-zsh');
     assert.equal(groupKey('Figma', 'Figma'), '');
 });
+
+// ---- by project (board #512) ----
+
+import { assignTitles, bestCandidate, byProject, logState, notesFor, placeKey, projectOfRow, trackedToday } from '../src/focus.ts';
+import { ruleIndex, type FocusRule } from '../src/focusRules.ts';
+
+const DAY: [number, number] = [T0 - 9 * 60 * min, T0 + 15 * 60 * min];
+const noRules = ruleIndex([]);
+const r = (app: string, key: string, project_id: string): FocusRule => ({ app, key, project_id, workspace: 'w' });
+
+test('a browser title keeps the repository or account before the site as its place', () => {
+    assert.equal(placeKey('Safari', 'Add focus view · Pull Request #12 · acme/website · GitHub'), 'acme/website · GitHub');
+    assert.equal(placeKey('Google Chrome', 'Inbox (3) - alan@zebu.work - Gmail'), 'alan@zebu.work · Gmail');
+    assert.equal(placeKey('Safari', 'Weather - BBC'), 'BBC');
+    assert.equal(placeKey('Code', 'a — b — zebu-desktop'), 'zebu-desktop', 'only browsers split finer');
+});
+
+test('titles are filed by project: two repositories on one site go to two projects', () => {
+    const spans = [
+        span('Safari', 'Fix nav · Pull Request #3 · acme/website · GitHub', 0, 20),
+        span('Safari', 'Focus by project · Issue #512 · zebu-time-tracker/zebu-desktop · GitHub', 20, 50),
+        span('Code', 'focus.ts — zebu-desktop', 50, 110),
+        span('Figma', 'Homepage hero – Website redesign – Figma', 110, 150),
+        span('Safari', 'Weather - BBC', 150, 160),
+        span('Finder', '', 160, 165),
+    ];
+    const groups = byProject(assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), noRules));
+    assert.deepEqual(
+        groups.map((g) => [g.project_id, g.ms / min]),
+        [
+            ['p2', 90],
+            ['p1', 60],
+            [null, 15],
+        ],
+    );
+    assert.deepEqual(
+        groups[1].places.map((p) => [p.app, p.key]),
+        [
+            ['Figma', 'Website redesign'],
+            ['Safari', 'acme/website · GitHub'],
+        ],
+    );
+    assert.deepEqual(
+        groups[2].places.map((p) => [p.app, p.key]),
+        [
+            ['Safari', 'BBC'],
+            ['Finder', ''],
+        ],
+        'Unassigned comes last',
+    );
+});
+
+test('rules beat guesses, except a rule for all of a browser site', () => {
+    const spans = [
+        span('Safari', 'Focus · Issue #512 · zebu-time-tracker/zebu-desktop · GitHub', 0, 30),
+        span('Safari', 'Fix nav · Pull Request #3 · acme/website · GitHub', 30, 35),
+        span('Safari', 'Notifications · GitHub', 35, 40),
+        span('Safari', 'Zebu pricing - Example', 40, 45),
+        span('Safari', 'Weather - BBC', 45, 50),
+        span('Slack', 'general (Channel) - Acme - Slack', 50, 70),
+        span('Figma', 'Logo – Zebu – Figma', 70, 80),
+        span('Figma', 'Untitled – Figma', 80, 90),
+    ];
+    const rules = ruleIndex([
+        r('Safari', 'GitHub', 'p3'),
+        r('Safari', '', 'p3'),
+        r('Slack', 'Acme', 'p1'),
+        r('Figma', '', 'p1'),
+        r('Chrome', 'zebu-time-tracker/zebu-desktop · GitHub', 'p3'),
+    ]);
+    const assigned = assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), rules);
+    const of = (title: string) => assigned.find((a) => a.title.startsWith(title))?.project_id;
+    assert.equal(of('Focus'), 'p3', 'the repository rule (made in Chrome) beats the title naming Zebu');
+    assert.equal(of('Fix nav'), 'p1', 'a page naming a project beats the rule for all of GitHub');
+    assert.equal(of('Notifications'), 'p3', 'the site rule fills in');
+    assert.equal(of('Zebu pricing'), 'p2', 'a page naming a project beats the rule for all of Safari');
+    assert.equal(of('Weather'), 'p3', 'the browser rule fills in');
+    assert.equal(of('general'), 'p1', 'the Slack workspace rule');
+    assert.equal(of('Logo'), 'p1', 'an app-wide rule beats the title naming Zebu');
+    assert.equal(of('Untitled'), 'p1');
+});
+
+test('the client backs a match up but cannot make one, and addresses are ignored', () => {
+    const cands = candidatesFrom([{ id: 'w', name: 'Website redesign', code: 'WEB', client: 'Acme Corp', tasks: [] }, { id: 'z', name: 'Zebu', code: null, client: null, tasks: [] }], [], null);
+    assert.equal(bestCandidate('Homepage hero – Website redesign – Figma', cands)?.project_id, 'w', 'a long client name does not water the name down');
+    assert.equal(bestCandidate('Issues · acme/website · GitHub', cands)?.project_id, 'w', 'one word of the name and one of the client');
+    assert.equal(bestCandidate('general - Acme Corp - Slack', cands), null, 'the client alone names no project');
+    assert.equal(bestCandidate('Inbox — alan@zebu.work', cands), null, 'an inbox is not the project its domain spells');
+});
+
+test('a rule names the project; a title naming one of its tasks keeps the task', () => {
+    const spans = [span('Figma', 'Homepage – Website redesign Design – Figma', 0, 30)];
+    const [a] = assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), ruleIndex([r('Figma', 'Website redesign Design', 'p1')]));
+    assert.equal(a.project_id, 'p1');
+    assert.equal(a.task_id, 't1');
+});
+
+test('a project group takes the task most of its time matched', () => {
+    const spans = [span('Figma', 'Hero – Website redesign Design – Figma', 0, 30), span('Safari', 'Issues · acme/website · GitHub', 30, 40)];
+    const [g] = byProject(assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), noRules));
+    assert.equal(g.project_id, 'p1');
+    assert.equal(g.task_id, 't1');
+});
+
+test('a By app row is tagged with the project most of its time went to', () => {
+    const spans = [
+        span('Safari', 'PR · acme/website · GitHub', 0, 20),
+        span('Safari', 'Issue · zebu-time-tracker/zebu · GitHub', 20, 30),
+        span('Safari', 'Weather - BBC', 30, 90),
+    ];
+    const assigned = assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), noRules);
+    assert.equal(projectOfRow(assigned, 'Safari', 'GitHub'), 'p1');
+    assert.equal(projectOfRow(assigned, 'Safari', 'BBC'), null);
+    assert.equal(projectOfRow(assigned, 'Safari'), null, 'most of Safari went nowhere');
+});
+
+test('time already tracked today comes off what is offered, so nothing is logged twice', () => {
+    const today = '2026-09-23';
+    const entries = [
+        { project_id: 'p1', date: today, minutes: 30, timer_started_at: null },
+        { project_id: 'p1', date: '2026-09-22', minutes: 300, timer_started_at: null },
+        { project_id: 'p2', date: today, minutes: 10, timer_started_at: new Date(T0).toISOString() },
+    ];
+    const tracked = trackedToday(entries, today, T0 + 20 * min);
+    assert.equal(tracked.get('p1'), 30);
+    assert.equal(tracked.get('p2'), 30, 'a running timer counts up to now');
+    assert.deepEqual(logState(80 * min, 30), { focused: 80, minutes: 50, state: 'log' });
+    assert.deepEqual(logState(32 * min, 30), { focused: 32, minutes: 2, state: 'logged' });
+    assert.deepEqual(logState(20 * min, 45), { focused: 20, minutes: 0, state: 'logged' });
+    assert.deepEqual(logState(3 * min, 0), { focused: 3, minutes: 3, state: 'none' });
+});
+
+test('a project group notes its longest titles without the places they repeat', () => {
+    const spans = [
+        span('Figma', 'Homepage hero – Website redesign – Figma', 0, 40),
+        span('Safari', 'Fix nav · Pull Request #3 · acme/website · GitHub', 40, 60),
+        span('Code', 'site.css — website', 60, 65),
+    ];
+    const [g] = byProject(assignTitles(spans, ...DAY, candidatesFrom(projects, [], null), ruleIndex([r('Code', 'website', 'p1')])));
+    assert.equal(notesFor(g), 'Homepage hero; Fix nav · Pull Request #3; site.css');
+    const bare = { project_id: null, task_id: null, ms: 0, places: [{ app: 'Finder', key: '', ms: 1, titles: [] }] };
+    assert.equal(notesFor(bare), 'Finder');
+});

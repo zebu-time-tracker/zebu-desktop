@@ -185,10 +185,18 @@
         "today": "Tracked today",
         "other": "Other",
         "empty": "Nothing recorded so far.",
-        "suggest": "Log {time} to {target}?",
         "emptyHint": "Apps must be in focus for {seconds} seconds to be logged.",
         "emptyEdit": "Click here to edit",
         "minSeconds": "Log focus after",
-        "seconds": "seconds"
+        "seconds": "seconds",
+        "byApp": "By app",
+        "byProject": "By project",
+        "unassigned": "Unassigned",
+        "assign": "Assign",
+        "log": "Log {time}",
+        "edit": "Edit",
+        "logged": "Logged",
+        "rules": "Rules",
+        "removeRule": "Remove"
     }
 }

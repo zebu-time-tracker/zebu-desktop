@@ -18,7 +18,7 @@ defineProps<{
     /** Footer link; the timer stays a timer, so new projects are created in the web app. */
     createLabel: string;
 }>();
-const emit = defineEmits<{ 'update:modelValue': [string]; picked: []; create: [] }>();
+const emit = defineEmits<{ 'update:modelValue': [string]; picked: []; create: []; closed: [] }>();
 
 const select = ref<{ open: () => void; focus: () => void } | null>(null);
 defineExpose({ open: () => select.value?.open(), focus: () => select.value?.focus() });
@@ -44,6 +44,7 @@ const client = (p: ProjectOption) => p.client ?? '';
         @update:model-value="emit('update:modelValue', $event)"
         @picked="emit('picked')"
         @create="emit('create')"
+        @closed="emit('closed')"
     >
         <template #selected="{ option }">
             <span v-if="option.code" class="picker-code">{{ option.code }}:</span>

@@ -185,10 +185,18 @@
         "today": "Tracciato oggi",
         "other": "Altro",
         "empty": "Ancora nulla di registrato.",
-        "suggest": "Registrare {time} su {target}?",
         "emptyHint": "Le app devono restare in primo piano per {seconds} secondi per essere registrate.",
         "emptyEdit": "Clicca qui per modificare",
         "minSeconds": "Registra il focus dopo",
-        "seconds": "secondi"
+        "seconds": "secondi",
+        "byApp": "Per app",
+        "byProject": "Per progetto",
+        "unassigned": "Non assegnato",
+        "assign": "Assegna",
+        "log": "Registra {time}",
+        "edit": "Modifica",
+        "logged": "Registrato",
+        "rules": "Regole",
+        "removeRule": "Rimuovi"
     }
 }

@@ -14,6 +14,7 @@ import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, 
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { DEFAULT_EXCLUDED, parseExcludeList } from './focus';
+import { loadRules, putRule, removeRule, RULES_KEY, rulesFor, sortedRules, storeRules, type FocusRule } from './focusRules';
 import { activityDue, askMatchesRunning, askStillOpen, idleAction, idleQuestion, newEntryFrom, type IdleAsk } from './idle';
 import { draftTouched, planReopen, takeDraft, type EntryDraft, type SheetKind, type StashedDraft } from './popover';
 import { liveSource, readBroadcast } from './live';
@@ -1226,11 +1227,37 @@ const deleteFocusHistory = () => {
 };
 watch(settingsTab, (tab) => {
     focusDelete.value = 'idle';
-    if (tab === 'focus') checkFocusPermission();
+    if (tab === 'focus') {
+        checkFocusPermission();
+        focusRules.value = loadRules();
+    }
 });
+
+// Rules the Focus tab's project pickers made ("acme/website · GitHub is
+// Website redesign", board #512): listed here to change or drop. The Insights
+// window writes them; both windows share localStorage, and each reads the key
+// again when the other has written it.
+const focusRules = ref<FocusRule[]>(loadRules());
+const focusRuleRows = computed(() => sortedRules(rulesFor(focusRules.value, auth.workspace)));
+const saveFocusRules = (next: FocusRule[]) => {
+    focusRules.value = next;
+    storeRules(next);
+};
+const changeFocusRule = (rule: FocusRule, projectId: string) => {
+    if (projectId) saveFocusRules(putRule(loadRules(), { ...rule, project_id: projectId }));
+};
+const dropFocusRule = (rule: FocusRule) => saveFocusRules(removeRule(loadRules(), rule));
+const onFocusRulesStored = (e: StorageEvent) => {
+    if (e.key === null || e.key === RULES_KEY) focusRules.value = loadRules();
+};
+// the list is part of the settings floor, so a rule added or dropped re-measures
+watch(focusRules, fitPopover, { flush: 'post' });
+onMounted(() => window.addEventListener('storage', onFocusRulesStored));
+onUnmounted(() => window.removeEventListener('storage', onFocusRulesStored));
 
 let focusLogUnlisten: UnlistenFn | null = null;
 let focusSettingsUnlisten: UnlistenFn | null = null;
+let focusLoggedUnlisten: UnlistenFn | null = null;
 // "Click here to edit" under an empty Focus tab: open the popout on Focus.
 // The settingsOpen watcher lands every opening on Settings, so the tab is
 // switched after it has run.
@@ -1255,6 +1282,8 @@ const openFocusSuggestion = (d: { project_id: string; task_id: string | null; mi
 };
 onMounted(() => {
     listen<{ project_id: string; task_id: string | null; minutes: number; notes: string }>('focus-log', (e) => openFocusSuggestion(e.payload)).then((off) => (focusLogUnlisten = off));
+    // the Focus tab logged an entry itself: show it now rather than at the next pulse
+    listen('focus-logged', () => refresh()).then((off) => (focusLoggedUnlisten = off));
 });
 onMounted(() => {
     listen('open-focus-settings', () => openFocusSettings()).then((off) => (focusSettingsUnlisten = off));
@@ -1262,6 +1291,7 @@ onMounted(() => {
 onUnmounted(() => {
     focusLogUnlisten?.();
     focusSettingsUnlisten?.();
+    focusLoggedUnlisten?.();
 });
 
 // ---- presets ---------------------------------------------------------------
@@ -1969,6 +1999,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <span>{{ t('focus.exclude') }}</span>
                     <textarea v-model="prefs.focusExclude" rows="3" class="pref-exclude" spellcheck="false"></textarea>
                 </label>
+                <div v-if="focusRuleRows.length" class="pref-stack">
+                    <span>{{ t('focus.rules') }}</span>
+                    <div v-for="rule in focusRuleRows" :key="`${rule.app}\n${rule.key}`" class="focus-rule">
+                        <span class="focus-rule-place" :title="rule.key ? `${rule.key} · ${rule.app}` : rule.app">
+                            {{ rule.key || rule.app }}<span v-if="rule.key" class="focus-rule-app">{{ rule.app }}</span>
+                        </span>
+                        <ProjectPicker
+                            class="focus-rule-project"
+                            :model-value="rule.project_id"
+                            :projects="sheet?.projects ?? []"
+                            :placeholder="t('form.addProject')"
+                            :search-placeholder="t('form.searchProject')"
+                            :empty="t('form.noProjects')"
+                            :no-client="t('form.noClient')"
+                            create-label=""
+                            @update:model-value="changeFocusRule(rule, $event)"
+                        />
+                        <button class="focus-rule-remove" :title="t('focus.removeRule')" :aria-label="t('focus.removeRule')" @click="dropFocusRule(rule)">×</button>
+                    </div>
+                </div>
                 <button class="link danger" @click="deleteFocusHistory">
                     {{ focusDelete === 'confirm' ? t('focus.deleteConfirm') : focusDelete === 'done' ? t('focus.deleted') : t('focus.delete') }}
                 </button>
@@ -2662,6 +2712,64 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     line-height: 1.4;
     padding: 4px 8px;
     resize: none;
+}
+.focus-rule {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+}
+.focus-rule-place {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.focus-rule-app {
+    margin-left: 5px;
+    color: var(--muted);
+}
+.focus-rule-project {
+    flex: 0 0 48%;
+    width: 48%;
+}
+.focus-rule-project :deep(.picker-button),
+.focus-rule-project :deep(input) {
+    font-size: 11px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+/* the row is narrow: the button names the project, the list has the rest */
+.focus-rule-project :deep(.picker-button .picker-code),
+.focus-rule-project :deep(.picker-button .picker-client) {
+    display: none;
+}
+/* The popout scrolls, so a floating list would be cut at its edge: open, the
+   picker takes a line of its own and its list pushes the rows below down. */
+.focus-rule:has(.picker-list) {
+    flex-wrap: wrap;
+}
+.focus-rule:has(.picker-list) .focus-rule-project {
+    order: 3;
+    flex-basis: 100%;
+    width: 100%;
+}
+.focus-rule-project :deep(.picker-list) {
+    position: static;
+    margin-top: 4px;
+    box-shadow: none;
+}
+.focus-rule-remove {
+    flex: none;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 4px;
+    border-radius: 5px;
+}
+.focus-rule-remove:hover {
+    color: var(--danger);
 }
 
 /* ---- keyboard shortcuts (settings) ---- */

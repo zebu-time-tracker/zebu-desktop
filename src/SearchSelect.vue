@@ -37,6 +37,8 @@ const emit = defineEmits<{
     /** A row was chosen, by Return or by click: the sheet moves focus on. */
     picked: [];
     create: [];
+    /** The list closed, picked or not: a picker shown only for one choice (the Focus tab's) goes away. */
+    closed: [];
 }>();
 defineSlots<{
     selected?(p: { option: T }): unknown;
@@ -76,6 +78,7 @@ const show = () => {
 };
 const close = () => {
     open.value = false;
+    emit('closed');
     nextTick(() => button.value?.focus());
 };
 // The new-entry sheet opens straight into the project search, so the first
@@ -120,7 +123,10 @@ const onPointer = (e: MouseEvent, index: number) => {
 const onFocusOut = (e: FocusEvent) => {
     const root = e.currentTarget as HTMLElement;
     requestAnimationFrame(() => {
-        if (focusLeftPicker(root, document.activeElement)) open.value = false;
+        if (open.value && focusLeftPicker(root, document.activeElement)) {
+            open.value = false;
+            emit('closed');
+        }
     });
 };
 </script>

@@ -185,10 +185,18 @@
         "today": "오늘 기록",
         "other": "기타",
         "empty": "아직 기록된 내용이 없습니다.",
-        "suggest": "{target}에 {time} 기록할까요?",
         "emptyHint": "앱이 {seconds}초 이상 앞에 있어야 기록됩니다.",
         "emptyEdit": "여기를 눌러 변경",
         "minSeconds": "포커스 기록 시작",
-        "seconds": "초 후"
+        "seconds": "초 후",
+        "byApp": "앱별",
+        "byProject": "프로젝트별",
+        "unassigned": "미지정",
+        "assign": "지정",
+        "log": "{time} 기록",
+        "edit": "편집",
+        "logged": "기록됨",
+        "rules": "규칙",
+        "removeRule": "제거"
     }
 }
