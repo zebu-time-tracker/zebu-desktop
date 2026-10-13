@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, taskForProject, type KeyPress } from '../src/entryForm.ts';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, newEntryShortcutKeys, saveShortcutHint, saveShortcutKeys, taskForProject, type KeyPress } from '../src/entryForm.ts';
 
 const press = (key: string, mods: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({ key, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, isComposing: false, ...mods });
 
@@ -73,4 +73,11 @@ test('a new project keeps the task only when it has that task', () => {
     assert.equal(taskForProject(tasks, 't9'), '');
     assert.equal(taskForProject([], 't1'), '');
     assert.equal(taskForProject(tasks, ''), '');
+});
+
+test('the shortcuts as one keycap per key (board #517)', () => {
+    assert.deepEqual(saveShortcutKeys(true, 'Ctrl'), ['⌘', '↵']);
+    assert.deepEqual(saveShortcutKeys(false, 'Strg'), ['Strg', '↵']);
+    assert.deepEqual(newEntryShortcutKeys(true, 'Ctrl'), ['⌘', 'N']);
+    assert.deepEqual(newEntryShortcutKeys(false, 'Strg'), ['Strg', 'N']);
 });
