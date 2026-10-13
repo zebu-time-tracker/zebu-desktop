@@ -2,6 +2,9 @@ mod focus;
 mod live;
 mod tray_icon;
 
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
@@ -200,6 +203,34 @@ fn toggle_popover(app: &tauri::AppHandle) {
     }
 }
 
+// ---- idle trail -------------------------------------------------------------
+//
+// Board #513: an idle prompt that never appeared left nothing to say where it
+// stopped. Every step from "input resumed" to "prompt on screen" now writes a
+// line to idle.log in the app's log directory (Console.app shows it under
+// ~/Library/Logs). Times and numbers only: no titles, no entries.
+
+static IDLE_LOG: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+/// The log is cut back to its newest half past this size.
+const IDLE_LOG_MAX: u64 = 256 * 1024;
+
+fn idle_trail_line(line: &str) {
+    let Some(path) = IDLE_LOG.get() else { return };
+    if fs::metadata(path).map(|m| m.len() > IDLE_LOG_MAX).unwrap_or(false) {
+        let _ = fs::rename(path, path.with_extension("log.1"));
+    }
+    let ms = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{ms} {line}");
+    }
+}
+
+/// The frontend's steps, into the same trail.
+#[tauri::command]
+fn idle_trail(line: String) {
+    idle_trail_line(&format!("js {line}"));
+}
+
 /// Whether a timer is running, so input is worth watching. The frontend keeps
 /// this current; whether an absence is worth a prompt is the server's answer
 /// and the user's threshold, not ours (board #333).
@@ -207,7 +238,9 @@ static IDLE_WATCH: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
 fn set_idle_watch(watch: bool) {
-    IDLE_WATCH.store(watch, Ordering::SeqCst);
+    if IDLE_WATCH.swap(watch, Ordering::SeqCst) != watch {
+        idle_trail_line(&format!("rs watch={watch}"));
+    }
 }
 
 /// A pause shorter than this is not a return worth asking the server about.
@@ -258,10 +291,15 @@ fn spawn_idle_watcher(app: tauri::AppHandle) {
 
             if IDLE_WATCH.load(Ordering::SeqCst) {
                 let since_last = reported_at.map(|at| now.duration_since(at).unwrap_or_default().as_secs());
-                if away_seconds(prev_idle, gap, idle).is_some_and(|away| away >= RETURN_MIN_S) {
+                let away = away_seconds(prev_idle, gap, idle);
+                if gap > 10 || away.is_some_and(|a| a >= 30) {
+                    idle_trail_line(&format!("rs sample prev_idle={prev_idle} gap={gap} idle={idle} away={away:?}"));
+                }
+                if away.is_some_and(|away| away >= RETURN_MIN_S) {
                     // the frontend reports this input itself, after asking
                     reported_at = Some(now);
-                    let _ = app.emit("idle-return", ());
+                    let emitted = app.emit("idle-return", ()).is_ok();
+                    idle_trail_line(&format!("rs idle-return emitted={emitted}"));
                 } else if activity_due(idle, since_last) {
                     reported_at = Some(now);
                     let at_ms = now
@@ -425,6 +463,7 @@ fn place_idle_prompt(app: &tauri::AppHandle, height: f64) {
 /// watchdog covers a webview that never gets that far.
 #[tauri::command]
 fn show_idle_prompt(app: tauri::AppHandle, minutes: u64, anchor: Option<AnchorRect>) {
+    idle_trail_line(&format!("rs show_idle_prompt minutes={minutes} anchor={}", anchor.is_some()));
     let anchor = anchor.and_then(|a| anchor_on_screen(&app, a));
     if let Ok(mut prompt) = IDLE_PROMPT.lock() {
         *prompt = Some(IdlePrompt { minutes, anchor });
@@ -454,6 +493,8 @@ fn show_idle_prompt(app: tauri::AppHandle, minutes: u64, anchor: Option<AnchorRe
             .and_then(|w| w.is_visible().ok())
             .map(|visible| !visible)
             .unwrap_or(false);
+        let exists = app.get_webview_window(IDLE_LABEL).is_some();
+        idle_trail_line(&format!("rs prompt watchdog exists={exists} hidden={hidden} pending={}", idle_prompt_pending()));
         if hidden && idle_prompt_pending() {
             place_idle_prompt(&app, IDLE_HEIGHT);
         }
@@ -1210,6 +1251,7 @@ pub fn run() {
             quit,
             idle_seconds,
             set_idle_watch,
+            idle_trail,
             open_popover,
             set_dock_visible,
             set_hide_on_blur,
@@ -1311,6 +1353,11 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             let _ = &tray;
 
+            if let Ok(dir) = app.path().app_log_dir() {
+                let _ = fs::create_dir_all(&dir);
+                let _ = IDLE_LOG.set(dir.join("idle.log"));
+            }
+            idle_trail_line("rs launch");
             spawn_idle_watcher(app.handle().clone());
             spawn_tray_ticker(app.handle().clone());
             // samples nothing until the user opts in (see focus.rs)
