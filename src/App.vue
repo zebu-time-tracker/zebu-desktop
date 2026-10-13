@@ -847,6 +847,7 @@ const deleteFromSheet = () => {
 const formOpen = ref(false);
 const editingEntry = ref<Entry | null>(null);
 const notesEl = ref<HTMLTextAreaElement | null>(null);
+const durationEl = ref<HTMLInputElement | null>(null);
 const projectPicker = ref<InstanceType<typeof ProjectPicker> | null>(null);
 const autosizeNotes = () => {
     const el = notesEl.value;
@@ -901,7 +902,9 @@ const openForm = (prefill?: Partial<Pick<EntryDraft, 'date' | 'duration'>>) => {
     });
 };
 
-const openEdit = (entry: Entry) => {
+// focus: 'duration' when the row's time was clicked — the cursor lands in
+// the time field, ready to retype it (board #520)
+const openEdit = (entry: Entry, focus?: 'duration') => {
     if (entry.locked || sheet.value?.week_locked) return;
     editingEntry.value = entry;
     openedDuration = formatMinutes(elapsed(entry));
@@ -915,7 +918,10 @@ const openEdit = (entry: Entry) => {
     draftRestored.value = false;
     form.value = { ...openedForm };
     formOpen.value = true;
-    nextTick(autosizeNotes);
+    nextTick(() => {
+        autosizeNotes();
+        if (focus === 'duration') durationEl.value?.select();
+    });
 };
 
 const submitForm = () =>
@@ -1692,7 +1698,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </template>
                     </span>
                 </div>
-                <span class="entry-time">{{ formatMinutes(elapsed(entry)) }}</span>
+                <button
+                    v-if="!entry.locked && !sheet?.week_locked"
+                    class="entry-time editable"
+                    :title="t('entry.edit')"
+                    @click="openEdit(entry, 'duration')"
+                >
+                    {{ formatMinutes(elapsed(entry)) }}
+                </button>
+                <span v-else class="entry-time">{{ formatMinutes(elapsed(entry)) }}</span>
                 <!-- the idle prompt hangs from this button, in its own window (src-tauri: show_idle_prompt) -->
                 <button v-if="entry.timer_started_at" class="entry-btn stop" :title="t('timer.stop')" @click="stopTimer">■</button>
                 <button
@@ -1768,7 +1782,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div class="sheet-row">
                     <input v-model="form.date" type="date" class="sheet-date" />
                     <span v-if="editingEntry?.timer_started_at" class="sheet-dot" :title="t('form.timerRunning')"></span>
-                    <input v-model="form.duration" class="duration" :class="{ live: editingEntry?.timer_started_at }" placeholder="0:00" />
+                    <input ref="durationEl" v-model="form.duration" class="duration" :class="{ live: editingEntry?.timer_started_at }" placeholder="0:00" />
                 </div>
                 <textarea
                     ref="notesEl"
@@ -2391,6 +2405,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     font-variant-numeric: tabular-nums;
     font-size: 14px;
     font-weight: 600;
+}
+.entry-time.editable {
+    padding: 0;
+    border-radius: 3px;
+}
+.entry-time.editable:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+}
+.entry-time.editable:hover {
+    text-decoration: underline;
 }
 .entry.running .entry-time {
     color: var(--accent);
