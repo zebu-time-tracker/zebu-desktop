@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, newEntryShortcutKeys, saveShortcutHint, saveShortcutKeys, taskForProject, type KeyPress } from '../src/entryForm.ts';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, newEntryShortcutKeys, saveShortcutHint, saveShortcutKeys, taskForProject, newTimerPrefill, type KeyPress } from '../src/entryForm.ts';
 
 const press = (key: string, mods: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({ key, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, isComposing: false, ...mods });
 
@@ -80,4 +80,19 @@ test('the shortcuts as one keycap per key (board #517)', () => {
     assert.deepEqual(saveShortcutKeys(false, 'Strg'), ['Strg', '↵']);
     assert.deepEqual(newEntryShortcutKeys(true, 'Ctrl'), ['⌘', 'N']);
     assert.deepEqual(newEntryShortcutKeys(false, 'Strg'), ['Strg', 'N']);
+});
+
+test('a new timer copies the last timer\'s project and task (board #522)', () => {
+    const projects = [
+        { id: 'p1', tasks: [{ id: 't1' }] },
+        { id: 'p2', tasks: [{ id: 't2' }, { id: 't3' }] },
+    ];
+    assert.deepEqual(newTimerPrefill(projects, { project_id: 'p2', task_id: 't3' }), { project_id: 'p2', task_id: 't3' });
+    // no task on the last timer, or one the project no longer has: project only
+    assert.deepEqual(newTimerPrefill(projects, { project_id: 'p2', task_id: null }), { project_id: 'p2', task_id: '' });
+    assert.deepEqual(newTimerPrefill(projects, { project_id: 'p2', task_id: 'gone' }), { project_id: 'p2', task_id: '' });
+    // no last timer, or its project is gone: the first project, as before
+    assert.deepEqual(newTimerPrefill(projects, null), { project_id: 'p1', task_id: '' });
+    assert.deepEqual(newTimerPrefill(projects, { project_id: 'gone', task_id: 't1' }), { project_id: 'p1', task_id: '' });
+    assert.deepEqual(newTimerPrefill([], null), { project_id: '', task_id: '' });
 });

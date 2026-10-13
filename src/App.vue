@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
 import SearchSelect from './SearchSelect.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutKeys, saveShortcutKeys, taskForProject } from './entryForm';
+import { editDurationToSave, newTimerPrefill, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutKeys, saveShortcutKeys, taskForProject } from './entryForm';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
@@ -920,7 +920,7 @@ watch(formOpen, (open) => {
 const openForm = (prefill?: Partial<Pick<EntryDraft, 'date' | 'duration'>>) => {
     editingEntry.value = null;
     openedDuration = '';
-    openedForm = { project_id: sheet.value?.projects[0]?.id ?? '', task_id: '', notes: '', duration: '', date: selectedDate.value, ...prefill };
+    openedForm = { ...newTimerPrefill(sheet.value?.projects ?? [], lastTimer.value), notes: '', duration: '', date: selectedDate.value, ...prefill };
     // work typed before the popover was put away comes back rather than being
     // lost — unless the sheet opens for something else, which it would cover
     const draft = prefill ? null : takeDraft(stashedDraft.value, Date.now());
