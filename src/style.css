@@ -151,6 +151,8 @@ textarea:focus {
     background-repeat: no-repeat; background-position: right 10px center; background-size: 12px;
 }
 .picker-button.placeholder { color: var(--text-muted, #888); }
+.picker-button:focus { outline: none; border-color: var(--accent); }
+.picker-button:disabled { cursor: default; opacity: 0.55; }
 .picker-code { flex: none; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .picker-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Collapsed button only. The client starts from zero and grows into whatever the title
@@ -173,5 +175,7 @@ textarea:focus {
 }
 .picker-row.active { background: var(--bg-hover, rgba(127, 127, 127, 0.15)); }
 .picker-row.current { font-weight: 600; }
+/* the task picker's "no task" row, worded as the empty field it leaves */
+.picker-row.picker-none { color: var(--muted); font-weight: normal; }
 .picker-empty { margin: 0; padding: 10px 8px; text-align: center; opacity: 0.6; font-size: 12px; }
 .picker-create { border-top: 1px solid var(--border); border-radius: 0; margin-top: 4px; padding-top: 8px; opacity: 0.75; font-size: 12px; }

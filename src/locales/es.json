@@ -97,6 +97,7 @@
         "start": "Iniciar",
         "searchProject": "Buscar proyectos…",
         "noProjects": "Ningún proyecto coincide.",
+        "noTasks": "Ninguna tarea coincide.",
         "noClient": "Sin cliente",
         "newProjectLink": "Nuevo proyecto en Zebu ↗"
     },

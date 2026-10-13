@@ -97,6 +97,7 @@
         "start": "開始",
         "searchProject": "プロジェクトを検索…",
         "noProjects": "一致するプロジェクトがありません。",
+        "noTasks": "一致するタスクがありません。",
         "noClient": "クライアントなし",
         "newProjectLink": "Zebu で新しいプロジェクト ↗"
     },

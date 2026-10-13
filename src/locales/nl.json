@@ -97,6 +97,7 @@
         "start": "Starten",
         "searchProject": "Projecten zoeken…",
         "noProjects": "Geen passend project.",
+        "noTasks": "Geen overeenkomende taak.",
         "noClient": "Geen klant",
         "newProjectLink": "Nieuw project in Zebu ↗"
     },

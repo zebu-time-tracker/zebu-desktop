@@ -7,8 +7,9 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
+import SearchSelect from './SearchSelect.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
-import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint } from './entryForm';
+import { editDurationToSave, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutHint, saveShortcutHint, taskForProject } from './entryForm';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
@@ -848,6 +849,8 @@ const formOpen = ref(false);
 const editingEntry = ref<Entry | null>(null);
 const notesEl = ref<HTMLTextAreaElement | null>(null);
 const projectPicker = ref<InstanceType<typeof ProjectPicker> | null>(null);
+const taskPicker = ref<{ open: () => void; focus: () => void } | null>(null);
+const dateEl = ref<HTMLInputElement | null>(null);
 const autosizeNotes = () => {
     const el = notesEl.value;
     if (!el) return;
@@ -856,6 +859,17 @@ const autosizeNotes = () => {
 };
 const form = ref<EntryDraft>({ project_id: '', task_id: '', notes: '', duration: '', date: '' });
 const formProject = computed(() => sheet.value?.projects.find((p) => p.id === form.value.project_id));
+const formTasks = computed(() => formProject.value?.tasks ?? []);
+const taskName = (task: { name: string }) => task.name;
+// The sheet reads top to bottom — project, task, date, duration, notes — and a
+// pick moves on to the next field (board #501): "＋, type, Return, type,
+// Return" starts a timer without the mouse. A project without tasks has no
+// task to ask for, so it goes straight to the date.
+const onProjectPicked = () => {
+    form.value.task_id = taskForProject(formTasks.value, form.value.task_id);
+    nextTick(() => (formTasks.value.length ? taskPicker.value?.open() : dateEl.value?.focus()));
+};
+const onTaskPicked = () => nextTick(() => dateEl.value?.focus());
 let openedDuration = ''; // the prefill — only a changed duration rebases a live timer
 /** Said inside the sheet, where the person is looking, rather than on the list behind it. */
 const formError = ref('');
@@ -1756,17 +1770,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :no-client="t('form.noClient')"
                     :create-label="t('form.newProjectLink')"
                     @create="openUrl(`${auth.workspace}/projects/create`)"
+                    @picked="onProjectPicked"
                 />
-                <select v-model="form.task_id">
-                    <option value="">{{ t('form.addTask') }}</option>
-                    <option v-for="task in formProject?.tasks ?? []" :key="task.id" :value="task.id">{{ task.name }}</option>
-                </select>
-                <!-- keep this project and task for next time; the ☆ in the footer is where it lands -->
-                <button v-if="!editingEntry" class="link preset-save" :disabled="!form.project_id || formPresetSaved" @click="savePresetFromForm">
+                <SearchSelect
+                    ref="taskPicker"
+                    v-model="form.task_id"
+                    :options="formTasks"
+                    :text="taskName"
+                    :label="taskName"
+                    :placeholder="t('form.addTask')"
+                    :search-placeholder="t('form.addTask')"
+                    :empty="t('form.noTasks')"
+                    :none-label="t('form.addTask')"
+                    :disabled="!formTasks.length"
+                    @picked="onTaskPicked"
+                />
+                <!-- keep this project and task for next time; the ☆ in the footer is where it lands.
+                     No Tab stop, so Tab walks the fields in order: task, date, duration, notes. -->
+                <button v-if="!editingEntry" class="link preset-save" tabindex="-1" :disabled="!form.project_id || formPresetSaved" @click="savePresetFromForm">
                     {{ formPresetSaved ? `★ ${t('presets.saved')}` : `☆ ${t('presets.save')}` }}
                 </button>
                 <div class="sheet-row">
-                    <input v-model="form.date" type="date" class="sheet-date" />
+                    <input ref="dateEl" v-model="form.date" type="date" class="sheet-date" />
                     <span v-if="editingEntry?.timer_started_at" class="sheet-dot" :title="t('form.timerRunning')"></span>
                     <input v-model="form.duration" class="duration" :class="{ live: editingEntry?.timer_started_at }" placeholder="0:00" />
                 </div>
@@ -2992,18 +3017,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-actions .btn-outline {
     width: auto;
 }
-/* the save shortcut, as a quiet keycap inside the button (board #398) */
+/* the save shortcut, as quiet text inside the button (board #398); no keycap
+   outline since board #501 */
 .kbd-hint {
     margin-left: 6px;
-    padding: 0 4px;
     font: inherit;
     font-size: 10px;
     font-weight: 500;
     line-height: 16px;
     vertical-align: 1px;
     white-space: nowrap;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 4px;
     opacity: 0.8;
 }
 .sheet-error {
