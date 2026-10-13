@@ -141,7 +141,7 @@
         "recording": "키 입력…",
         "clearShortcut": "단축키 지우기",
         "shortcutTaken": "다른 앱이 이미 그 조합을 사용 중입니다.",
-        "openInBrowser": "브라우저에서 Zebu 열기",
+        "openDashboard": "대시보드 열기",
         "disconnect": "이 기기 연결 해제",
         "quit": "Zebu 종료",
         "live": "실시간 업데이트"
@@ -173,8 +173,7 @@
     "focus": {
         "tab": "집중",
         "tabSummary": "요약",
-        "enable": "앱과 창 집중 기록",
-        "privacy": "어떤 앱과 창에 있는지 기록합니다. 이 Mac에만 저장되고 14일 후에 삭제합니다.",
+        "enable": "활성 앱과 창 제목 기록 — 이 기기에만 저장되며 공유되지 않음",
         "unsupported": "이 시스템에서는 아직 지원하지 않습니다.",
         "titlesBlocked": "손쉬운 사용을 허용하기 전에는 앱 이름만 볼 수 있습니다.",
         "allowTitles": "허용",

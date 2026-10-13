@@ -141,7 +141,7 @@
         "recording": "Pressione…",
         "clearShortcut": "Limpar atalho",
         "shortcutTaken": "Outro app já usa essa combinação.",
-        "openInBrowser": "Abrir o Zebu no navegador",
+        "openDashboard": "Abrir o painel",
         "disconnect": "Desconectar este dispositivo",
         "quit": "Sair do Zebu",
         "live": "Atualizações em tempo real"
@@ -173,8 +173,7 @@
     "focus": {
         "tab": "Foco",
         "tabSummary": "Resumo",
-        "enable": "Registrar o app e a janela em foco",
-        "privacy": "Anoto em que app e janela você está. Fica neste Mac e apago depois de 14 dias.",
+        "enable": "Registrar o app ativo e os títulos das janelas — salvo localmente, nunca compartilhado",
         "unsupported": "Ainda não consigo fazer isso neste sistema.",
         "titlesBlocked": "Só vejo nomes de apps até você permitir a Acessibilidade.",
         "allowTitles": "Permitir",
