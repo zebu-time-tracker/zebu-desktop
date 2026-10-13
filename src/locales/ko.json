@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "새 시간 항목",
+        "newTimer": "새 타이머",
         "presets": "프리셋",
         "settings": "설정"
     },

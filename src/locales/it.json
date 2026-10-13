@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nuova voce",
+        "newTimer": "Nuovo timer",
         "presets": "Modelli",
         "settings": "Impostazioni"
     },

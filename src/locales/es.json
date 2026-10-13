@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "Nueva entrada",
+        "newTimer": "Nuevo temporizador",
         "presets": "Plantillas",
         "settings": "Ajustes"
     },

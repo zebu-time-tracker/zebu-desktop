@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "新規エントリ",
+        "newTimer": "新しいタイマー",
         "presets": "プリセット",
         "settings": "設定"
     },

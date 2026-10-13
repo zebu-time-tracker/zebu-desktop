@@ -117,6 +117,7 @@
     },
     "footer": {
         "newEntry": "New time entry",
+        "newTimer": "New timer",
         "presets": "Presets",
         "settings": "Settings"
     },
