@@ -596,6 +596,16 @@ const showEntry = async (result: Promise<{ entry: Entry }>) => {
     if (entry.date !== selectedDate.value) selectedDate.value = entry.date;
 };
 
+/** An entry the sheet just put on another day: shown there, lit up, fading (board #532). */
+const flashId = ref<string | null>(null);
+let flashTimer: ReturnType<typeof setTimeout> | undefined;
+const flashEntry = (id: string) => {
+    clearTimeout(flashTimer);
+    flashId.value = id;
+    flashTimer = setTimeout(() => (flashId.value = null), 2000);
+    nextTick(() => document.querySelector(`[data-entry="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
+};
+
 const resumeLast = () => {
     const last = lastTimer.value;
     if (!last || running.value) return;
@@ -977,13 +987,24 @@ const submitForm = () =>
                 return;
             }
             formError.value = '';
-            await api.updateEntry(editingEntry.value.id, {
+            const { entry } = await api.updateEntry(editingEntry.value.id, {
                 ...payload,
                 date: form.value.date,
                 ...(checked.minutes !== null ? { minutes: checked.minutes } : {}),
             });
+            // moved to another day: follow it there (board #532)
+            if (entry.date !== selectedDate.value) {
+                selectedDate.value = entry.date;
+                await refresh();
+                flashEntry(entry.id);
+            }
         } else if (minutes !== null && minutes > 0) {
-            await showEntry(api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes }));
+            const { entry } = await api.addEntry({ ...payload, date: form.value.date || selectedDate.value, minutes });
+            if (entry.date !== selectedDate.value) {
+                selectedDate.value = entry.date;
+                await refresh();
+                flashEntry(entry.id);
+            }
         } else {
             await showEntry(api.startTimer(payload));
         }
@@ -1584,8 +1605,8 @@ onMounted(() => {
 });
 onUnmounted(() => popoverUnlisten?.());
 
-// Escape dismisses the settings and presets popovers (click-away is the
-// backdrop); the insights window handles its own Escape. While a row is
+// Escape dismisses the settings and presets popovers and the entry sheet
+// (click-away is the backdrop); the insights window handles its own Escape. While a row is
 // recording, every keypress belongs to the recorder instead — Escape included,
 // which cancels it rather than closing the settings underneath. A preset being
 // renamed swallows its own Escape too, so the field is abandoned without the
@@ -1618,6 +1639,8 @@ const onKeydown = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
     if (presetsOpen.value) closePresets();
     else if (settingsOpen.value) settingsOpen.value = false;
+    // the sheet, even from inside its project search, which opens with it (board #532)
+    else if (formOpen.value) formOpen.value = false;
     else return;
     e.preventDefault();
 };
@@ -1736,7 +1759,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <button class="btn-outline" @click="openForm()">{{ isToday ? t('timer.startTimer') : t('timer.addEntry') }}</button>
             </div>
 
-            <div v-for="entry in dayEntries" :key="entry.id" class="entry" :class="{ running: entry.timer_started_at }">
+            <div v-for="entry in dayEntries" :key="entry.id" class="entry" :class="{ running: entry.timer_started_at, flash: entry.id === flashId }" :data-entry="entry.id">
                 <div
                     class="entry-text"
                     :class="{ editable: !entry.locked && !sheet?.week_locked }"
@@ -1866,6 +1889,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </button>
                 <div class="sheet-row">
                     <input ref="dateEl" v-model="form.date" type="date" class="sheet-date" />
+                    <button type="button" class="link sheet-today" tabindex="-1" :disabled="form.date === todayStr()" @click="form.date = todayStr()">
+                        {{ t('header.today') }}
+                    </button>
                     <span v-if="editingEntry?.timer_started_at" class="sheet-dot" :title="t('form.timerRunning')"></span>
                     <input ref="durationEl" v-model="form.duration" class="duration" :class="{ live: editingEntry?.timer_started_at }" placeholder="0:00" />
                 </div>
@@ -2264,6 +2290,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .entry.running {
     background: var(--accent-soft);
 }
+.entry.flash {
+    animation: entry-flash 2s ease-out;
+}
+@keyframes entry-flash {
+    0%,
+    30% {
+        background: var(--accent-soft);
+        box-shadow: inset 3px 0 0 var(--accent);
+    }
+}
 /* running-timer-on-another-day banner (pinned between week strip and list):
    header line + divider + an entry-style row, all one green jump target */
 .running-elsewhere {
@@ -2628,6 +2664,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .sheet-date {
     flex: 1;
     font-size: 12px;
+}
+.sheet-today {
+    flex: none;
+    font-size: 12px;
+}
+.sheet-today:disabled {
+    color: var(--muted);
+    cursor: default;
 }
 .sheet-notes {
     resize: none;
