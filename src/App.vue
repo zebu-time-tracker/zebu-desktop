@@ -12,6 +12,7 @@ import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { editDurationToSave, newTimerPrefill, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutKeys, saveShortcutKeys, taskForProject } from './entryForm';
 import { api, auth, CENTRAL_URL, DEFAULT_DOMAIN, DEV_WORKSPACE, elapsedMinutes, formatDurationHuman, formatMinutes, parseDuration, resolveWorkspaceInput, session, toDateString, Unavailable, type Entry, type ProjectStats, type Summary, type Timesheet } from './api';
 import { dayLabel } from './dayLabel';
+import { followToday } from './today';
 import { intlLocale, LOCALE_NAMES, setLocalePreference, SUPPORTED_LOCALES } from './i18n';
 import { DEFAULT_EXCLUDED, parseExcludeList } from './focus';
 import { loadRules, putRule, removeRule, RULES_KEY, rulesFor, sortedRules, storeRules, type FocusRule } from './focusRules';
@@ -229,7 +230,20 @@ const loading = ref(false);
 const errorMessage = ref('');
 
 const todayStr = () => toDateString(new Date());
-const isToday = computed(() => selectedDate.value === todayStr());
+// Held, not computed: a computed would cache yesterday's answer past midnight.
+const today = ref(todayStr());
+const isToday = computed(() => selectedDate.value === today.value);
+
+/** Midnight passed since the last look: today's view follows the calendar. True when the view moved. */
+const catchUpToday = (): boolean => {
+    const now = todayStr();
+    if (now === today.value) return false;
+    const moved = followToday(selectedDate.value, today.value, now);
+    today.value = now;
+    if (moved === selectedDate.value) return false;
+    selectedDate.value = moved;
+    return true;
+};
 
 // Which entry the menubar is about, as the server last told us (src/active.ts).
 // Held apart from the sheet because it is the thing two replies are ordered on:
@@ -247,6 +261,7 @@ const resetActive = () => {
 
 const refresh = async () => {
     if (view.value !== 'main') return;
+    catchUpToday();
     const seq = ++fetchSeq;
     loading.value = true;
     try {
@@ -444,7 +459,10 @@ const updateTray = () => {
 };
 
 onMounted(() => {
-    tick = setInterval(() => (now.value = Date.now()), 15000);
+    tick = setInterval(() => {
+        now.value = Date.now();
+        if (catchUpToday() && view.value === 'main') refresh();
+    }, 15000);
     // Rust nudges every 20 s (`refresh-due`) so a timer started or stopped from
     // another client shows up without a click; outside Tauri (plain-browser
     // dev) fall back to a webview interval.
