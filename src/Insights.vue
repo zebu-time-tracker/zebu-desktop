@@ -95,9 +95,10 @@ const liveSummary = computed<Summary | null>(() => {
 
 const chartMax = computed(() => Math.max(...(liveSummary.value?.month_by_day ?? [0]), 60));
 const yearMax = computed(() => Math.max(...(liveSummary.value?.year_by_month ?? [0]), 60));
-const todayIndex = new Date().getDate() - 1;
-const thisMonthIndex = new Date().getMonth();
-const monthLabel = computed(() => new Date().toLocaleDateString(intlLocale.value, { month: 'long' }));
+// From the ticking clock, so a window left open past midnight moves its marker.
+const todayIndex = computed(() => new Date(now.value).getDate() - 1);
+const thisMonthIndex = computed(() => new Date(now.value).getMonth());
+const monthLabel = computed(() => new Date(now.value).toLocaleDateString(intlLocale.value, { month: 'long' }));
 const yearLabel = new Date().getFullYear();
 
 const chartHover = ref<{ kind: 'day' | 'month'; i: number; m: number } | null>(null);
