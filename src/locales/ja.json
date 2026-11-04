@@ -94,6 +94,7 @@
         "ctrlKey": "Ctrl",
         "durationError": "1:30、1.5、90m のように入力してください。",
         "log": "記録",
+        "logTime": "{time} を記録",
         "start": "開始",
         "searchProject": "プロジェクトを検索…",
         "noProjects": "一致するプロジェクトがありません。",

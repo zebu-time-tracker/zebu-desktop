@@ -910,6 +910,10 @@ const autosizeNotes = () => {
 const form = ref<EntryDraft>({ project_id: '', task_id: '', notes: '', duration: '', date: '' });
 const formProject = computed(() => sheet.value?.projects.find((p) => p.id === form.value.project_id));
 const formTasks = computed(() => formProject.value?.tasks ?? []);
+// What the duration field reads as, shown on the Log button ("Log 1:03" for
+// "1h3") so a shorthand is confirmed before it is saved; null while it
+// doesn't parse.
+const typedMinutes = computed(() => (form.value.duration.trim() ? parseDuration(form.value.duration) : null));
 const taskName = (task: { name: string }) => task.name;
 // The sheet reads top to bottom — project, task, date, duration, notes — and a
 // pick moves on to the next field (board #501): "＋, type, Return, type,
@@ -1928,7 +1932,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </button>
                     <button class="btn-outline" @click="formOpen = false">{{ t('common.cancel') }}</button>
                     <button class="btn-primary" :disabled="!form.project_id" :aria-keyshortcuts="appleKeys ? 'Meta+Enter' : 'Control+Enter'" @click="submitForm">
-                        {{ editingEntry ? t('form.save') : form.duration ? t('form.log') : t('form.start') }}<span class="kbd-keys" aria-hidden="true"><kbd v-for="key in saveKeys" :key="key" class="kbd-hint">{{ key }}</kbd></span>
+                        {{ editingEntry ? t('form.save') : !form.duration ? t('form.start') : typedMinutes !== null ? t('form.logTime', { time: formatMinutes(typedMinutes) }) : t('form.log') }}<span class="kbd-keys" aria-hidden="true"><kbd v-for="key in saveKeys" :key="key" class="kbd-hint">{{ key }}</kbd></span>
                     </button>
                 </div>
             </div>

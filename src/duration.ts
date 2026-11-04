@@ -78,15 +78,44 @@ export function formatMinutes(minutes: number): string {
     return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 }
 
-/** "1:30", "1.5", "90m" -> minutes */
+// A number of hours: "1", "1.5", "1,5", ".5".
+const HOURS = String.raw`(\d+(?:[.,]\d*)?|[.,]\d+)`;
+const HOUR_UNIT = String.raw`h(?:ours?|rs?)?`;
+const MINUTE_UNIT = String.raw`m(?:in(?:ute)?s?)?`;
+
+const CLOCK = /^(\d*):(\d{0,2})$/;
+const HOURS_AND_MINUTES = new RegExp(String.raw`^${HOURS}\s*${HOUR_UNIT}(?:\s*(\d+)\s*(?:${MINUTE_UNIT})?)?$`);
+const MINUTES_ONLY = new RegExp(String.raw`^(\d+)\s*${MINUTE_UNIT}$`);
+const BARE_HOURS = new RegExp(`^${HOURS}$`);
+
+const hoursToMinutes = (h: string) => Math.round(parseFloat(h.replace(',', '.')) * 60);
+
+/**
+ * What a person types in a duration field -> minutes, or null if it is not
+ * a duration. Accepts:
+ *
+ *   clock          "1:30", ":30" (30m), "2:" (2h)
+ *   units          "1h", "1h30", "1h3" (1:03), "1h 30m", "1.5h", "2 hrs 5 mins"
+ *   minutes        "30m", "30 min", "45 minutes"
+ *   bare number    "2", "1.5", "1,5", ".5" — hours, as always
+ *
+ * Keep in step with the web app's copy (zebu-app resources/js/lib/format.ts).
+ */
 export function parseDuration(input: string): number | null {
     const s = input.trim().toLowerCase();
     if (!s) return null;
-    let m = s.match(/^(\d+):(\d{1,2})$/);
-    if (m) return parseInt(m[1]) * 60 + parseInt(m[2]);
-    m = s.match(/^(\d+)m$/);
-    if (m) return parseInt(m[1]);
-    m = s.match(/^(\d+(?:[.,]\d+)?)$/);
-    if (m) return Math.round(parseFloat(m[1].replace(',', '.')) * 60);
+
+    let m = s.match(CLOCK);
+    if (m) return m[1] || m[2] ? Number(m[1] || 0) * 60 + Number(m[2] || 0) : null;
+
+    m = s.match(HOURS_AND_MINUTES);
+    if (m) return hoursToMinutes(m[1]) + Number(m[2] || 0);
+
+    m = s.match(MINUTES_ONLY);
+    if (m) return Number(m[1]);
+
+    m = s.match(BARE_HOURS);
+    if (m) return hoursToMinutes(m[1]);
+
     return null;
 }

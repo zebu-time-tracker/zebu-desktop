@@ -88,3 +88,45 @@ test('parseDuration accepts h:mm, decimal hours and Nm', () => {
     assert.equal(parseDuration(''), null);
     assert.equal(parseDuration('abc'), null);
 });
+
+test('parseDuration takes a clock with either side missing', () => {
+    assert.equal(parseDuration(':30'), 30);
+    assert.equal(parseDuration(':05'), 5);
+    assert.equal(parseDuration('2:'), 120);
+    assert.equal(parseDuration('0:45'), 45);
+    assert.equal(parseDuration(':'), null);
+    assert.equal(parseDuration('1:234'), null);
+});
+
+test('parseDuration takes hours and minutes with units', () => {
+    assert.equal(parseDuration('1h'), 60);
+    assert.equal(parseDuration('1h3'), 63);
+    assert.equal(parseDuration('1h30'), 90);
+    assert.equal(parseDuration('1h30m'), 90);
+    assert.equal(parseDuration('1h 30m'), 90);
+    assert.equal(parseDuration('1.5h'), 90);
+    assert.equal(parseDuration('1,5h'), 90);
+    assert.equal(parseDuration('.5h'), 30);
+    assert.equal(parseDuration('2 hrs 5 mins'), 125);
+    assert.equal(parseDuration('2 hours'), 120);
+    assert.equal(parseDuration('1H30M'), 90);
+});
+
+test('parseDuration takes minutes on their own', () => {
+    assert.equal(parseDuration('30m'), 30);
+    assert.equal(parseDuration('30 m'), 30);
+    assert.equal(parseDuration('30min'), 30);
+    assert.equal(parseDuration('45 minutes'), 45);
+    assert.equal(parseDuration('90 mins'), 90);
+});
+
+test('parseDuration still reads a bare number as hours, and refuses junk', () => {
+    assert.equal(parseDuration('.5'), 30);
+    assert.equal(parseDuration('1.'), 60);
+    assert.equal(parseDuration('h'), null);
+    assert.equal(parseDuration('m'), null);
+    assert.equal(parseDuration('1h30h'), null);
+    assert.equal(parseDuration('30m1h'), null);
+    assert.equal(parseDuration('-1'), null);
+    assert.equal(parseDuration('1 30'), null);
+});

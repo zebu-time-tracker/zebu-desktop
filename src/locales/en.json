@@ -94,6 +94,7 @@
         "ctrlKey": "Ctrl",
         "durationError": "Enter a duration like 1:30, 1.5 or 90m.",
         "log": "Log",
+        "logTime": "Log {time}",
         "start": "Start",
         "searchProject": "Search projects…",
         "noProjects": "No matching project.",
