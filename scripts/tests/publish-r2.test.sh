@@ -106,6 +106,16 @@ check "every platform is a {signature,url} pair, nothing else" \
 check "covers the four targets the app is built for" \
     "$(json "$MANIFEST" 'Object.keys(m.platforms).sort().join(",")')" \
     "darwin-aarch64,darwin-x86_64,linux-x86_64,windows-x86_64"
+# --releases: the published versions, for the app's "N versions behind".
+# The updater ignores the extra key; without the option it is not written.
+run_manifest --version "$VERSION" --dir "$BUNDLES" --base-url "$BASE_URL" --releases "v0.1.9,v0.1.10,0.1.10,v0.1.2,v0.2.1"
+check "--releases builds" "$rc" "0"
+check "--releases is newest first, deduped, capped at this release and includes it" \
+    "$(json "$out" 'm.releases.join(",")')" "0.2.0,0.1.10,0.1.9,0.1.2"
+run_manifest --version "$VERSION" --dir "$BUNDLES" --base-url "$BASE_URL" --releases "0.1.9,latest"
+check "--releases refuses a version that is not X.Y.Z" "$rc" "1"
+contains "…and says which" "$out" "'latest'"
+
 check "pub_date is RFC 3339 (anything else fails the whole manifest to parse)" \
     "$(json "$MANIFEST" '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(m.pub_date) ? "yes" : m.pub_date')" \
     "yes"

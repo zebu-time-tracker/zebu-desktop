@@ -8,6 +8,7 @@
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { ref } from 'vue';
+import { versionsBehind } from './updateInfo';
 import { updateCheckDue } from './updateSchedule';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'upToDate' | 'downloading' | 'installing' | 'error';
@@ -15,6 +16,10 @@ export type UpdateStatus = 'idle' | 'checking' | 'available' | 'upToDate' | 'dow
 export const updateStatus = ref<UpdateStatus>('idle');
 /** Version on offer while `available`/`downloading`/`installing`. */
 export const updateVersion = ref('');
+/** The version running now, as the updater saw it. */
+export const updateCurrentVersion = ref('');
+/** How many releases the running build is behind the one on offer; null when the manifest can't say. */
+export const updateBehind = ref<number | null>(null);
 /** 0–100 while downloading, when the server sends a Content-Length. */
 export const updateProgress = ref<number | null>(null);
 /** True while the launch-time prompt should be showing. */
@@ -34,6 +39,8 @@ export async function checkForUpdates(manual = false): Promise<void> {
         if (update) {
             pending = update;
             updateVersion.value = update.version;
+            updateCurrentVersion.value = update.currentVersion;
+            updateBehind.value = versionsBehind(update.currentVersion, update.version, update.rawJson?.releases);
             updateStatus.value = 'available';
             updatePromptOpen.value = true;
         } else {

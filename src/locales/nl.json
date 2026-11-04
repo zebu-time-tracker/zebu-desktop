@@ -148,8 +148,10 @@
         "live": "Live-updates"
     },
     "update": {
-        "available": "Zebu {version} is beschikbaar",
-        "body": "Zebu downloadt de update en start opnieuw. Je timer blijft lopen.",
+        "available": "Bijwerken naar Zebu {version}.",
+        "running": "Je gebruikt {current}.",
+        "runningBehind": "Je gebruikt {current} ({count} versie achter). | Je gebruikt {current} ({count} versies achter).",
+        "body": "De update wordt gedownload en Zebu start opnieuw; lopende timers blijven lopen.",
         "install": "Installeren en herstarten",
         "later": "Later",
         "installVersion": "{version} installeren",

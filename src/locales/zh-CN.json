@@ -148,8 +148,10 @@
         "live": "实时更新"
     },
     "update": {
-        "available": "Zebu {version} 已可用",
-        "body": "Zebu 会下载更新并重新启动。计时器会继续运行。",
+        "available": "更新到 Zebu {version}。",
+        "running": "你正在使用 {current}。",
+        "runningBehind": "你正在使用 {current}（落后 {count} 个版本）。",
+        "body": "更新会下载并重新启动，正在运行的计时器会继续运行。",
         "install": "安装并重新启动",
         "later": "稍后",
         "installVersion": "安装 {version}",

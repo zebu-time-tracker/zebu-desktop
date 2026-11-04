@@ -7,6 +7,7 @@
 //     --dir upload \
 //     --base-url https://app-downloads.zebu.work/desktop/0.2.0 \
 //     [--notes "..."] [--pub-date 2026-09-11T10:00:00Z] [--aliases-out aliases.tsv]
+//     [--releases 0.1.9,0.2.0]
 //
 // Prints the manifest on stdout. Nothing is uploaded here: the release
 // workflow pipes the output to a file and puts it in R2 *last*, after the
@@ -61,7 +62,7 @@ const fail = (message) => {
 
 export function parseArgs(argv) {
     const opts = {};
-    const known = new Set(['version', 'dir', 'base-url', 'notes', 'pub-date', 'aliases-out']);
+    const known = new Set(['version', 'dir', 'base-url', 'notes', 'pub-date', 'aliases-out', 'releases']);
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
         if (!arg.startsWith('--')) fail(`unexpected argument '${arg}'`);
@@ -95,6 +96,26 @@ export function nowRfc3339(date = new Date()) {
     return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+/**
+ * `--releases`: every version published so far (the workflow passes the
+ * repo's v* tags), so the app can say how far behind it is ("3 versions
+ * behind", src/updateInfo.ts). The updater itself ignores the field. Newest
+ * first, no duplicates, nothing newer than the release being built, and
+ * that release always in it. A list that is not all X.Y.Z is an error.
+ */
+export function buildReleases(list, version) {
+    const versions = list.split(',').map((v) => v.trim().replace(/^v/, '')).filter(Boolean);
+    const bad = versions.find((v) => !isVersion(v));
+    if (bad !== undefined) fail(`--releases has '${bad}', which is not X.Y.Z`);
+    const key = (v) => v.split('.').map(Number);
+    const cmp = (a, b) => {
+        const [pa, pb] = [key(a), key(b)];
+        for (let i = 0; i < 3; i += 1) if (pa[i] !== pb[i]) return pa[i] - pb[i];
+        return 0;
+    };
+    return [...new Set([...versions, version])].filter((v) => cmp(v, version) <= 0).sort((a, b) => cmp(b, a));
+}
+
 /** Every regular file directly in `dir`, sorted so output is deterministic. */
 function listFiles(dir) {
     let names;
@@ -121,7 +142,7 @@ function pick(files, suffix, label) {
  * Build the manifest object. `readSignature(name)` returns the contents of
  * `<name>.sig`, or null when it is missing.
  */
-export function buildManifest({ version, baseUrl, files, readSignature, notes, pubDate }) {
+export function buildManifest({ version, baseUrl, files, readSignature, notes, pubDate, releases }) {
     if (!isVersion(version)) fail(`--version '${version}' is not X.Y.Z`);
 
     let url;
@@ -170,6 +191,7 @@ export function buildManifest({ version, baseUrl, files, readSignature, notes, p
         pub_date: pubDate ?? nowRfc3339(),
         // Sorted so two runs of the same inputs produce byte-identical JSON.
         platforms: Object.fromEntries(Object.keys(platforms).sort().map((k) => [k, platforms[k]])),
+        ...(releases === undefined ? {} : { releases: buildReleases(releases, version) }),
     };
 }
 
@@ -204,6 +226,7 @@ export function main(argv) {
         },
         notes: opts.notes,
         pubDate: opts['pub-date'],
+        releases: opts.releases,
     });
 
     // Always built, even when it is not asked for: an ambiguous download

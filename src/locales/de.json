@@ -148,8 +148,10 @@
         "live": "Live-Updates"
     },
     "update": {
-        "available": "Zebu {version} ist verfügbar",
-        "body": "Zebu lädt das Update und startet neu. Dein Timer läuft weiter.",
+        "available": "Auf Zebu {version} aktualisieren.",
+        "running": "Du verwendest {current}.",
+        "runningBehind": "Du verwendest {current} ({count} Version zurück). | Du verwendest {current} ({count} Versionen zurück).",
+        "body": "Das Update wird heruntergeladen und Zebu startet neu, laufende Timer laufen weiter.",
         "install": "Installieren & neu starten",
         "later": "Später",
         "installVersion": "{version} installieren",

@@ -296,7 +296,10 @@ jobs:
       AWS_CLI_VERSION: 2.36.43
       AWS_CLI_SHA256: ef606eb55f9a93ac404cc4a6869c0a791c234b898d93ec6af3bba8c491b391e9
     steps:
+      # Every tag, for the manifest's `releases` list (the app's "N versions behind").
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -360,6 +363,7 @@ jobs:
             --base-url "$PUBLIC_BASE/$DEST_BASE/$VERSION" \
             --notes "Zebu Desktop $VERSION" \
             --aliases-out aliases.tsv \
+            --releases "$(git tag -l 'v[0-9]*' | paste -sd, -)" \
             > latest.json
           echo "latest.json:"
           cat latest.json

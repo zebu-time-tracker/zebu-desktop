@@ -148,8 +148,10 @@
         "live": "실시간 업데이트"
     },
     "update": {
-        "available": "Zebu {version} 사용 가능",
-        "body": "Zebu가 업데이트를 내려받고 다시 시작합니다. 타이머는 계속 실행됩니다.",
+        "available": "Zebu {version}(으)로 업데이트",
+        "running": "현재 {current} 버전을 사용 중입니다.",
+        "runningBehind": "현재 {current} 버전을 사용 중입니다({count}개 버전 뒤처짐).",
+        "body": "업데이트를 내려받은 뒤 다시 시작하며, 실행 중인 타이머는 계속 실행됩니다.",
         "install": "설치 후 다시 시작",
         "later": "나중에",
         "installVersion": "{version} 설치",

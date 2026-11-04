@@ -148,8 +148,10 @@
         "live": "Aktualizacje na żywo"
     },
     "update": {
-        "available": "Dostępna jest wersja Zebu {version}",
-        "body": "Zebu pobierze aktualizację i uruchomi się ponownie. Stoper nadal działa.",
+        "available": "Zaktualizuj do Zebu {version}.",
+        "running": "Używasz wersji {current}.",
+        "runningBehind": "Używasz wersji {current} (starszej o {count} wersję). | Używasz wersji {current} (starszej o {count} wersje). | Używasz wersji {current} (starszej o {count} wersji).",
+        "body": "Aktualizacja zostanie pobrana, a Zebu uruchomi się ponownie; działające stopery nie zostaną zatrzymane.",
         "install": "Zainstaluj i uruchom ponownie",
         "later": "Później",
         "installVersion": "Zainstaluj {version}",

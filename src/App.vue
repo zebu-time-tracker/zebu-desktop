@@ -38,7 +38,7 @@ import { clientOf, lastTimerIsOnlyEntry, lastTimerProject, relativeDay, resumeLa
 import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
-import { checkForUpdates, dismissUpdate, installUpdate, maybeCheckForUpdates, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
+import { checkForUpdates, dismissUpdate, installUpdate, maybeCheckForUpdates, updateBehind, updateCurrentVersion, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
 import { budgetLevel, formatHours } from './entryStats';
 
 const { t } = useI18n();
@@ -1862,7 +1862,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="updatePromptOpen" class="sheet-overlay" @click.self="dismissUpdate">
             <div class="sheet">
                 <p class="sheet-title">{{ t('update.available', { version: updateVersion }) }}</p>
-                <p class="muted">{{ t('update.body') }}</p>
+                <p class="muted">
+                    {{ updateBehind === null ? t('update.running', { current: updateCurrentVersion }) : t('update.runningBehind', { current: updateCurrentVersion, count: updateBehind }, updateBehind) }}
+                    {{ t('update.body') }}
+                </p>
                 <div class="sheet-actions">
                     <button class="btn-outline" @click="dismissUpdate">{{ t('update.later') }}</button>
                     <button class="btn-primary" @click="installUpdate">{{ t('update.install') }}</button>

@@ -250,7 +250,8 @@ desktop/
   0.1.9/  …                       older releases, kept forever
   latest/                         stable names for a download button
     mac.dmg  windows.exe  linux.AppImage
-  latest.json                     the updater manifest
+  latest.json                     the updater manifest, with `releases` (every
+                                  published version, for "N versions behind")
   _dryrun/<run id>/…              workflow_dispatch rehearsals
 ```
 

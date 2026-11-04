@@ -148,8 +148,10 @@
         "live": "Atualizações em tempo real"
     },
     "update": {
-        "available": "Zebu {version} está disponível",
-        "body": "O Zebu transfere a atualização e reinicia. O seu timer continua a contar.",
+        "available": "Atualizar para o Zebu {version}.",
+        "running": "Está a usar a versão {current}.",
+        "runningBehind": "Está a usar a versão {current} ({count} versão em atraso). | Está a usar a versão {current} ({count} versões em atraso).",
+        "body": "A atualização será transferida e o Zebu reinicia; os timers ativos continuam a contar.",
         "install": "Instalar e reiniciar",
         "later": "Depois",
         "installVersion": "Instalar {version}",

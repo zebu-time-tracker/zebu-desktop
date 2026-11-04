@@ -148,8 +148,10 @@
         "live": "ライブ更新"
     },
     "update": {
-        "available": "Zebu {version} が利用可能です",
-        "body": "Zebu が更新をダウンロードして再起動します。タイマーは動き続けます。",
+        "available": "Zebu {version} にアップデート",
+        "running": "現在のバージョンは {current} です。",
+        "runningBehind": "現在のバージョンは {current} です（{count} バージョン遅れ）。",
+        "body": "アップデートをダウンロードして再起動します。実行中のタイマーはそのまま動き続けます。",
         "install": "インストールして再起動",
         "later": "後で",
         "installVersion": "{version} をインストール",

@@ -148,8 +148,10 @@
         "live": "Mises à jour en direct"
     },
     "update": {
-        "available": "Zebu {version} est disponible",
-        "body": "Zebu télécharge la mise à jour et redémarre. Votre minuteur continue.",
+        "available": "Mettre à jour vers Zebu {version}.",
+        "running": "Vous utilisez la version {current}.",
+        "runningBehind": "Vous utilisez la version {current} ({count} version de retard). | Vous utilisez la version {current} ({count} versions de retard).",
+        "body": "La mise à jour sera téléchargée et Zebu redémarrera ; les minuteurs en cours continueront de tourner.",
         "install": "Installer et redémarrer",
         "later": "Plus tard",
         "installVersion": "Installer {version}",

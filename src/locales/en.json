@@ -148,8 +148,10 @@
         "live": "Live updates"
     },
     "update": {
-        "available": "Zebu {version} is available",
-        "body": "Zebu downloads the update and restarts. Your timer keeps running.",
+        "available": "Update to Zebu {version}.",
+        "running": "You are running {current}.",
+        "runningBehind": "You are running {current} ({count} version behind). | You are running {current} ({count} versions behind).",
+        "body": "The update will download and restart, active timers will keep running.",
         "install": "Install & relaunch",
         "later": "Later",
         "installVersion": "Install {version}",
