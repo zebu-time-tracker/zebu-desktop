@@ -115,11 +115,15 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
 - Global hotkeys are registered in Rust (`set_shortcut`, `ShortcutAction`) and
   each one ends in the call a click already makes; the frontend only owns the
   bindings (`src/shortcuts.ts`). Adding an action means a name in both lists
-  and a slot in `SHORTCUTS`. On a Mac three come bound (board #569:
-  `defaultShortcuts`, ⌃⌥⌘S/N/Z), handed out once per install
-  (`prefs.shortcutDefaults`) and only into rows nobody has touched, so a
-  default never replaces a choice and one that was cleared stays cleared.
-  Changing the set means bumping `SHORTCUT_DEFAULTS_VERSION`. A press that
+  and a slot in `SHORTCUTS`. On a Mac three are offered once, on a card the
+  first time the popover opens (board #569: `defaultShortcuts`, `offer` in
+  App.vue): ⌥⌘N and ⌥⌘T as in Harvest for Mac, ⌥⌘P for start/stop, which
+  Harvest has no key for. The card is the whole onboarding — the Settings
+  tab's own recorder rows and one "Turn on" — so keep it to that: no steps,
+  no second screen. Nothing is registered before "Turn on", a default never
+  replaces a row the person bound, and either answer is final
+  (`prefs.shortcutDefaults`); changing the offer means bumping
+  `SHORTCUT_DEFAULTS_VERSION`. A press that
   cannot start anything (locked week, invoiced entry, a failed request)
   shows the popover rather than doing nothing: the hotkey is pressed with
   another app in front, where silence reads as broken.

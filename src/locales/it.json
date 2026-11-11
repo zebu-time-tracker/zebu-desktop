@@ -134,6 +134,7 @@
         "tabSettings": "Impostazioni",
         "tabShortcuts": "Scorciatoie da tastiera",
         "shortcutsHint": "Funzionano da qualsiasi app, anche quando Zebu è nascosto.",
+        "shortcutsTurnOn": "Attiva",
         "shortcutToggleTimer": "Avvia o ferma il timer",
         "shortcutNewTimer": "Avvia un nuovo timer",
         "shortcutTogglePopover": "Mostra o nascondi Zebu",

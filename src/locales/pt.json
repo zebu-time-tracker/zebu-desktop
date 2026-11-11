@@ -134,6 +134,7 @@
         "tabSettings": "Configurações",
         "tabShortcuts": "Atalhos de teclado",
         "shortcutsHint": "Funcionam em qualquer app, mesmo com o Zebu oculto.",
+        "shortcutsTurnOn": "Ativar",
         "shortcutToggleTimer": "Iniciar ou parar o timer",
         "shortcutNewTimer": "Iniciar um novo timer",
         "shortcutTogglePopover": "Mostrar ou ocultar o Zebu",

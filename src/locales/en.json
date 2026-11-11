@@ -134,6 +134,7 @@
         "tabSettings": "Settings",
         "tabShortcuts": "Keyboard shortcuts",
         "shortcutsHint": "These work from any app, even while Zebu is hidden.",
+        "shortcutsTurnOn": "Turn on",
         "shortcutToggleTimer": "Start or stop the timer",
         "shortcutNewTimer": "Start a new timer",
         "shortcutTogglePopover": "Show or hide Zebu",

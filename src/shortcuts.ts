@@ -39,27 +39,32 @@ export const readShortcuts = (stored: unknown): Shortcuts => {
     return shortcuts;
 };
 
-// ---- the bindings a Mac starts with ---------------------------------------
+// ---- the bindings a Mac is offered ------------------------------------------
 //
 // A hotkey nobody has recorded is a hotkey nobody uses: the five rows shipped
 // empty, behind Settings › Keyboard shortcuts, so starting or stopping a timer
 // from the keyboard took finding that tab first (board #569). The three that
-// are the timer itself now come bound.
+// are the timer itself are now offered, once, on a card the first time the
+// popover opens (App.vue: `shortcutOffer`); nothing is bound until the person
+// says so there, and any row can be changed or emptied first.
 //
-// ⌃⌥⌘ with a letter is the one corner macOS and other apps leave alone: ⌥⌘T is
-// Finder's toolbar, ⌃⌥ with a letter is where the window managers live, and
-// anything with fewer modifiers belongs to whichever app is in front. S starts
-// and stops, N is the popover's own ⌘N, Z is Zebu.
+// The keys are Harvest for Mac's, since that is where many people's hands
+// already are: ⌥⌘N starts a new timer and ⌥⌘T shows and hides the timesheet.
+// Harvest has no key for start/stop (it is a click on the menubar icon), so
+// that one is ours: ⌥⌘P, the pill being a play/pause button. Harvest's other
+// two, ⌥⌘S for the summary and ⌥⌘F for favourites, are not offered: Insights
+// and presets are not the timer, and those combinations are Save All and
+// Replace in an editor. Their rows stay empty for whoever wants them.
 //
-// Only on a Mac. Elsewhere Ctrl+Alt is AltGr, which with Shift is how Polish
-// types Ś, Ń and Ż, and the Windows key's combinations are the system's to
-// hand out; those platforms keep the empty rows until a set is chosen for them.
+// Only on a Mac. Harvest for Windows uses Ctrl+Alt, which is AltGr: with N it
+// is how Polish types ń. Those platforms keep the empty rows until a set is
+// chosen for them (board #574).
 
-/** Bumped when the defaults change, so a new one can be handed to people who already have the old. */
+/** Bumped when the offer changes, so a new one reaches people who answered the old. */
 export const SHORTCUT_DEFAULTS_VERSION = 1;
 
 export const defaultShortcuts = (apple: boolean): Partial<Shortcuts> =>
-    apple ? { toggleTimer: 'Control+Alt+Super+KeyS', newTimer: 'Control+Alt+Super+KeyN', togglePopover: 'Control+Alt+Super+KeyZ' } : {};
+    apple ? { toggleTimer: 'Alt+Super+KeyP', newTimer: 'Alt+Super+KeyN', togglePopover: 'Alt+Super+KeyT' } : {};
 
 /**
  * The defaults still to hand out, in row order. A row the person bound is
@@ -73,6 +78,31 @@ export const defaultsToApply = (shortcuts: Shortcuts, defaults: Partial<Shortcut
         return accel && !shortcuts[action] && !taken.has(accel) ? [[action, accel]] : [];
     });
 };
+
+/** What the first-run card shows and, on "Turn on", binds. */
+export interface ShortcutOffer {
+    /** The rows on the card, in row order: the actions that have a default here. */
+    actions: ShortcutAction[];
+    /** Every binding as it would be after "Turn on"; the card edits this, not the live ones. */
+    draft: Shortcuts;
+}
+
+/**
+ * The card to show, or null when there is nothing to offer: a platform with
+ * no defaults, or a person who has already bound every row it would fill.
+ */
+export const shortcutOffer = (shortcuts: Shortcuts, defaults: Partial<Shortcuts>): ShortcutOffer | null => {
+    const fill = defaultsToApply(shortcuts, defaults);
+    if (!fill.length) return null;
+    return {
+        actions: SHORTCUT_ACTIONS.filter((action) => defaults[action]),
+        draft: { ...shortcuts, ...Object.fromEntries(fill) },
+    };
+};
+
+/** The rows "Turn on" has to bind or unbind: where the card differs from what is live. */
+export const offerChanges = (shortcuts: Shortcuts, draft: Shortcuts): [ShortcutAction, string][] =>
+    SHORTCUT_ACTIONS.filter((action) => draft[action] !== shortcuts[action]).map((action) => [action, draft[action]]);
 
 // Keys global-hotkey's parser understands, by shape: letters, digits, the
 // function row and the numeric keypad.

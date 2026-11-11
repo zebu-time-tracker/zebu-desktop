@@ -10,7 +10,7 @@ A tiny cross-platform **menubar/tray app** for [Zebu](../zebu): see today's time
 - Running timer shown **next to the menubar icon** (macOS) / tray tooltip elsewhere
 - **New Time Entry** sheet: project + task + notes; leave duration empty to start a live timer, or enter `1:30` to log it directly. It opens with the cursor already in the project search, and Tab or Return takes the highlighted match and moves to the next field, so a new timer is ⌘N, a few letters, Tab, a few letters, Tab, ⌘↵
 - ☆ **Presets**: save a project + task you start often from the entry sheet, then start that timer in one press from the searchable list beside ＋; rename or delete them there. Presets are personal and stay on this machine (`localStorage`), filed by workspace
-- **Global hotkeys** for five things — start/stop the timer, start a new timer, show/hide the popover, show Insights, show presets — registered system-wide and re-recordable in Settings. On a Mac the first three come bound: ⌃⌥⌘S, ⌃⌥⌘N and ⌃⌥⌘Z
+- **Global hotkeys** for five things — start/stop the timer, start a new timer, show/hide the popover, show Insights, show presets — registered system-wide and re-recordable in Settings. On a Mac the first three are offered on a card the first time the popover opens, on Harvest's keys where it has them: ⌥⌘P start/stop, ⌥⌘N new timer, ⌥⌘T show/hide
 - ⓘ **Time Summary** popover: hours today / yesterday / this week / last week / this month + billable % (served by your own server's widgets)
 - Respects invoiced-entry locks and approved-week locks from the server
 - Localized into 11 languages (see [docs/i18n.md](docs/i18n.md)); follows the system language, overridable in Settings

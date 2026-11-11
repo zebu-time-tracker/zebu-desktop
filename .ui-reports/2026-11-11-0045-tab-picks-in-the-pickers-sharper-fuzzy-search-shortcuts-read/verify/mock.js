@@ -11,7 +11,7 @@
         ]));
     } catch {}
     // The app as it runs on a Mac: ⌘ keycaps, and the hotkeys a Mac starts with.
-    try {
+    if (!(window.__mockOpts || {}).notMac) try {
         Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'MacIntel' });
         Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined });
     } catch {}
@@ -22,6 +22,8 @@
         transformCallback: () => 0,
         invoke: async (cmd, args) => {
             window.__invoked.push([cmd, args]);
+            // one combination another app "already has", to show a refused row
+            if (cmd === 'set_shortcut' && args.accelerator && args.accelerator === sessionStorage.getItem('mockTaken')) throw 'taken';
             if (cmd === 'set_shortcut' || cmd === 'set_tray_state' || cmd === 'open_popover') return null;
             throw new Error('not running inside Tauri');
         },

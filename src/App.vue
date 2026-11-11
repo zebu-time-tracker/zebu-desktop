@@ -42,13 +42,15 @@ import {
     accelerator,
     assignShortcut,
     defaultShortcuts,
-    defaultsToApply,
     formatAccelerator,
     noShortcuts,
+    offerChanges,
     readShortcuts,
+    shortcutOffer,
     SHORTCUT_ACTIONS,
     SHORTCUT_DEFAULTS_VERSION,
     type ShortcutAction,
+    type ShortcutOffer,
     type Shortcuts,
 } from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
@@ -75,7 +77,7 @@ interface Prefs {
     idleMinutes: number;
     language: string; // 'system' or a locale code from SUPPORTED_LOCALES
     shortcuts: Shortcuts; // system-wide hotkeys, one accelerator per action ('' = unbound)
-    /** Which set of default hotkeys this install has been offered; 0 before any (src/shortcuts.ts). */
+    /** Which first-run offer of hotkeys this install has answered; 0 before any (src/shortcuts.ts). */
     shortcutDefaults: number;
     /** Focus tracking (board #401): off until the user turns it on. Rust samples nothing while false. */
     focusEnabled: boolean;
@@ -1636,32 +1638,68 @@ watch(settingsOpen, (open) => {
 });
 watch(settingsTab, () => (recording.value = null));
 
-/**
- * The hotkeys a Mac starts with (src/shortcuts.ts), handed out once: on a
- * first launch, and on the first launch of the build that introduced them. A
- * row the person bound is left alone, and a default the system refuses stays
- * an empty row without a complaint — nobody asked for that combination.
- * After that the rows are the person's: a default they clear stays cleared.
- */
-const offerDefaultShortcuts = async () => {
-    if (prefs.value.shortcutDefaults >= SHORTCUT_DEFAULTS_VERSION) return;
-    for (const [action, accel] of defaultsToApply(prefs.value.shortcuts, defaultShortcuts(appleKeys))) {
-        try {
-            await invoke('set_shortcut', { action, accelerator: accel });
-            prefs.value.shortcuts = { ...prefs.value.shortcuts, [action]: accel };
-        } catch {
-            /* another app has it, or there is no Tauri to ask (plain-browser dev) */
-        }
-    }
+// ---- the first-run card ----------------------------------------------------
+//
+// The first time the popover opens on a Mac, one card offers the three hotkeys
+// that are the timer itself (src/shortcuts.ts has the keys and why). It is the
+// whole onboarding: the rows are the Settings tab's own recorders, so the card
+// teaches the keys and is also where they are changed; "Turn on" binds them
+// and × leaves every row empty. Either answer is final — the card never comes
+// back, and Settings › Keyboard shortcuts is where the rows live from then on.
+//
+// Nothing is registered until "Turn on": the card edits a draft. A combination
+// the system refuses says so on its row and the card stays, so the person can
+// record another or empty the row rather than end up with a key that is not
+// there.
+
+const offer = ref<ShortcutOffer | null>(null);
+/** The card waits its turn behind anything else that has the window: a sheet, the update prompt. */
+const offerShown = computed(() => !!offer.value && !formOpen.value && !updatePromptOpen.value && !confirmNewDay.value);
+/** Whether "Turn on" has anything to bind. */
+const offerHasWork = computed(() => !!offer.value && offer.value.actions.some((action) => offer.value?.draft[action]));
+
+const answerOffer = () => {
+    // a row refused on the card and then left: Settings should not open on its complaint
+    const cleared = Object.fromEntries((offer.value?.actions ?? []).filter((action) => prefs.value.shortcuts[action] === '').map((action) => [action, false]));
+    shortcutTaken.value = { ...shortcutTaken.value, ...cleared };
+    offer.value = null;
+    recording.value = null;
     prefs.value.shortcutDefaults = SHORTCUT_DEFAULTS_VERSION;
 };
+
+/** Put the card up if this install has not answered it and there is something on it. */
+const considerOffer = () => {
+    if (view.value !== 'main' || offer.value || prefs.value.shortcutDefaults >= SHORTCUT_DEFAULTS_VERSION) return;
+    const next = shortcutOffer(prefs.value.shortcuts, defaultShortcuts(appleKeys));
+    // nothing to offer here (not a Mac, or every row already bound): that is an answer too
+    if (!next) prefs.value.shortcutDefaults = SHORTCUT_DEFAULTS_VERSION;
+    offer.value = next;
+};
+
+const setOfferRow = (action: ShortcutAction, accel: string) => {
+    if (!offer.value) return;
+    offer.value = { ...offer.value, draft: assignShortcut(offer.value.draft, action, accel) };
+    shortcutTaken.value = { ...shortcutTaken.value, [action]: false };
+};
+
+const turnOnOffer = async () => {
+    const card = offer.value;
+    if (!card) return;
+    recording.value = null;
+    for (const [action, accel] of offerChanges(prefs.value.shortcuts, card.draft)) await setShortcut(action, accel);
+    // a refused row keeps the card up, with the reason on the row
+    if (card.actions.some((action) => shortcutTaken.value[action])) return;
+    answerOffer();
+};
+
+watch(view, considerOffer);
 
 onMounted(async () => {
     // The system forgets our registrations when the app quits, so every launch
     // hands the saved bindings back; one the machine has since given to
     // another app comes back refused and says so in its row.
     await Promise.all(SHORTCUT_ACTIONS.filter((action) => prefs.value.shortcuts[action]).map((action) => applyShortcut(action, prefs.value.shortcuts[action])));
-    await offerDefaultShortcuts();
+    considerOffer();
 });
 
 // ---- coming back to the popover -------------------------------------------
@@ -1742,7 +1780,9 @@ const onKeydown = (e: KeyboardEvent) => {
         const accel = accelerator(e);
         if (!accel) return; // a modifier still on its own, or a combination we can't bind: keep listening
         recording.value = null;
-        setShortcut(action, accel);
+        // the first-run card edits its draft; Settings binds at once
+        if (offer.value) setOfferRow(action, accel);
+        else setShortcut(action, accel);
         return;
     }
     // ⌘N / Ctrl+N does what the footer's ＋ does, from anywhere in the popover
@@ -1755,11 +1795,20 @@ const onKeydown = (e: KeyboardEvent) => {
         openForm();
         return;
     }
+    // Return is the first-run card's one button, as it is a dialog's default
+    // button; not while a control of the card has focus, whose own key it is.
+    if (e.key === 'Enter' && offerShown.value && offerHasWork.value && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
+        turnOnOffer();
+        return;
+    }
     if (e.key !== 'Escape') return;
     if (presetsOpen.value) closePresets();
     else if (settingsOpen.value) settingsOpen.value = false;
     // the sheet, even from inside its project search, which opens with it (board #532)
     else if (formOpen.value) formOpen.value = false;
+    // the first-run card: Escape is its ×
+    else if (offerShown.value) answerOffer();
     else return;
     e.preventDefault();
 };
@@ -1966,6 +2015,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div class="sheet-actions">
                     <button class="btn-outline" @click="dismissUpdate">{{ t('update.later') }}</button>
                     <button class="btn-primary" @click="installUpdate">{{ t('update.install') }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- first run: the three timer hotkeys, offered once (see `offer`) -->
+        <div v-if="offer && offerShown" class="sheet-overlay">
+            <div class="sheet shortcut-offer">
+                <button class="sheet-close" :title="t('common.close')" :aria-label="t('common.close')" @click="answerOffer">×</button>
+                <p class="sheet-title">{{ t('settings.tabShortcuts') }}</p>
+                <p class="muted shortcut-offer-hint">{{ t('settings.shortcutsHint') }}</p>
+                <div class="shortcut-offer-rows">
+                    <div v-for="action in offer.actions" :key="action" class="pref-shortcut">
+                        <div class="pref-row">
+                            <span class="pref-shortcut-label">{{ t(shortcutLabels[action]) }}</span>
+                            <span class="shortcut-field">
+                                <button
+                                    class="shortcut-record"
+                                    :class="{ recording: recording === action, set: !!offer.draft[action] }"
+                                    :title="t('settings.recordShortcut')"
+                                    @click="recording === action ? (recording = null) : startRecording(action)"
+                                >
+                                    {{ recording === action ? t('settings.recording') : offer.draft[action] ? formatAccelerator(offer.draft[action]) : t('settings.recordShortcut') }}
+                                </button>
+                                <button class="shortcut-clear" :class="{ empty: !offer.draft[action] }" :title="t('settings.clearShortcut')" @click="setOfferRow(action, '')">✕</button>
+                            </span>
+                        </div>
+                        <div v-if="shortcutTaken[action]" class="shortcut-taken">{{ t('settings.shortcutTaken') }}</div>
+                    </div>
+                </div>
+                <div class="sheet-actions">
+                    <button class="btn-primary" :disabled="!offerHasWork" @click="turnOnOffer">{{ t('settings.shortcutsTurnOn') }}</button>
                 </div>
             </div>
         </div>
@@ -3032,6 +3112,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 }
 .shortcuts-hint {
     margin-bottom: 4px;
+}
+/* The first-run card: the Settings tab's rows on a sheet of their own, with
+   more air between them — three rows are the whole card, not a list to scan. */
+.shortcut-offer {
+    position: relative;
+    padding: 18px;
+}
+/* title, hint and row labels share one left edge */
+.shortcut-offer .sheet-title {
+    text-align: left;
+}
+.shortcut-offer-hint {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: -6px;
+}
+.shortcut-offer-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 6px 0 2px;
+}
+.shortcut-offer .pref-row {
+    font-size: 13px;
+    padding: 0;
+}
+.shortcut-offer .shortcut-taken {
+    padding: 2px 0 0;
 }
 /* the presets popout's title */
 .pref-group {

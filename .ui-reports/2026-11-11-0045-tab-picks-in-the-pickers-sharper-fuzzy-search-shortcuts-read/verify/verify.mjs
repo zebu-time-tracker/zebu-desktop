@@ -12,12 +12,14 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
 
 const browser = await pw[engine].launch();
-const fresh = async (extra = '') => {
+// Storage as an install that has already answered the first-run shortcuts card, unless `extra` seeds its own.
+const ANSWERED = `if (!localStorage.getItem('zebu.prefs')) localStorage.setItem('zebu.prefs', JSON.stringify({ shortcutDefaults: 1 }));`;
+const fresh = async (extra = ANSWERED) => {
     const context = await browser.newContext({ viewport: { width: 475, height: 640 } });
     const page = await context.newPage();
     await page.addInitScript(extra + mock);
     await page.goto(base);
-    await page.waitForSelector('.new-timer');
+    await page.waitForSelector('.footer');
     await page.waitForTimeout(300);
     return page;
 };
@@ -120,48 +122,134 @@ const openSheet = async (page) => { await page.click('.new-timer'); await page.w
     check('Presets: ↓↓ + Return starts the third', started?.project_id === 'p4', JSON.stringify(started));
     await page2.context().close();
 }
-// 6. default hotkeys: handed out once, named in the tray tooltip, a cleared one stays cleared
-{
-    const page = await fresh();
-    await page.waitForTimeout(300);
-    let info = await page.evaluate(() => ({
-        set: window.__invoked.filter(([c]) => c === 'set_shortcut').map(([, a]) => `${a.action}=${a.accelerator}`),
-        prefs: JSON.parse(localStorage.getItem('zebu.prefs')),
-        tooltip: window.__invoked.filter(([c]) => c === 'set_tray_state').map(([, a]) => a.entry?.tooltip).pop(),
-    }));
-    check('First launch registers the three defaults', info.set.join(' ') === 'toggleTimer=Control+Alt+Super+KeyS newTimer=Control+Alt+Super+KeyN togglePopover=Control+Alt+Super+KeyZ', info.set.join(' '));
-    check('…and stores them, with the marker', info.prefs.shortcutDefaults === 1 && info.prefs.shortcuts.toggleTimer === 'Control+Alt+Super+KeyS' && info.prefs.shortcuts.toggleInsights === '', JSON.stringify(info.prefs.shortcuts));
-    check('The tray tooltip names the start/stop hotkey', (info.tooltip ?? '').endsWith('\nStart or stop the timer (⌃⌥⌘S)'), JSON.stringify(info.tooltip));
-    // clear "new timer" in the settings, then relaunch (same storage)
-    await page.click('.footer-right button');
-    await page.click('#settings-tab-shortcuts');
-    await page.click('.pref-shortcut:nth-of-type(2) .shortcut-clear');
-    await page.waitForTimeout(200);
-    await page.evaluate(() => (window.__keep = localStorage.getItem('zebu.prefs')));
-    const kept = await page.evaluate(() => window.__keep);
+// 6. the first-run card
+const shortcutState = (page) => page.evaluate(() => ({
+    card: !!document.querySelector('.shortcut-offer'),
+    rows: [...document.querySelectorAll('.shortcut-offer .shortcut-record')].map((b) => b.textContent.trim()),
+    taken: [...document.querySelectorAll('.shortcut-offer .pref-shortcut')].map((r) => !!r.querySelector('.shortcut-taken')),
+    set: window.__invoked.filter(([c, a]) => c === 'set_shortcut' && a.accelerator).map(([, a]) => `${a.action}=${a.accelerator}`),
+    prefs: JSON.parse(localStorage.getItem('zebu.prefs') || '{}'),
+    tooltip: window.__invoked.filter(([c]) => c === 'set_tray_state').map(([, a]) => a.entry?.tooltip).pop(),
+}));
+const firstRun = async (seed = '') => { const page = await fresh(seed || ' '); await page.waitForTimeout(300); return page; };
+const relaunch = async (page) => {
+    const kept = await page.evaluate(() => localStorage.getItem('zebu.prefs'));
     await page.context().close();
-    const again = await fresh(`localStorage.setItem('zebu.prefs', ${JSON.stringify(kept)}); window.__seeded = true;`);
+    const again = await fresh(`localStorage.setItem('zebu.prefs', ${JSON.stringify(kept)});`);
     await again.waitForTimeout(300);
-    info = await again.evaluate(() => ({
-        set: window.__invoked.filter(([c]) => c === 'set_shortcut').map(([, a]) => `${a.action}=${a.accelerator}`),
-        prefs: JSON.parse(localStorage.getItem('zebu.prefs')),
-    }));
-    check('A default the person cleared stays cleared on the next launch', info.prefs.shortcuts.newTimer === '' && !info.set.some((x) => x.startsWith('newTimer')), info.set.join(' '));
-    await again.context().close();
-}
-// 7. an install that already has its own start/stop hotkey keeps it
+    return again;
+};
 {
-    const prefs = { shortcuts: { toggleTimer: 'Alt+Super+KeyT', newTimer: '', togglePopover: '', toggleInsights: 'Control+Alt+Super+KeyN', showPresets: '' } };
-    const page = await fresh(`localStorage.setItem('zebu.prefs', ${JSON.stringify(JSON.stringify(prefs))});`);
-    await page.waitForTimeout(300);
-    const p = await page.evaluate(() => JSON.parse(localStorage.getItem('zebu.prefs')).shortcuts);
-    check('Existing bindings are kept; only untouched rows get a default', p.toggleTimer === 'Alt+Super+KeyT' && p.toggleInsights === 'Control+Alt+Super+KeyN' && p.newTimer === '' && p.togglePopover === 'Control+Alt+Super+KeyZ', JSON.stringify(p));
+    let page = await firstRun();
+    let s = await shortcutState(page);
+    check('First open on a Mac shows the card with ⌥⌘P, ⌥⌘N, ⌥⌘T', s.card && s.rows.join(' ') === '⌥⌘P ⌥⌘N ⌥⌘T', s.rows.join(' '));
+    check('…and nothing is registered until it is answered', s.set.length === 0 && !s.prefs.shortcutDefaults, s.set.join(' '));
+    await page.click('.shortcut-offer .btn-primary');
+    await page.waitForTimeout(250);
+    s = await shortcutState(page);
+    check('Turn on registers the three and closes the card', !s.card && s.set.join(' ') === 'toggleTimer=Alt+Super+KeyP newTimer=Alt+Super+KeyN togglePopover=Alt+Super+KeyT', s.set.join(' '));
+    check('…stores them, and marks the card answered', s.prefs.shortcutDefaults === 1 && s.prefs.shortcuts.toggleTimer === 'Alt+Super+KeyP' && s.prefs.shortcuts.toggleInsights === '', JSON.stringify(s.prefs.shortcuts));
+    check('The tray tooltip names the start/stop hotkey', (s.tooltip ?? '').endsWith('\nStart or stop the timer (⌥⌘P)'), JSON.stringify(s.tooltip));
+    page = await relaunch(page);
+    s = await shortcutState(page);
+    check('The card does not come back; the saved keys are re-registered', !s.card && s.set.length === 3, s.set.join(' '));
+    await page.context().close();
+}
+{
+    let page = await firstRun();
+    await page.click('.shortcut-offer .sheet-close');
+    await page.waitForTimeout(200);
+    let s = await shortcutState(page);
+    check('× binds nothing and answers the card', !s.card && s.set.length === 0 && s.prefs.shortcutDefaults === 1 && s.prefs.shortcuts.toggleTimer === '', JSON.stringify(s.prefs));
+    page = await relaunch(page);
+    s = await shortcutState(page);
+    check('…for good', !s.card && s.set.length === 0);
+    await page.context().close();
+}
+{
+    const page = await firstRun();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    const s = await shortcutState(page);
+    check('Escape is the card\'s ×', !s.card && s.set.length === 0 && s.prefs.shortcutDefaults === 1);
+    await page.context().close();
+}
+{
+    const page = await firstRun();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(250);
+    const s = await shortcutState(page);
+    check('Return is the card\'s Turn on', !s.card && s.set.length === 3, s.set.join(' '));
+    await page.context().close();
+}
+{
+    const page = await firstRun();
+    await page.click('.shortcut-offer .pref-shortcut:nth-of-type(1) .shortcut-record');
+    await page.keyboard.press('Control+Alt+Meta+KeyS');
+    await page.click('.shortcut-offer .pref-shortcut:nth-of-type(3) .shortcut-clear');
+    await page.waitForTimeout(150);
+    let s = await shortcutState(page);
+    check('A row re-recorded or emptied on the card is only a draft', s.rows.join(' ') === '⌃⌥⌘S ⌥⌘N Record shortcut' && s.set.length === 0, s.rows.join(' '));
+    await page.click('.shortcut-offer .btn-primary');
+    await page.waitForTimeout(250);
+    s = await shortcutState(page);
+    check('Turn on binds the card as edited', !s.card && s.set.join(' ') === 'toggleTimer=Control+Alt+Super+KeyS newTimer=Alt+Super+KeyN' && s.prefs.shortcuts.togglePopover === '', s.set.join(' '));
+    await page.context().close();
+}
+{
+    const page = await firstRun(`sessionStorage.setItem('mockTaken', 'Alt+Super+KeyT');`);
+    await page.click('.shortcut-offer .btn-primary');
+    await page.waitForTimeout(250);
+    let s = await shortcutState(page);
+    check('A refused combination keeps the card up and says so on its row', s.card && s.taken.join() === 'false,false,true' && s.prefs.shortcuts.newTimer === 'Alt+Super+KeyN' && s.prefs.shortcuts.togglePopover === '', JSON.stringify(s.taken));
+    await page.click('.shortcut-offer .pref-shortcut:nth-of-type(3) .shortcut-record');
+    await page.keyboard.press('Alt+Meta+KeyZ');
+    await page.waitForTimeout(100);
+    s = await shortcutState(page);
+    check('…re-recording the row clears the complaint', s.taken.join() === 'false,false,false' && s.rows[2] === '⌥⌘Z', s.rows.join(' '));
+    await page.click('.shortcut-offer .btn-primary');
+    await page.waitForTimeout(250);
+    s = await shortcutState(page);
+    check('…and Turn on then finishes', !s.card && s.prefs.shortcuts.togglePopover === 'Alt+Super+KeyZ', JSON.stringify(s.prefs.shortcuts));
+    await page.context().close();
+}
+// 7. installs that already have bindings, and platforms with no offer
+{
+    const seed = (shortcuts) => `localStorage.setItem('zebu.prefs', ${JSON.stringify(JSON.stringify({ shortcuts }))});`;
+    let page = await firstRun(seed({ toggleTimer: 'Control+Alt+KeyS', newTimer: '', togglePopover: '', toggleInsights: '', showPresets: '' }));
+    let s = await shortcutState(page);
+    check('A row already bound shows that binding on the card', s.card && s.rows.join(' ') === '⌃⌥S ⌥⌘N ⌥⌘T', s.rows.join(' '));
+    await page.click('.shortcut-offer .btn-primary');
+    await page.waitForTimeout(250);
+    s = await shortcutState(page);
+    check('…and Turn on leaves it as it was', s.prefs.shortcuts.toggleTimer === 'Control+Alt+KeyS' && s.prefs.shortcuts.newTimer === 'Alt+Super+KeyN', JSON.stringify(s.prefs.shortcuts));
+    await page.context().close();
+    page = await firstRun(seed({ toggleTimer: 'Alt+KeyA', newTimer: 'Alt+KeyB', togglePopover: 'Alt+KeyC', toggleInsights: '', showPresets: '' }));
+    s = await shortcutState(page);
+    check('Every offered row already bound: no card', !s.card && s.prefs.shortcutDefaults === 1);
+    await page.context().close();
+    page = await firstRun(`window.__mockOpts = { notMac: true };`);
+    s = await shortcutState(page);
+    check('Not a Mac: no card, nothing bound', !s.card && s.set.length === 0 && s.prefs.shortcutDefaults === 1, JSON.stringify(s.prefs));
+    await page.context().close();
+}
+{
+    // the card waits behind the entry sheet, and is still there after it
+    const page = await firstRun();
+    await page.keyboard.press('Meta+KeyN');
+    await page.waitForTimeout(200);
+    let s = await page.evaluate(() => ({ card: !!document.querySelector('.shortcut-offer'), sheet: !!document.querySelector('.sheet .picker') }));
+    check('⌘N over the card opens the entry sheet instead', !s.card && s.sheet, JSON.stringify(s));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    s = await page.evaluate(() => ({ card: !!document.querySelector('.shortcut-offer'), sheet: !!document.querySelector('.sheet .picker') }));
+    check('…and closing the sheet brings the card back, unanswered', s.card && !s.sheet, JSON.stringify(s));
     await page.context().close();
 }
 // 8. a picker nobody follows up (settings › Focus rule): Tab picks and moves to the next control
 {
     const rules = [{ app: 'Figma', key: '', project_id: 'p1', workspace: 'https://studio.zebu.work' }];
-    const page = await fresh(`localStorage.setItem('zebu.focusRules', ${JSON.stringify(JSON.stringify(rules))});`);
+    const page = await fresh(ANSWERED + `localStorage.setItem('zebu.focusRules', ${JSON.stringify(JSON.stringify(rules))});`);
     await page.click('.footer-right button');
     await page.click('#settings-tab-focus');
     await page.click('.focus-rule .picker-button');
@@ -196,7 +284,7 @@ const openSheet = async (page) => { await page.click('.new-timer'); await page.w
     const run = async (opts) => {
         const context = await browser.newContext({ viewport: { width: 475, height: 640 } });
         const page = await context.newPage();
-        await page.addInitScript(events.replace('OPTS', JSON.stringify(opts)) + mock + plumbing);
+        await page.addInitScript(ANSWERED + events.replace('OPTS', JSON.stringify(opts)) + mock + plumbing);
         await page.goto(base);
         await page.waitForSelector('.footer');
         await page.waitForTimeout(400);
