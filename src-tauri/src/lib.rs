@@ -11,7 +11,8 @@ use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Emitter, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent,
 };
 #[cfg(target_os = "linux")]
 use tauri::menu::{Menu, MenuItem};
@@ -51,20 +52,217 @@ fn idle_seconds() -> u64 {
 /// seen; straight after launch (or when the idle watcher fires before any
 /// click) it errors, so fall back to asking the tray for its rect directly.
 /// Never lets the window land in the middle of the screen.
+///
+/// A Mac is placed in points instead (`anchor_under_menubar_icon`), because
+/// the positioner's arithmetic only holds while every display has the same
+/// scale; it remains the fallback there for an icon no display accounts for.
 fn anchor_popover(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    if cfg!(target_os = "macos") && anchor_under_menubar_icon(app, window) {
+        return;
+    }
     if window.move_window(Position::TrayCenter).is_err() {
-        if let (Some(Ok(Some(rect))), Ok(win)) = (app.tray_by_id("main").map(|t| t.rect()), window.outer_size()) {
-            // tray-icon reports physical pixels already (same assumption as the positioner)
-            let pos = rect.position.to_physical::<f64>(1.0);
-            let size = rect.size.to_physical::<f64>(1.0);
-            let x = pos.x + size.width / 2.0 - win.width as f64 / 2.0;
+        if let (Some(icon), Ok(win)) = (tray_anchor(app), window.outer_size()) {
+            let x = icon.x + icon.width / 2.0 - win.width as f64 / 2.0;
             #[cfg(target_os = "macos")]
-            let y = pos.y;
+            let y = icon.y;
             #[cfg(not(target_os = "macos"))]
-            let y = pos.y + size.height;
+            let y = icon.y + icon.height;
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }
     }
+}
+
+// ---- the menubar icon on a Mac with more than one display -------------------
+//
+// GitHub issue 59: with an external monitor the popover came up in the middle
+// of a screen instead of under the icon, and stayed wrong however often it was
+// reopened.
+//
+// On a Mac, "physical pixels" are not one coordinate space. Every number is
+// AppKit's points multiplied by a scale, and each party picks its own: the
+// tray reports the icon times the scale of the display its menubar is on,
+// while a window's position is divided by the scale of the display *that
+// window* was last on. With a Retina laptop beside an ordinary monitor those
+// are 2 and 1, so an icon at 1200 points went out as 2400 and came back as
+// 2400 points — half a monitor away — whenever the hidden popover sat on the
+// other display, which is where macOS puts it when displays come and go
+// around sleep. The same mix-up handed the pill's click the wrong scale, so
+// the play/pause button's edge was drawn in the wrong place for the click.
+//
+// So the icon is taken back to points first, by finding the display it is on,
+// and the popover is positioned in points, which no scale can bend.
+
+/// A display as AppKit lays it out: its frame in points, measured from the
+/// top-left corner of the main display, and how many pixels make one point.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Display {
+    frame: ScreenRect,
+    scale: f64,
+}
+
+/// A menubar is 24 points tall, about 37 beside a notch, 22 on older systems.
+const MENUBAR_MIN: f64 = 22.0;
+const MENUBAR_MAX: f64 = 40.0;
+
+/// How far a height is from being a menubar's.
+fn menubar_misfit(height: f64) -> f64 {
+    (MENUBAR_MIN - height).max(height - MENUBAR_MAX).max(0.0)
+}
+
+/// The menubar icon in points, and the display it is on, from the rect the
+/// tray reports (points times the scale of the icon's own display).
+///
+/// The scale is not reported, so each display's is tried: the right one puts
+/// the icon across the top edge of that same display. Two displays of
+/// different scale can both pass — 2400 "pixels" is 1200 points on a Retina
+/// laptop and also a real place on the monitor to its right — and then the
+/// icon's height settles it, since only one reading is as tall as a menubar.
+/// None when no display accounts for the rect (it was unplugged since).
+fn tray_in_points(rect: ScreenRect, displays: &[Display]) -> Option<(ScreenRect, Display)> {
+    displays
+        .iter()
+        .filter(|display| display.scale > 0.0)
+        .filter_map(|display| {
+            let s = display.scale;
+            let icon = ScreenRect { x: rect.x / s, y: rect.y / s, width: rect.width / s, height: rect.height / s };
+            let centre = icon.x + icon.width / 2.0;
+            let across = centre >= display.frame.x && centre <= display.frame.x + display.frame.width;
+            // one icon's height of slack: a menubar that hides itself parks
+            // its items just above the display
+            let at_the_top = (icon.y - display.frame.y).abs() <= icon.height + 1.0;
+            (across && at_the_top).then_some((icon, *display))
+        })
+        .min_by(|a, b| menubar_misfit(a.0.height).total_cmp(&menubar_misfit(b.0.height)))
+}
+
+/// Where a popover `width` points wide hangs from the icon: centred under it,
+/// its top at the icon's (macOS keeps it clear of the menubar), and moved
+/// sideways as far as it takes to stay on the icon's display.
+fn popover_under(icon: ScreenRect, display: ScreenRect, width: f64) -> (f64, f64) {
+    let x = icon.x + icon.width / 2.0 - width / 2.0;
+    (
+        x.clamp(display.x, (display.x + display.width - width).max(display.x)),
+        icon.y.max(display.y),
+    )
+}
+
+/// The displays as they are now. Only true to its name on a Mac, where a
+/// monitor's origin and size are its points times its own scale.
+fn mac_displays(app: &tauri::AppHandle) -> Vec<Display> {
+    app.available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|monitor| {
+            let scale = monitor.scale_factor();
+            let (at, size) = (monitor.position(), monitor.size());
+            Display {
+                frame: ScreenRect {
+                    x: at.x as f64 / scale,
+                    y: at.y as f64 / scale,
+                    width: size.width as f64 / scale,
+                    height: size.height as f64 / scale,
+                },
+                scale,
+            }
+        })
+        .collect()
+}
+
+/// The icon's rect as of the last click on it, and the displays there were at
+/// the time. Each display has a menubar of its own, so the click says which
+/// copy of the icon the popover belongs under; the tray itself only ever
+/// answers for one of them.
+static TRAY_CLICKED: Mutex<Option<(ScreenRect, Vec<Display>)>> = Mutex::new(None);
+
+fn remember_tray_click(app: &tauri::AppHandle, rect: tauri::Rect) {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
+    if let Ok(mut clicked) = TRAY_CLICKED.lock() {
+        *clicked = Some((tray_rect(rect), mac_displays(app)));
+    }
+}
+
+/// The clicked rect, for as long as the displays are the ones it was clicked
+/// on. A display plugged in, unplugged or rearranged since — waking from sleep
+/// at a different desk — makes it a place that may no longer exist.
+fn clicked_rect(clicked: &Option<(ScreenRect, Vec<Display>)>, displays: &[Display]) -> Option<ScreenRect> {
+    clicked.as_ref().filter(|(_, then)| then.as_slice() == displays).map(|(rect, _)| *rect)
+}
+
+/// Hang the popover from the menubar icon, in points. False when the icon
+/// cannot be placed on any display, which leaves it to the caller's fallback.
+fn anchor_under_menubar_icon(app: &tauri::AppHandle, window: &tauri::WebviewWindow) -> bool {
+    let displays = mac_displays(app);
+    let clicked = TRAY_CLICKED.lock().ok().and_then(|clicked| clicked_rect(&clicked, &displays));
+    let placed = clicked
+        .and_then(|rect| tray_in_points(rect, &displays))
+        .or_else(|| tray_anchor(app).and_then(|rect| tray_in_points(rect, &displays)));
+    let Some((icon, display)) = placed else {
+        return false;
+    };
+    let (x, y) = popover_under(icon, display.frame, MAIN_WIDTH);
+    window.set_position(LogicalPosition::new(x, y)).is_ok()
+}
+
+/// The scale of the display whose menubar was clicked. None off a Mac, and
+/// when the rect fits no display.
+fn mac_tray_scale(app: &tauri::AppHandle, icon: ScreenRect) -> Option<f64> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
+    tray_in_points(icon, &mac_displays(app)).map(|(_, display)| display.scale)
+}
+
+// ---- screen units -----------------------------------------------------------
+//
+// The idle prompt and Insights are windows of their own, placed against the
+// popover. For the reason above that sum cannot be done in pixels on a Mac —
+// the popover's position is in its display's pixels and the other window's
+// would be read in its own — so everything that says where a window goes is
+// in *screen units*: points on a Mac, physical pixels everywhere else, where
+// pixels are one space and nothing changes.
+
+/// Whether screen units are points here.
+const IN_POINTS: bool = cfg!(target_os = "macos");
+
+/// How long one point is in screen units, on a display of `scale`.
+fn point_in(scale: f64, in_points: bool) -> f64 {
+    if in_points {
+        1.0
+    } else {
+        scale
+    }
+}
+
+fn point(scale: f64) -> f64 {
+    point_in(scale, IN_POINTS)
+}
+
+/// A rectangle measured in the pixels of a display of `scale`, in screen units.
+fn on_screen_in(pixels: ScreenRect, scale: f64, in_points: bool) -> ScreenRect {
+    if !in_points || scale <= 0.0 {
+        return pixels;
+    }
+    ScreenRect { x: pixels.x / scale, y: pixels.y / scale, width: pixels.width / scale, height: pixels.height / scale }
+}
+
+/// Where a window is and how big, in screen units.
+fn window_frame(window: &tauri::WebviewWindow) -> Option<ScreenRect> {
+    let scale = window.scale_factor().ok()?;
+    let at = window.outer_position().ok()?;
+    let size = window.outer_size().ok()?;
+    let pixels = ScreenRect { x: at.x as f64, y: at.y as f64, width: size.width as f64, height: size.height as f64 };
+    Some(on_screen_in(pixels, scale, IN_POINTS))
+}
+
+/// Put a window at a place given in screen units.
+fn move_to(window: &tauri::WebviewWindow, x: f64, y: f64) {
+    let _ = if IN_POINTS {
+        window.set_position(LogicalPosition::new(x, y))
+    } else {
+        window.set_position(PhysicalPosition::new(x, y))
+    };
 }
 
 /// Show or hide the popover, and tell the webview which it was.
@@ -175,9 +373,10 @@ fn fit_popover(app: tauri::AppHandle, chrome: f64, row: f64, entries: usize, ext
         return; // nothing measured yet
     }
     let scale = window.scale_factor().unwrap_or(1.0);
-    let origin = window.outer_position().map(|p| (p.x as f64, p.y as f64)).unwrap_or((0.0, 0.0));
-    let work = work_area(&app, origin.0 + MAIN_WIDTH * scale / 2.0, origin.1 + 1.0);
-    let height = popover_height(chrome, list_height(entries, row, extra), floor, work.height / scale).round();
+    let point = point(scale);
+    let origin = window_frame(&window).map(|frame| (frame.x, frame.y)).unwrap_or((0.0, 0.0));
+    let work = work_area(&app, origin.0 + MAIN_WIDTH * point / 2.0, origin.1 + 1.0);
+    let height = popover_height(chrome, list_height(entries, row, extra), floor, work.height / point).round();
     let current = window.inner_size().map(|s| (s.height as f64 / scale).round()).unwrap_or(0.0);
     if current == height {
         return;
@@ -337,7 +536,8 @@ const IDLE_HEIGHT: f64 = 240.0;
 /// Breathing room between the anchor and the prompt, in logical pixels.
 const IDLE_GAP: f64 = 6.0;
 
-/// A rectangle in physical screen pixels.
+/// A rectangle on the screen, in screen units (points on a Mac, physical
+/// pixels elsewhere) unless said to be as the tray reported it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct ScreenRect {
     x: f64,
@@ -369,7 +569,7 @@ fn idle_prompt_pending() -> bool {
 
 /// Where to put a `size` window so it hangs off `anchor` and still fits the
 /// screen: centred under the anchor, flipped above it when there is no room
-/// below, then clamped into the work area. All values are physical pixels.
+/// below, then clamped into the work area. All values are screen units.
 fn prompt_position(anchor: ScreenRect, size: (f64, f64), work: ScreenRect, gap: f64) -> (f64, f64) {
     let (width, height) = size;
     let below = anchor.y + anchor.height + gap;
@@ -387,6 +587,8 @@ fn prompt_position(anchor: ScreenRect, size: (f64, f64), work: ScreenRect, gap: 
 
 /// The visible area of the display holding a point — the whole virtual desktop
 /// when no monitor can be identified, so nothing gets clamped away blindly.
+/// Screen units in, screen units out: on a Mac the lookup itself is by points
+/// (it was handed pixels before, and found the wrong display or none).
 fn work_area(app: &tauri::AppHandle, x: f64, y: f64) -> ScreenRect {
     let monitor = app
         .monitor_from_point(x, y)
@@ -396,12 +598,13 @@ fn work_area(app: &tauri::AppHandle, x: f64, y: f64) -> ScreenRect {
     match monitor {
         Some(m) => {
             let area = m.work_area();
-            ScreenRect {
+            let pixels = ScreenRect {
                 x: area.position.x as f64,
                 y: area.position.y as f64,
                 width: area.size.width as f64,
                 height: area.size.height as f64,
-            }
+            };
+            on_screen_in(pixels, m.scale_factor(), IN_POINTS)
         }
         None => ScreenRect { x: -1e6, y: -1e6, width: 2e6, height: 2e6 },
     }
@@ -414,23 +617,43 @@ fn anchor_on_screen(app: &tauri::AppHandle, anchor: AnchorRect) -> Option<Screen
     if !window.is_visible().unwrap_or(false) {
         return None;
     }
-    let scale = window.scale_factor().ok()?;
-    let origin = window.outer_position().ok()?;
+    let point = point(window.scale_factor().ok()?);
+    let frame = window_frame(&window)?;
     Some(ScreenRect {
-        x: origin.x as f64 + anchor.x * scale,
-        y: origin.y as f64 + anchor.y * scale,
-        width: anchor.width * scale,
-        height: anchor.height * scale,
+        x: frame.x + anchor.x * point,
+        y: frame.y + anchor.y * point,
+        width: anchor.width * point,
+        height: anchor.height * point,
     })
 }
 
-/// Fallback anchor: the menubar icon, the same place the popover hangs from.
+/// The menubar icon as the tray reports it. Not screen units on a Mac: see
+/// `icon_on_screen` for those.
 fn tray_anchor(app: &tauri::AppHandle) -> Option<ScreenRect> {
-    let rect = app.tray_by_id("main")?.rect().ok()??;
-    // tray-icon reports physical pixels already (same assumption as show_popover)
+    Some(tray_rect(app.tray_by_id("main")?.rect().ok()??))
+}
+
+/// Fallback anchor: the menubar icon, the same place the popover hangs from,
+/// in screen units. On a Mac an icon no display accounts for is read at the
+/// main display's scale, which is what a single display always was.
+fn icon_on_screen(app: &tauri::AppHandle) -> Option<ScreenRect> {
+    let rect = tray_anchor(app)?;
+    if !IN_POINTS {
+        return Some(rect);
+    }
+    tray_in_points(rect, &mac_displays(app)).map(|(icon, _)| icon).or_else(|| {
+        let scale = app.primary_monitor().ok().flatten()?.scale_factor();
+        Some(on_screen_in(rect, scale, true))
+    })
+}
+
+/// The tray's rect as plain numbers. tray-icon reports physical pixels
+/// already; on a Mac that means points times the scale of the icon's display
+/// (see `tray_in_points`).
+fn tray_rect(rect: tauri::Rect) -> ScreenRect {
     let position = rect.position.to_physical::<f64>(1.0);
     let size = rect.size.to_physical::<f64>(1.0);
-    Some(ScreenRect { x: position.x, y: position.y, width: size.width, height: size.height })
+    ScreenRect { x: position.x, y: position.y, width: size.width, height: size.height }
 }
 
 /// Size the prompt to its content, put it where it fits, and show it.
@@ -439,16 +662,16 @@ fn place_idle_prompt(app: &tauri::AppHandle, height: f64) {
         return;
     };
     let _ = window.set_size(LogicalSize::new(IDLE_WIDTH, height));
-    let scale = window.scale_factor().unwrap_or(1.0);
+    let point = point(window.scale_factor().unwrap_or(1.0));
     let anchor = IDLE_PROMPT
         .lock()
         .ok()
         .and_then(|p| p.as_ref().and_then(|p| p.anchor))
-        .or_else(|| tray_anchor(app));
+        .or_else(|| icon_on_screen(app));
     if let Some(anchor) = anchor {
         let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
-        let (x, y) = prompt_position(anchor, (IDLE_WIDTH * scale, height * scale), area, IDLE_GAP * scale);
-        let _ = window.set_position(PhysicalPosition::new(x, y));
+        let (x, y) = prompt_position(anchor, (IDLE_WIDTH * point, height * point), area, IDLE_GAP * point);
+        move_to(&window, x, y);
     }
     let _ = window.show();
     let _ = window.set_focus();
@@ -565,7 +788,7 @@ fn insights_wanted() -> bool {
 
 /// Where to put a `size` panel so it sits beside `anchor` and still fits the
 /// screen: to its right, flipped to its left when there is no room, top edges
-/// aligned, then clamped into the work area. All values are physical pixels.
+/// aligned, then clamped into the work area. All values are screen units.
 ///
 /// Beside, not below: the popover hangs from the menubar, so a panel this tall
 /// under it would run off the bottom of every laptop display.
@@ -586,12 +809,7 @@ fn beside_position(anchor: ScreenRect, size: (f64, f64), work: ScreenRect, gap: 
 /// hangs off. Falls back to the menubar icon, as the idle prompt does.
 fn insights_anchor(app: &tauri::AppHandle) -> Option<ScreenRect> {
     let main = app.get_webview_window("main").filter(|w| w.is_visible().unwrap_or(false));
-    let rect = main.and_then(|window| {
-        let origin = window.outer_position().ok()?;
-        let size = window.outer_size().ok()?;
-        Some(ScreenRect { x: origin.x as f64, y: origin.y as f64, width: size.width as f64, height: size.height as f64 })
-    });
-    rect.or_else(|| tray_anchor(app))
+    main.and_then(|window| window_frame(&window)).or_else(|| icon_on_screen(app))
 }
 
 /// The height to open the panel at, given what its content measured and how
@@ -614,9 +832,9 @@ fn insights_available_height(app: &tauri::AppHandle) -> f64 {
     let Some(anchor) = insights_anchor(app) else {
         return INSIGHTS_HEIGHT;
     };
-    let scale = window.scale_factor().unwrap_or(1.0);
+    let point = point(window.scale_factor().unwrap_or(1.0));
     let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
-    area.height / scale - 2.0 * INSIGHTS_GAP
+    area.height / point - 2.0 * INSIGHTS_GAP
 }
 
 /// Size the panel to its content, put it where it fits, and show it.
@@ -630,23 +848,23 @@ fn place_insights(app: &tauri::AppHandle, height: f64) {
     // would otherwise push its bottom edge off the screen.
     let showing = window.is_visible().unwrap_or(false);
     let _ = window.set_size(LogicalSize::new(INSIGHTS_WIDTH, height));
-    let scale = window.scale_factor().unwrap_or(1.0);
+    let point = point(window.scale_factor().unwrap_or(1.0));
     if showing {
-        if let Ok(pos) = window.outer_position() {
-            let (x, y) = (pos.x as f64, pos.y as f64);
-            let area = work_area(app, x + INSIGHTS_WIDTH * scale / 2.0, y);
+        if let Some(frame) = window_frame(&window) {
+            let (x, y) = (frame.x, frame.y);
+            let area = work_area(app, x + INSIGHTS_WIDTH * point / 2.0, y);
             let bottom = area.y + area.height;
-            let clamped = y.clamp(area.y, (bottom - height * scale).max(area.y));
+            let clamped = y.clamp(area.y, (bottom - height * point).max(area.y));
             if clamped != y {
-                let _ = window.set_position(PhysicalPosition::new(x, clamped));
+                move_to(&window, x, clamped);
             }
         }
         return;
     }
     if let Some(anchor) = insights_anchor(app) {
         let area = work_area(app, anchor.x + anchor.width / 2.0, anchor.y);
-        let (x, y) = beside_position(anchor, (INSIGHTS_WIDTH * scale, height * scale), area, INSIGHTS_GAP * scale);
-        let _ = window.set_position(PhysicalPosition::new(x, y));
+        let (x, y) = beside_position(anchor, (INSIGHTS_WIDTH * point, height * point), area, INSIGHTS_GAP * point);
+        move_to(&window, x, y);
     }
     let _ = window.show();
     let _ = window.set_focus();
@@ -1032,17 +1250,21 @@ fn on_pill_click(app: &tauri::AppHandle, position: tauri::PhysicalPosition<f64>,
         toggle_timer(app);
         return;
     }
-    let scale = app
-        .monitor_from_point(position.x, position.y)
-        .ok()
-        .flatten()
-        .or_else(|| app.primary_monitor().ok().flatten())
-        .map(|m| m.scale_factor())
+    let icon = tray_rect(rect);
+    // The click and the rect are both in the pixels of the display that was
+    // clicked, so the scale has to be that display's too (issue 59: looking
+    // the click up as a point found a neighbouring display of another scale,
+    // and the button's edge moved off the artwork).
+    let scale = mac_tray_scale(app, icon)
+        .or_else(|| {
+            app.monitor_from_point(position.x, position.y)
+                .ok()
+                .flatten()
+                .or_else(|| app.primary_monitor().ok().flatten())
+                .map(|m| m.scale_factor())
+        })
         .unwrap_or(f64::from(tray_icon::SCALE));
-    // tray-icon reports physical pixels already (same assumption as the positioner)
-    let rect_x = rect.position.to_physical::<f64>(1.0).x;
-    let rect_width = rect.size.to_physical::<f64>(1.0).width;
-    match pill_zone(position.x - rect_x, rect_width, PILL_WIDTH.load(Ordering::SeqCst) as f64, scale) {
+    match pill_zone(position.x - icon.x, icon.width, PILL_WIDTH.load(Ordering::SeqCst) as f64, scale) {
         PillZone::Button => toggle_timer(app),
         PillZone::Clock => toggle_popover(app),
     }
@@ -1303,6 +1525,9 @@ pub fn run() {
                 .tooltip("Zebu")
                 .on_tray_icon_event(|tray, event| {
                     tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
+                    if let TrayIconEvent::Click { rect, .. } = &event {
+                        remember_tray_click(tray.app_handle(), *rect);
+                    }
 
                     match event {
                         // The pill is two controls: the play/pause artwork on the
@@ -1621,6 +1846,169 @@ mod prompt_position_tests {
     fn a_second_display_is_placed_in_its_own_coordinates() {
         let right = ScreenRect { x: 1440.0, y: 0.0, width: 1920.0, height: 1080.0 };
         assert_eq!(prompt_position(anchor(1450.0, 100.0), SIZE, right, 6.0), (1440.0, 130.0));
+    }
+}
+
+#[cfg(test)]
+mod menubar_icon_tests {
+    use super::{clicked_rect, popover_under, tray_in_points, Display, ScreenRect, MAIN_WIDTH};
+
+    fn rect(x: f64, y: f64, width: f64, height: f64) -> ScreenRect {
+        ScreenRect { x, y, width, height }
+    }
+
+    /// What the tray reports for an icon at `points` on a display of `scale`.
+    fn reported(points: ScreenRect, scale: f64) -> ScreenRect {
+        rect(points.x * scale, points.y * scale, points.width * scale, points.height * scale)
+    }
+
+    // A 14" MacBook Pro with a 1440p monitor to its right, tops level.
+    const LAPTOP: Display = Display { frame: ScreenRect { x: 0.0, y: 0.0, width: 1512.0, height: 982.0 }, scale: 2.0 };
+    const MONITOR: Display = Display { frame: ScreenRect { x: 1512.0, y: 0.0, width: 2560.0, height: 1440.0 }, scale: 1.0 };
+
+    #[test]
+    fn one_display_reads_back_as_it_was_laid_out() {
+        let icon = rect(1200.0, 0.0, 60.0, 24.0);
+        assert_eq!(tray_in_points(reported(icon, 2.0), &[LAPTOP]), Some((icon, LAPTOP)));
+        // centred under the icon, top at the icon's
+        assert_eq!(popover_under(icon, LAPTOP.frame, MAIN_WIDTH), (992.5, 0.0));
+    }
+
+    #[test]
+    fn a_retina_icon_is_not_mistaken_for_a_place_on_the_monitor_beside_it() {
+        // Issue 59. The laptop's icon at 1200 points goes out as 2400, which
+        // is also a real spot along the top of the monitor to the right.
+        let icon = rect(1200.0, 0.0, 60.0, 24.0);
+        let out = reported(icon, LAPTOP.scale);
+        assert_eq!(tray_in_points(out, &[LAPTOP, MONITOR]), Some((icon, LAPTOP)));
+        assert_eq!(tray_in_points(out, &[MONITOR, LAPTOP]), Some((icon, LAPTOP)));
+        assert_eq!(popover_under(icon, LAPTOP.frame, MAIN_WIDTH), (992.5, 0.0));
+
+        // What 0.2.5 did with the same click while the hidden popover sat on
+        // the monitor: tray pixels minus half a window measured at the
+        // window's scale, read back at the window's scale.
+        let window_scale = MONITOR.scale;
+        let was = (out.x + out.width / 2.0 - MAIN_WIDTH * window_scale / 2.0) / window_scale;
+        assert_eq!(was, 2222.5);
+        assert!(was > MONITOR.frame.x + 700.0, "710 points into the other display, nowhere near the icon");
+    }
+
+    #[test]
+    fn a_monitor_icon_is_not_mistaken_for_a_place_on_the_retina_laptop() {
+        // The other way round: 2800 on the monitor halves to 1400, which is on
+        // the laptop — as an icon 12 points tall, which no menubar is.
+        let icon = rect(2800.0, 0.0, 60.0, 24.0);
+        let out = reported(icon, MONITOR.scale);
+        assert_eq!(tray_in_points(out, &[LAPTOP, MONITOR]), Some((icon, MONITOR)));
+        assert_eq!(popover_under(icon, MONITOR.frame, MAIN_WIDTH), (2592.5, 0.0));
+    }
+
+    #[test]
+    fn a_notch_or_an_older_system_is_still_a_menubar() {
+        // 37 points beside a notch is 74 pixels: taller than usual, but far
+        // nearer a menubar than a 74-point icon on the monitor would be
+        let notched = rect(1200.0, 0.0, 60.0, 37.0);
+        assert_eq!(tray_in_points(reported(notched, 2.0), &[MONITOR, LAPTOP]), Some((notched, LAPTOP)));
+        let older = rect(2800.0, 0.0, 60.0, 22.0);
+        assert_eq!(tray_in_points(reported(older, 1.0), &[LAPTOP, MONITOR]), Some((older, MONITOR)));
+    }
+
+    #[test]
+    fn displays_above_and_beside_each_other_are_told_apart_by_place_alone() {
+        // the laptop under the monitor, the monitor being the main display
+        let above = Display { frame: rect(0.0, 0.0, 2560.0, 1440.0), scale: 1.0 };
+        let below = Display { frame: rect(500.0, 1440.0, 1512.0, 982.0), scale: 2.0 };
+        let icon = rect(1700.0, 1440.0, 60.0, 24.0);
+        assert_eq!(tray_in_points(reported(icon, 2.0), &[above, below]), Some((icon, below)));
+        // 0.2.5 hung the popover *above* an icon this far down; it belongs under it
+        assert_eq!(popover_under(icon, below.frame, MAIN_WIDTH), (1492.5, 1440.0));
+        // a display to the left of the main one has negative coordinates
+        let left = Display { frame: rect(-1920.0, 0.0, 1920.0, 1080.0), scale: 1.0 };
+        let icon = rect(-300.0, 0.0, 60.0, 24.0);
+        assert_eq!(tray_in_points(reported(icon, 1.0), &[LAPTOP, left]), Some((icon, left)));
+        assert_eq!(popover_under(icon, left.frame, MAIN_WIDTH), (-507.5, 0.0));
+    }
+
+    #[test]
+    fn the_popover_stays_on_the_icons_display() {
+        // an icon by the right edge: the popover moves left rather than
+        // hanging off the screen or onto the next display
+        let icon = rect(1440.0, 0.0, 60.0, 24.0);
+        assert_eq!(popover_under(icon, LAPTOP.frame, MAIN_WIDTH), (1512.0 - MAIN_WIDTH, 0.0));
+        let icon = rect(1520.0, 0.0, 60.0, 24.0);
+        assert_eq!(popover_under(icon, MONITOR.frame, MAIN_WIDTH), (1512.0, 0.0));
+        // a display narrower than the popover keeps its left edge
+        assert_eq!(popover_under(rect(100.0, 0.0, 60.0, 24.0), rect(0.0, 0.0, 400.0, 300.0), MAIN_WIDTH).0, 0.0);
+    }
+
+    #[test]
+    fn a_hidden_menubar_still_places_the_popover_at_the_top() {
+        // "Automatically hide the menu bar" parks the item above the display
+        let icon = rect(1200.0, -24.0, 60.0, 24.0);
+        let (points, display) = tray_in_points(reported(icon, 2.0), &[LAPTOP, MONITOR]).unwrap();
+        assert_eq!(display, LAPTOP);
+        assert_eq!(popover_under(points, display.frame, MAIN_WIDTH), (992.5, 0.0));
+    }
+
+    #[test]
+    fn an_icon_no_display_accounts_for_is_left_to_the_fallback() {
+        // the monitor it was on is gone, and so is that stretch of desktop
+        let icon = rect(3800.0, 0.0, 60.0, 24.0);
+        assert_eq!(tray_in_points(reported(icon, 1.0), &[LAPTOP]), None);
+        // halfway down a display is not a menubar
+        assert_eq!(tray_in_points(rect(600.0, 800.0, 120.0, 48.0), &[LAPTOP]), None);
+        assert_eq!(tray_in_points(rect(600.0, 0.0, 120.0, 48.0), &[]), None);
+    }
+
+    #[test]
+    fn a_click_is_only_remembered_while_the_displays_stay_as_they_were() {
+        let out = reported(rect(2800.0, 0.0, 60.0, 24.0), 1.0);
+        let clicked = Some((out, vec![LAPTOP, MONITOR]));
+        assert_eq!(clicked_rect(&clicked, &[LAPTOP, MONITOR]), Some(out));
+        // woken without the monitor: the remembered place is not asked for
+        assert_eq!(clicked_rect(&clicked, &[LAPTOP]), None);
+        // …nor after the monitor was moved in the arrangement
+        let moved = Display { frame: ScreenRect { x: -2560.0, ..MONITOR.frame }, ..MONITOR };
+        assert_eq!(clicked_rect(&clicked, &[LAPTOP, moved]), None);
+        assert_eq!(clicked_rect(&None, &[LAPTOP]), None);
+    }
+}
+
+#[cfg(test)]
+mod screen_unit_tests {
+    use super::{on_screen_in, point_in, prompt_position, ScreenRect, IDLE_GAP, IDLE_WIDTH};
+
+    fn rect(x: f64, y: f64, width: f64, height: f64) -> ScreenRect {
+        ScreenRect { x, y, width, height }
+    }
+
+    #[test]
+    fn off_the_mac_a_screen_unit_is_a_pixel_and_nothing_moves() {
+        let pixels = rect(2400.0, 50.0, 950.0, 1080.0);
+        assert_eq!(on_screen_in(pixels, 2.0, false), pixels);
+        assert_eq!(point_in(1.5, false), 1.5);
+    }
+
+    #[test]
+    fn on_a_mac_a_screen_unit_is_a_point_whatever_the_display() {
+        assert_eq!(on_screen_in(rect(2400.0, 50.0, 950.0, 1080.0), 2.0, true), rect(1200.0, 25.0, 475.0, 540.0));
+        assert_eq!(on_screen_in(rect(2400.0, 50.0, 475.0, 540.0), 1.0, true), rect(2400.0, 50.0, 475.0, 540.0));
+        assert_eq!(point_in(2.0, true), 1.0);
+        // a scale nobody reported is not divided by
+        assert_eq!(on_screen_in(rect(10.0, 10.0, 10.0, 10.0), 0.0, true), rect(10.0, 10.0, 10.0, 10.0));
+    }
+
+    #[test]
+    fn the_prompt_hangs_under_its_anchor_whichever_display_its_window_was_on() {
+        // The popover is on a Retina laptop at 800 points; the prompt's own
+        // window was last on a 1x monitor. In points neither scale appears.
+        let popover = on_screen_in(rect(1600.0, 48.0, 950.0, 1080.0), 2.0, true);
+        let stop_button = rect(popover.x + 420.0, popover.y + 200.0, 24.0, 24.0);
+        let work = rect(0.0, 24.0, 1512.0, 958.0);
+        let scale_of_the_prompts_window = 1.0;
+        let point = point_in(scale_of_the_prompts_window, true);
+        let (x, y) = prompt_position(stop_button, (IDLE_WIDTH * point, 240.0 * point), work, IDLE_GAP * point);
+        assert_eq!((x, y), (1232.0 - IDLE_WIDTH / 2.0, 254.0));
     }
 }
 
