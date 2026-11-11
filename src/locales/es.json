@@ -133,6 +133,8 @@
         "language": "Idioma",
         "tabSettings": "Ajustes",
         "tabShortcuts": "Atajos de teclado",
+        "shortcutsHint": "Funcionan desde cualquier app, aunque Zebu esté oculto.",
+        "shortcutsTurnOn": "Activar",
         "shortcutToggleTimer": "Iniciar o detener el temporizador",
         "shortcutNewTimer": "Iniciar un temporizador nuevo",
         "shortcutTogglePopover": "Mostrar u ocultar Zebu",

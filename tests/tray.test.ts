@@ -45,3 +45,9 @@ test('an unparseable start reads as stopped rather than a frozen clock', () => {
     const entry = trayEntry({ minutes: 5, timer_started_at: 'not a date', project: 'A', task: null }, t);
     assert.equal(entry?.started_at_ms, null);
 });
+
+test('a hint is a second line under the status, and no hint leaves the tooltip as it was', () => {
+    const stopped = { minutes: 125, timer_started_at: null, project: 'Acme', task: null };
+    assert.equal(trayEntry(stopped, t, 0, 'Start or stop the timer (⌃⌥⌘S)')?.tooltip, `tray.tooltipStopped|Acme|${TIME_PLACEHOLDER}\nStart or stop the timer (⌃⌥⌘S)`);
+    assert.equal(trayEntry(stopped, t, 0, '')?.tooltip, `tray.tooltipStopped|Acme|${TIME_PLACEHOLDER}`);
+});

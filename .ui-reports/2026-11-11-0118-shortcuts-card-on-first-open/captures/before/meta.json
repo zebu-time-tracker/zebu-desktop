@@ -1,0 +1,276 @@
+{
+  "shots": {
+    "first-open/popover": {
+      "kind": "viewport",
+      "item": "first-open",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/first-open/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [],
+      "missingHighlights": []
+    },
+    "first-open/detail-1@popover": {
+      "missing": true,
+      "selector": ".shortcut-offer"
+    },
+    "first-open-dark/popover": {
+      "kind": "viewport",
+      "item": "first-open-dark",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/first-open-dark/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [],
+      "missingHighlights": []
+    },
+    "first-open-dark/detail-1@popover": {
+      "missing": true,
+      "selector": ".shortcut-offer"
+    },
+    "change/popover": {
+      "kind": "viewport",
+      "item": "change",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/change/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [],
+      "missingHighlights": []
+    },
+    "change/detail-1@popover": {
+      "missing": true,
+      "selector": ".shortcut-offer"
+    },
+    "taken/popover": {
+      "kind": "viewport",
+      "item": "taken",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/taken/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [],
+      "missingHighlights": []
+    },
+    "taken/detail-1@popover": {
+      "missing": true,
+      "selector": ".shortcut-offer"
+    },
+    "turned-on/popover": {
+      "kind": "viewport",
+      "item": "turned-on",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/turned-on/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "⌥⌘P / N / T, as Harvest",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 388.609375,
+            "w": 433,
+            "h": 164.390625
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "turned-on/detail-1@popover": {
+      "kind": "detail",
+      "item": "turned-on",
+      "detail": "detail-1",
+      "label": "Shortcuts tab",
+      "viewport": "popover",
+      "file": "captures/before/turned-on/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 323
+      },
+      "px": {
+        "w": 1425,
+        "h": 969
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "⌥⌘P / N / T, as Harvest",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 105.609375,
+            "w": 433,
+            "h": 164.390625
+          }
+        }
+      ]
+    },
+    "dismissed/popover": {
+      "kind": "viewport",
+      "item": "dismissed",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/dismissed/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Rows left empty",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 388.609375,
+            "w": 433,
+            "h": 164.390625
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "dismissed/detail-1@popover": {
+      "kind": "detail",
+      "item": "dismissed",
+      "detail": "detail-1",
+      "label": "Shortcuts tab",
+      "viewport": "popover",
+      "file": "captures/before/dismissed/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 323
+      },
+      "px": {
+        "w": 1425,
+        "h": 969
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Rows left empty",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 105.609375,
+            "w": 433,
+            "h": 164.390625
+          }
+        }
+      ]
+    }
+  },
+  "phase": "before",
+  "baseUrl": "http://127.0.0.1:5198",
+  "capturedAt": "2026-11-11T00:25:48.288Z",
+  "git": {
+    "repo": true,
+    "root": "/home/awoo/code/zebu/zebu-desktop-picker-tab",
+    "head": "88533312af4755288476dbf7d73c48d6d7927d11",
+    "short": "88533312a",
+    "branch": "picker-tab-shortcuts",
+    "subject": "docs(ui-report): keep the keyboard check script beside the report (#569)",
+    "commitDate": "2026-11-11T01:09:09+01:00",
+    "author": "Alan's Agent",
+    "dirty": true,
+    "dirtyFiles": [
+      "ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read/verify/mock.js",
+      "CLAUDE.md",
+      "README.md",
+      "src/App.vue",
+      "src/locales/de.json",
+      "src/locales/en.json",
+      "src/locales/es.json",
+      "src/locales/fr.json",
+      "src/locales/it.json",
+      "src/locales/ja.json",
+      "src/locales/ko.json",
+      "src/locales/nl.json",
+      "src/locales/pl.json",
+      "src/locales/pt.json",
+      "src/locales/zh-CN.json",
+      "src/shortcuts.ts",
+      "tests/shortcuts.test.ts"
+    ],
+    "remote": "git@github.com:zebu-time-tracker/zebu-desktop.git"
+  },
+  "browser": "Chromium 156.0.8078.4",
+  "host": "fedora.fritz.box",
+  "warnings": [
+    "action {\"click\":\".shortcut-offer .pref-shortcut:nth-of-type(1) .shortcut-record\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .pref-shortcut:nth-of-type(1) .shortcut-record\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .btn-primary\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .btn-primary\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .btn-primary\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .btn-primary\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .sheet-close\"} failed @popover: locator.click: Timeout 8000ms exceeded.",
+    "action {\"click\":\".shortcut-offer .sheet-close\"} failed @popover: locator.click: Timeout 8000ms exceeded."
+  ]
+}

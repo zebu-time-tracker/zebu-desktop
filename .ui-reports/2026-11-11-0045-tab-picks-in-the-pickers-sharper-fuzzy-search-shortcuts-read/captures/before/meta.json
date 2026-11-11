@@ -1,0 +1,800 @@
+{
+  "shots": {
+    "search-des/popover": {
+      "kind": "viewport",
+      "item": "search-des",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/search-des/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Matched letters are marked; best match first",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 244,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "search-des/detail-1@popover": {
+      "kind": "detail",
+      "item": "search-des",
+      "detail": "detail-1",
+      "label": "Project search",
+      "viewport": "popover",
+      "file": "captures/before/search-des/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Matched letters are marked; best match first",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 85,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ]
+    },
+    "tab-picks-project/popover": {
+      "kind": "viewport",
+      "item": "tab-picks-project",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/tab-picks-project/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Project is the one typed for",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 209,
+            "w": 409,
+            "h": 31
+          }
+        },
+        {
+          "n": 1,
+          "label": "Project is the one typed for",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 250,
+            "w": 409,
+            "h": 31
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "tab-picks-project/detail-1@popover": {
+      "kind": "detail",
+      "item": "tab-picks-project",
+      "detail": "detail-1",
+      "label": "After Tab",
+      "viewport": "popover",
+      "file": "captures/before/tab-picks-project/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Project is the one typed for",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 50,
+            "w": 409,
+            "h": 31
+          }
+        },
+        {
+          "n": 1,
+          "label": "Project is the one typed for",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 91,
+            "w": 409,
+            "h": 31
+          }
+        }
+      ]
+    },
+    "tab-picks-task/popover": {
+      "kind": "viewport",
+      "item": "tab-picks-task",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/tab-picks-task/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Project and task both set by Tab",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 209,
+            "w": 409,
+            "h": 31
+          }
+        },
+        {
+          "n": 1,
+          "label": "Project and task both set by Tab",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 250,
+            "w": 409,
+            "h": 31
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "tab-picks-task/detail-1@popover": {
+      "kind": "detail",
+      "item": "tab-picks-task",
+      "detail": "detail-1",
+      "label": "After two Tabs",
+      "viewport": "popover",
+      "file": "captures/before/tab-picks-task/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Project and task both set by Tab",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 50,
+            "w": 409,
+            "h": 31
+          }
+        },
+        {
+          "n": 1,
+          "label": "Project and task both set by Tab",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 91,
+            "w": 409,
+            "h": 31
+          }
+        }
+      ]
+    },
+    "tab-picks-task/video@popover": {
+      "kind": "video",
+      "item": "tab-picks-task",
+      "viewport": "popover",
+      "file": "captures/before/tab-picks-task/video@popover.mp4",
+      "mp4": "captures/before/tab-picks-task/video@popover.mp4",
+      "css": {
+        "w": 475,
+        "h": 640
+      }
+    },
+    "search-initials/popover": {
+      "kind": "viewport",
+      "item": "search-initials",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/search-initials/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Initials find the project",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 244,
+            "w": 409,
+            "h": 137
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "search-initials/detail-1@popover": {
+      "kind": "detail",
+      "item": "search-initials",
+      "detail": "detail-1",
+      "label": "\"wr\"",
+      "viewport": "popover",
+      "file": "captures/before/search-initials/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Initials find the project",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 85,
+            "w": 409,
+            "h": 137
+          }
+        }
+      ]
+    },
+    "search-loose/popover": {
+      "kind": "viewport",
+      "item": "search-loose",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/search-loose/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Only real matches listed",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 244,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "search-loose/detail-1@popover": {
+      "kind": "detail",
+      "item": "search-loose",
+      "detail": "detail-1",
+      "label": "\"dsn\"",
+      "viewport": "popover",
+      "file": "captures/before/search-loose/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Only real matches listed",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 85,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ]
+    },
+    "search-client/popover": {
+      "kind": "viewport",
+      "item": "search-client",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/search-client/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Client heading marked too",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 244,
+            "w": 409,
+            "h": 137
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "search-client/detail-1@popover": {
+      "kind": "detail",
+      "item": "search-client",
+      "detail": "detail-1",
+      "label": "\"acme mob\"",
+      "viewport": "popover",
+      "file": "captures/before/search-client/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Client heading marked too",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 85,
+            "w": 409,
+            "h": 137
+          }
+        }
+      ]
+    },
+    "search-dark/popover": {
+      "kind": "viewport",
+      "item": "search-dark",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/search-dark/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Match marks in dark",
+          "shape": "box",
+          "box": {
+            "x": 33,
+            "y": 244,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "search-dark/detail-1@popover": {
+      "kind": "detail",
+      "item": "search-dark",
+      "detail": "detail-1",
+      "label": "Project search, dark",
+      "viewport": "popover",
+      "file": "captures/before/search-dark/detail-1@popover.png",
+      "css": {
+        "w": 459,
+        "h": 322
+      },
+      "px": {
+        "w": 1377,
+        "h": 966
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Match marks in dark",
+          "shape": "box",
+          "box": {
+            "x": 25,
+            "y": 85,
+            "w": 409,
+            "h": 220
+          }
+        }
+      ]
+    },
+    "shortcuts/popover": {
+      "kind": "viewport",
+      "item": "shortcuts",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/shortcuts/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 431,
+            "w": 433,
+            "h": 122
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "shortcuts/detail-1@popover": {
+      "kind": "detail",
+      "item": "shortcuts",
+      "detail": "detail-1",
+      "label": "Shortcuts tab",
+      "viewport": "popover",
+      "file": "captures/before/shortcuts/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 281
+      },
+      "px": {
+        "w": 1425,
+        "h": 843
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 106,
+            "w": 433,
+            "h": 122
+          }
+        }
+      ]
+    },
+    "shortcuts-dark/popover": {
+      "kind": "viewport",
+      "item": "shortcuts-dark",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/shortcuts-dark/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 431,
+            "w": 433,
+            "h": 122
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "shortcuts-dark/detail-1@popover": {
+      "kind": "detail",
+      "item": "shortcuts-dark",
+      "detail": "detail-1",
+      "label": "Shortcuts tab, dark",
+      "viewport": "popover",
+      "file": "captures/before/shortcuts-dark/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 281
+      },
+      "px": {
+        "w": 1425,
+        "h": 843
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "shape": "box",
+          "box": {
+            "x": 21,
+            "y": 106,
+            "w": 433,
+            "h": 122
+          }
+        }
+      ]
+    },
+    "presets-search/popover": {
+      "kind": "viewport",
+      "item": "presets-search",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/presets-search/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Top match highlighted, matches marked",
+          "shape": "box",
+          "box": {
+            "x": 19,
+            "y": 508,
+            "w": 437,
+            "h": 79
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "presets-search/detail-1@popover": {
+      "kind": "detail",
+      "item": "presets-search",
+      "detail": "detail-1",
+      "label": "Presets search",
+      "viewport": "popover",
+      "file": "captures/before/presets-search/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 168
+      },
+      "px": {
+        "w": 1425,
+        "h": 504
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Top match highlighted, matches marked",
+          "shape": "box",
+          "box": {
+            "x": 19,
+            "y": 70,
+            "w": 437,
+            "h": 79
+          }
+        }
+      ]
+    },
+    "main/popover": {
+      "kind": "viewport",
+      "item": "main",
+      "viewport": "popover",
+      "label": "Popover 475×640",
+      "short": "pop",
+      "url": "http://127.0.0.1:5198/",
+      "file": "captures/before/main/popover.png",
+      "css": {
+        "w": 475,
+        "h": 640
+      },
+      "px": {
+        "w": 950,
+        "h": 1280
+      },
+      "dpr": 2,
+      "fullPage": false,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Footer",
+          "shape": "box",
+          "box": {
+            "x": 0,
+            "y": 602,
+            "w": 475,
+            "h": 38
+          }
+        }
+      ],
+      "missingHighlights": []
+    },
+    "main/detail-1@popover": {
+      "kind": "detail",
+      "item": "main",
+      "detail": "detail-1",
+      "label": "Footer",
+      "viewport": "popover",
+      "file": "captures/before/main/detail-1@popover.png",
+      "css": {
+        "w": 475,
+        "h": 46
+      },
+      "px": {
+        "w": 1425,
+        "h": 138
+      },
+      "dpr": 3,
+      "annotations": [
+        {
+          "n": 1,
+          "label": "Footer",
+          "shape": "box",
+          "box": {
+            "x": 0,
+            "y": 8,
+            "w": 475,
+            "h": 38
+          }
+        }
+      ]
+    }
+  },
+  "phase": "before",
+  "baseUrl": "http://127.0.0.1:5198",
+  "capturedAt": "2026-11-11T00:03:23.423Z",
+  "git": {
+    "repo": true,
+    "root": "/home/awoo/code/zebu/zebu-desktop-picker-tab",
+    "head": "ad96bd4cbaf617d2ec7c6f8a5f348169f53b6c4d",
+    "short": "ad96bd4cb",
+    "branch": "picker-tab-shortcuts",
+    "subject": "Release 0.2.4",
+    "commitDate": "2026-11-04T13:26:51+01:00",
+    "author": "Alan's Agent",
+    "dirty": true,
+    "dirtyFiles": [
+      "LAUDE.md",
+      "README.md",
+      "src/App.vue",
+      "src/ProjectPicker.vue",
+      "src/SearchSelect.vue",
+      "src/fuzzy.ts",
+      "src/locales/de.json",
+      "src/locales/en.json",
+      "src/locales/es.json",
+      "src/locales/fr.json",
+      "src/locales/it.json",
+      "src/locales/ja.json",
+      "src/locales/ko.json",
+      "src/locales/nl.json",
+      "src/locales/pl.json",
+      "src/locales/pt.json",
+      "src/locales/zh-CN.json",
+      "src/picker.ts",
+      "src/presets.ts",
+      "src/shortcuts.ts",
+      "src/style.css",
+      "src/tray.ts",
+      "tests/fuzzy.test.ts",
+      "tests/picker.test.ts",
+      "tests/presets.test.ts",
+      "tests/shortcuts.test.ts",
+      "tests/tray.test.ts",
+      "src/Hits.vue"
+    ],
+    "remote": "git@github.com:zebu-time-tracker/zebu-desktop.git"
+  },
+  "browser": "Chromium 156.0.8078.4",
+  "host": "fedora.fritz.box",
+  "warnings": []
+}

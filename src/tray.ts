@@ -41,15 +41,20 @@ export const TIME_PLACEHOLDER = '{time}';
  * handed over is shifted by the drift: five minutes fast means a start that
  * looks five minutes later, and the pill counts the real elapsed time rather
  * than five minutes of work nobody did (board #49).
+ *
+ * `hint` is a second line for the tooltip — the hotkey that presses the pill's
+ * button — so the place the mouse goes to start and stop is also where the
+ * keyboard way is learned (board #569).
  */
-export function trayEntry(entry: TrayCandidate | null, t: Translate, skewMs = 0): TrayEntry | null {
+export function trayEntry(entry: TrayCandidate | null, t: Translate, skewMs = 0, hint = ''): TrayEntry | null {
     if (!entry) return null;
     const running = entry.timer_started_at !== null;
     const started = running ? new Date(entry.timer_started_at as string).getTime() + skewMs : NaN;
     const detail = [entry.project, entry.task].filter(Boolean).join(' · ');
-    const tooltip = detail
+    const status = detail
         ? t(running ? 'tray.tooltipRunning' : 'tray.tooltipStopped', { detail, time: TIME_PLACEHOLDER })
         : t('tray.tooltipIdle', { time: TIME_PLACEHOLDER });
+    const tooltip = hint ? `${status}\n${hint}` : status;
     return {
         minutes: entry.minutes,
         // an unparseable start reads as a stopped entry rather than a frozen clock

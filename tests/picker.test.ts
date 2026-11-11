@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ProjectOption } from '../src/api.ts';
-import { focusLeftPicker, groupBy, homeIndex, listKey, pointerMoved, settleActive, step, type ListChange, type ListKeyPress } from '../src/picker.ts';
+import { focusLeftPicker, groupBy, homeIndex, listKey, nextStop, pointerMoved, settleActive, step, tabOutcome, type ListChange, type ListKeyPress } from '../src/picker.ts';
 
 const project = (id: string, client: string | null): ProjectOption => ({ id, name: id, code: null, client, tasks: [] });
 const groupByClient = (projects: ProjectOption[], start = 0) =>
@@ -90,7 +90,51 @@ test('arrows walk the list, Return picks, Escape backs out', () => {
 });
 
 test('every other key is left to the search field', () => {
-    for (const k of ['a', 'Backspace', 'Tab', 'ArrowLeft', 'Home']) assert.equal(listKey(key(k)), null);
+    for (const k of ['a', 'Backspace', 'ArrowLeft', 'Home']) assert.equal(listKey(key(k)), null);
+});
+
+// Tab takes the highlighted row and moves on (board #569).
+test('Tab is a key of the list; with a modifier it is not', () => {
+    assert.equal(listKey(key('Tab')), 'tab');
+    // ⇧Tab goes back a field; the others are the system's or the window's
+    assert.equal(listKey(key('Tab', { shiftKey: true })), 'back');
+    assert.equal(listKey(key('Tab', { shiftKey: true, metaKey: true })), null);
+    assert.equal(listKey(key('Tab', { ctrlKey: true })), null);
+    assert.equal(listKey(key('Tab', { altKey: true })), null);
+    assert.equal(listKey(key('Tab', { metaKey: true })), null);
+    assert.equal(listKey(key('Tab', { isComposing: true })), null);
+});
+
+test('Tab after typing takes the highlighted row, like Return', () => {
+    assert.equal(tabOutcome({ id: 'p3', selected: 'p1', query: 'des', walked: false }), 'pick');
+});
+
+test('Tab after walking the list with the arrows takes the row walked to', () => {
+    assert.equal(tabOutcome({ id: 'p4', selected: 'p1', query: '', walked: true }), 'pick');
+});
+
+test('Tab through an untouched list keeps the choice and still moves on', () => {
+    // the highlight opens on the current choice: picking it changes nothing
+    assert.equal(tabOutcome({ id: 'p1', selected: 'p1', query: '', walked: false }), 'pick');
+    // the task picker's "no task" row, with no task chosen
+    assert.equal(tabOutcome({ id: '', selected: '', query: '', walked: false }), 'pick');
+});
+
+test('Tab through an untouched list never fills an empty field with the first row', () => {
+    assert.equal(tabOutcome({ id: 'p1', selected: '', query: '', walked: false }), 'leave');
+    assert.equal(tabOutcome({ id: undefined, selected: '', query: '   ', walked: false }), 'leave');
+});
+
+test('Tab with a query that matches nothing stays in the field', () => {
+    assert.equal(tabOutcome({ id: undefined, selected: 'p1', query: 'zzz', walked: false }), 'stay');
+});
+
+test('the stop after a picker is the next one in document order', () => {
+    const stops = ['project', 'task', 'date', 'duration'];
+    assert.equal(nextStop(stops, 'task'), 'date');
+    assert.equal(nextStop(stops, 'duration'), null);
+    assert.equal(nextStop(stops, 'elsewhere'), null);
+    assert.equal(nextStop(stops, null), null);
 });
 
 test('a key that belongs to an input method picks nothing', () => {

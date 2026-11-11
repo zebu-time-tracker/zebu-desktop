@@ -1,0 +1,2067 @@
+{
+  "title": "Tab picks in the pickers, sharper fuzzy search, shortcuts ready out of the box",
+  "request": "A user mentioned it was important to be able to start timers and toggle them with a keyboard shortcut easily with the desktop/Mac app - is this possible? It must be incredibly easy for the user to work with.\n\nAlso I noticed sometimes I’m typing in a field like project and expect the first result to select when hitting tab but it doesn’t - it should be a super efficient fast powerful fuzzy search where tabbing easily selects and moves to the next field. Please ensure the desktop app is as streamlined and polished as posssible",
+  "interpretation": "Global hotkeys already existed but every one shipped unbound behind Settings › Keyboard shortcuts, so nobody had a shortcut until they found that tab; on a Mac, start/stop, new timer and show/hide now come bound. In the project and task search, Tab left the field with its old value (typing \"des\", Tab, ⌘↵ started the timer on the previous project); Tab now takes the highlighted match and moves to the next field, exactly as Return does. The matcher was also tightened so loose queries stop listing unrelated projects, and rows mark the characters that matched.",
+  "changes": [
+    "Search pickers: Tab picks the highlighted row and moves on (project → task search → date); ⇧Tab in the task search reopens the project search",
+    "Tab with a query that matches nothing stays in the field; Tab through an untouched list changes nothing",
+    "Matcher: whole word > word start > initials (\"wr\") > inside a word > abbreviation (\"dsgn\"); scattered letters no longer match",
+    "Ties: a match in the project name before one in the client, then most recently tracked first",
+    "Accent-free typing also covers ø, ł, ß, æ (\"sondergaard\", \"lodz\"); word starts work in non-Latin scripts",
+    "Rows, client headings and preset rows mark the matched characters (tint, no weight change)",
+    "Presets search: highlight on the best match, ↑↓ walk it, Return starts it",
+    "Mac: ⌃⌥⌘S start/stop, ⌃⌥⌘N new timer, ⌃⌥⌘Z show/hide bound on first launch; rows already bound are kept, a cleared default stays cleared",
+    "Shortcuts tab: one line saying these work from any app; tray tooltip names the start/stop hotkey",
+    "Start/stop pressed where it cannot start anything (locked week, invoiced entry, failed request) shows the popover instead of doing nothing"
+  ],
+  "items": [
+    {
+      "n": 1,
+      "id": "search-des",
+      "title": "Typing \"des\" in the project search",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Matched letters are marked; best match first",
+          "selector": ".picker-list"
+        }
+      ],
+      "shots": [
+        {
+          "key": "search-des/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Matched letters are marked; best match first",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-des/popover.png",
+            "img": "search-des_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Matched letters are marked; best match first",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 213.5
+                }
+              }
+            ],
+            "full": "captures/after/search-des/popover.png",
+            "img": "search-des_popover.after"
+          },
+          "diff": {
+            "img": "search-des_popover.diff",
+            "full": "diffs/search-des_popover.png",
+            "pct": 2.5521381578947366,
+            "changedPx": 31034,
+            "regions": [
+              {
+                "x": 32,
+                "y": 272,
+                "w": 416,
+                "h": 192
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "search-des/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Project search · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Matched letters are marked; best match first",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-des/detail-1@popover.png",
+            "img": "search-des_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Matched letters are marked; best match first",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 213.5
+                }
+              }
+            ],
+            "full": "captures/after/search-des/detail-1@popover.png",
+            "img": "search-des_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "search-des_detail-1@popover.diff",
+            "full": "diffs/search-des_detail-1@popover.png",
+            "pct": 5.12764418703606,
+            "changedPx": 68207,
+            "regions": [
+              {
+                "x": 24,
+                "y": 112,
+                "w": 416,
+                "h": 192
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/1-search-des.png"
+    },
+    {
+      "n": 2,
+      "id": "tab-picks-project",
+      "title": "Tab after typing \"des\"",
+      "note": "Before: the list closes and the project stays as it was. After: the top match is taken and the task search opens.",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Project is the one typed for",
+          "selector": ".sheet .picker"
+        }
+      ],
+      "shots": [
+        {
+          "key": "tab-picks-project/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 209,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 250,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/before/tab-picks-project/popover.png",
+            "img": "tab-picks-project_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 209,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 250,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/after/tab-picks-project/popover.png",
+            "img": "tab-picks-project_popover.after"
+          },
+          "diff": {
+            "img": "tab-picks-project_popover.diff",
+            "full": "diffs/tab-picks-project_popover.png",
+            "pct": 3.3939144736842106,
+            "changedPx": 41270,
+            "regions": [
+              {
+                "x": 32,
+                "y": 216,
+                "w": 416,
+                "h": 248
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "tab-picks-project/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 After Tab · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 50,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 91,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/before/tab-picks-project/detail-1@popover.png",
+            "img": "tab-picks-project_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 50,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project is the one typed for",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 91,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/after/tab-picks-project/detail-1@popover.png",
+            "img": "tab-picks-project_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "tab-picks-project_detail-1@popover.diff",
+            "full": "diffs/tab-picks-project_detail-1@popover.png",
+            "pct": 6.783282287686948,
+            "changedPx": 90230,
+            "regions": [
+              {
+                "x": 24,
+                "y": 56,
+                "w": 416,
+                "h": 256
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/2-tab-picks-project.png"
+    },
+    {
+      "n": 3,
+      "id": "tab-picks-task",
+      "title": "Then \"dev\", Tab: task set, date has focus",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Project and task both set by Tab",
+          "selector": ".sheet .picker"
+        }
+      ],
+      "shots": [
+        {
+          "key": "tab-picks-task/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 209,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 250,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/before/tab-picks-task/popover.png",
+            "img": "tab-picks-task_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 209,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 250,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/after/tab-picks-task/popover.png",
+            "img": "tab-picks-task_popover.after"
+          },
+          "diff": {
+            "img": "tab-picks-task_popover.diff",
+            "full": "diffs/tab-picks-task_popover.png",
+            "pct": 1.0101973684210528,
+            "changedPx": 12284,
+            "regions": [
+              {
+                "x": 32,
+                "y": 216,
+                "w": 416,
+                "h": 136
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "tab-picks-task/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 After two Tabs · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 50,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 91,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/before/tab-picks-task/detail-1@popover.png",
+            "img": "tab-picks-task_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 50,
+                  "w": 409,
+                  "h": 31
+                }
+              },
+              {
+                "n": 1,
+                "label": "Project and task both set by Tab",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 91,
+                  "w": 409,
+                  "h": 31
+                }
+              }
+            ],
+            "full": "captures/after/tab-picks-task/detail-1@popover.png",
+            "img": "tab-picks-task_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "tab-picks-task_detail-1@popover.diff",
+            "full": "diffs/tab-picks-task_detail-1@popover.png",
+            "pct": 2.0216030588295437,
+            "changedPx": 26891,
+            "regions": [
+              {
+                "x": 24,
+                "y": 56,
+                "w": 416,
+                "h": 136
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        },
+        {
+          "key": "tab-picks-task/video@popover",
+          "kind": "video",
+          "label": "▶ pop",
+          "short": "pop.video",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 1,
+            "annotations": [],
+            "full": "captures/before/tab-picks-task/video@popover.mp4",
+            "video": "captures/before/tab-picks-task/video@popover.mp4"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 1,
+            "annotations": [],
+            "full": "captures/after/tab-picks-task/video@popover.mp4",
+            "video": "captures/after/tab-picks-task/video@popover.mp4"
+          }
+        }
+      ],
+      "composite": "composites/3-tab-picks-task.png"
+    },
+    {
+      "n": 4,
+      "id": "search-initials",
+      "title": "Initials: \"wr\"",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Initials find the project",
+          "selector": ".picker-list"
+        }
+      ],
+      "shots": [
+        {
+          "key": "search-initials/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Initials find the project",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/before/search-initials/popover.png",
+            "img": "search-initials_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Initials find the project",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/after/search-initials/popover.png",
+            "img": "search-initials_popover.after"
+          },
+          "diff": {
+            "img": "search-initials_popover.diff",
+            "full": "diffs/search-initials_popover.png",
+            "pct": 0.29416118421052634,
+            "changedPx": 3577,
+            "regions": [
+              {
+                "x": 40,
+                "y": 272,
+                "w": 144,
+                "h": 72
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "search-initials/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 \"wr\" · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Initials find the project",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/before/search-initials/detail-1@popover.png",
+            "img": "search-initials_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Initials find the project",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/after/search-initials/detail-1@popover.png",
+            "img": "search-initials_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "search-initials_detail-1@popover.diff",
+            "full": "diffs/search-initials_detail-1@popover.png",
+            "pct": 0.5924001377255143,
+            "changedPx": 7880,
+            "regions": [
+              {
+                "x": 32,
+                "y": 112,
+                "w": 152,
+                "h": 72
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/4-search-initials.png"
+    },
+    {
+      "n": 5,
+      "id": "search-loose",
+      "title": "Loose typing: \"dsn\"",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Only real matches listed",
+          "selector": ".picker-list"
+        }
+      ],
+      "shots": [
+        {
+          "key": "search-loose/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Only real matches listed",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-loose/popover.png",
+            "img": "search-loose_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Only real matches listed",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 186.5
+                }
+              }
+            ],
+            "full": "captures/after/search-loose/popover.png",
+            "img": "search-loose_popover.after"
+          },
+          "diff": {
+            "img": "search-loose_popover.diff",
+            "full": "diffs/search-loose_popover.png",
+            "pct": 3.5025493421052634,
+            "changedPx": 42591,
+            "regions": [
+              {
+                "x": 32,
+                "y": 272,
+                "w": 416,
+                "h": 200
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "search-loose/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 \"dsn\" · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Only real matches listed",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-loose/detail-1@popover.png",
+            "img": "search-loose_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Only real matches listed",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 186.5
+                }
+              }
+            ],
+            "full": "captures/after/search-loose/detail-1@popover.png",
+            "img": "search-loose_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "search-loose_detail-1@popover.diff",
+            "full": "diffs/search-loose_detail-1@popover.png",
+            "pct": 7.086173170287975,
+            "changedPx": 94259,
+            "regions": [
+              {
+                "x": 24,
+                "y": 112,
+                "w": 416,
+                "h": 200
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/5-search-loose.png"
+    },
+    {
+      "n": 6,
+      "id": "search-client",
+      "title": "Client plus project: \"acme mob\"",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Client heading marked too",
+          "selector": ".picker-list"
+        }
+      ],
+      "shots": [
+        {
+          "key": "search-client/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Client heading marked too",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/before/search-client/popover.png",
+            "img": "search-client_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Client heading marked too",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 87.5
+                }
+              }
+            ],
+            "full": "captures/after/search-client/popover.png",
+            "img": "search-client_popover.after"
+          },
+          "diff": {
+            "img": "search-client_popover.diff",
+            "full": "diffs/search-client_popover.png",
+            "pct": 2.184292763157895,
+            "changedPx": 26561,
+            "regions": [
+              {
+                "x": 32,
+                "y": 272,
+                "w": 416,
+                "h": 120
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "search-client/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 \"acme mob\" · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Client heading marked too",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 137
+                }
+              }
+            ],
+            "full": "captures/before/search-client/detail-1@popover.png",
+            "img": "search-client_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Client heading marked too",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 87.5
+                }
+              }
+            ],
+            "full": "captures/after/search-client/detail-1@popover.png",
+            "img": "search-client_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "search-client_detail-1@popover.diff",
+            "full": "diffs/search-client_detail-1@popover.png",
+            "pct": 4.441497479292307,
+            "changedPx": 59080,
+            "regions": [
+              {
+                "x": 24,
+                "y": 112,
+                "w": 416,
+                "h": 120
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/6-search-client.png"
+    },
+    {
+      "n": 7,
+      "id": "search-dark",
+      "title": "Project search, dark",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Match marks in dark",
+          "selector": ".picker-list"
+        }
+      ],
+      "shots": [
+        {
+          "key": "search-dark/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Match marks in dark",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-dark/popover.png",
+            "img": "search-dark_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Match marks in dark",
+                "shape": "box",
+                "box": {
+                  "x": 33,
+                  "y": 244,
+                  "w": 409,
+                  "h": 213.5
+                }
+              }
+            ],
+            "full": "captures/after/search-dark/popover.png",
+            "img": "search-dark_popover.after"
+          },
+          "diff": {
+            "img": "search-dark_popover.diff",
+            "full": "diffs/search-dark_popover.png",
+            "pct": 1.9234375000000001,
+            "changedPx": 23389,
+            "regions": [
+              {
+                "x": 40,
+                "y": 272,
+                "w": 192,
+                "h": 192
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "search-dark/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Project search, dark · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Match marks in dark",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 220
+                }
+              }
+            ],
+            "full": "captures/before/search-dark/detail-1@popover.png",
+            "img": "search-dark_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 459,
+              "h": 322
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Match marks in dark",
+                "shape": "box",
+                "box": {
+                  "x": 25,
+                  "y": 85,
+                  "w": 409,
+                  "h": 213.5
+                }
+              }
+            ],
+            "full": "captures/after/search-dark/detail-1@popover.png",
+            "img": "search-dark_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "search-dark_detail-1@popover.diff",
+            "full": "diffs/search-dark_detail-1@popover.png",
+            "pct": 3.8336107389815828,
+            "changedPx": 50994,
+            "regions": [
+              {
+                "x": 32,
+                "y": 112,
+                "w": 192,
+                "h": 192
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 459,
+              "h": 322
+            }
+          }
+        }
+      ],
+      "composite": "composites/7-search-dark.png"
+    },
+    {
+      "n": 8,
+      "id": "shortcuts",
+      "title": "Settings › Keyboard shortcuts",
+      "note": "Rendered in Chromium on Linux, which draws ⌃ as ^; the Mac shows the usual ⌃⌥⌘ glyphs.",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "selector": "#settings-panel-shortcuts"
+        }
+      ],
+      "shots": [
+        {
+          "key": "shortcuts/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 431,
+                  "w": 433,
+                  "h": 122
+                }
+              }
+            ],
+            "full": "captures/before/shortcuts/popover.png",
+            "img": "shortcuts_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 388.609375,
+                  "w": 433,
+                  "h": 164.390625
+                }
+              }
+            ],
+            "full": "captures/after/shortcuts/popover.png",
+            "img": "shortcuts_popover.after"
+          },
+          "diff": {
+            "img": "shortcuts_popover.diff",
+            "full": "diffs/shortcuts_popover.png",
+            "pct": 4.706743421052631,
+            "changedPx": 57234,
+            "regions": [
+              {
+                "x": 0,
+                "y": 288,
+                "w": 472,
+                "h": 264
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "shortcuts/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Shortcuts tab · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 281
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 106,
+                  "w": 433,
+                  "h": 122
+                }
+              }
+            ],
+            "full": "captures/before/shortcuts/detail-1@popover.png",
+            "img": "shortcuts_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 323
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 105.609375,
+                  "w": 433,
+                  "h": 164.390625
+                }
+              }
+            ],
+            "full": "captures/after/shortcuts/detail-1@popover.png",
+            "img": "shortcuts_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "shortcuts_detail-1@popover.diff",
+            "full": "diffs/shortcuts_detail-1@popover.png",
+            "pct": 9.122973507315145,
+            "changedPx": 109592,
+            "regions": [
+              {
+                "x": 0,
+                "y": 104,
+                "w": 475,
+                "h": 219
+              },
+              {
+                "x": 8,
+                "y": 0,
+                "w": 72,
+                "h": 16
+              }
+            ],
+            "sizeChanged": true,
+            "css": {
+              "w": 475,
+              "h": 323
+            }
+          }
+        }
+      ],
+      "composite": "composites/8-shortcuts.png"
+    },
+    {
+      "n": 9,
+      "id": "shortcuts-dark",
+      "title": "Keyboard shortcuts, dark",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Bound from the first launch",
+          "selector": "#settings-panel-shortcuts"
+        }
+      ],
+      "shots": [
+        {
+          "key": "shortcuts-dark/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 431,
+                  "w": 433,
+                  "h": 122
+                }
+              }
+            ],
+            "full": "captures/before/shortcuts-dark/popover.png",
+            "img": "shortcuts-dark_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 388.609375,
+                  "w": 433,
+                  "h": 164.390625
+                }
+              }
+            ],
+            "full": "captures/after/shortcuts-dark/popover.png",
+            "img": "shortcuts-dark_popover.after"
+          },
+          "diff": {
+            "img": "shortcuts-dark_popover.diff",
+            "full": "diffs/shortcuts-dark_popover.png",
+            "pct": 3.485690789473684,
+            "changedPx": 42386,
+            "regions": [
+              {
+                "x": 8,
+                "y": 288,
+                "w": 464,
+                "h": 264
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "shortcuts-dark/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Shortcuts tab, dark · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 281
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 106,
+                  "w": 433,
+                  "h": 122
+                }
+              }
+            ],
+            "full": "captures/before/shortcuts-dark/detail-1@popover.png",
+            "img": "shortcuts-dark_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 323
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Bound from the first launch",
+                "shape": "box",
+                "box": {
+                  "x": 21,
+                  "y": 105.609375,
+                  "w": 433,
+                  "h": 164.390625
+                }
+              }
+            ],
+            "full": "captures/after/shortcuts-dark/detail-1@popover.png",
+            "img": "shortcuts-dark_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "shortcuts-dark_detail-1@popover.diff",
+            "full": "diffs/shortcuts-dark_detail-1@popover.png",
+            "pct": 4.264718736342636,
+            "changedPx": 51231,
+            "regions": [
+              {
+                "x": 0,
+                "y": 104,
+                "w": 475,
+                "h": 219
+              },
+              {
+                "x": 0,
+                "y": 0,
+                "w": 80,
+                "h": 24
+              },
+              {
+                "x": 464,
+                "y": 16,
+                "w": 11,
+                "h": 8
+              }
+            ],
+            "sizeChanged": true,
+            "css": {
+              "w": 475,
+              "h": 323
+            }
+          }
+        }
+      ],
+      "composite": "composites/9-shortcuts-dark.png"
+    },
+    {
+      "n": 10,
+      "id": "presets-search",
+      "title": "Presets: type, then Return starts the top match",
+      "note": "Before, Return in the search did nothing; a preset could only be started by clicking or tabbing to its row.",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Top match highlighted, matches marked",
+          "selector": ".preset-rows"
+        }
+      ],
+      "shots": [
+        {
+          "key": "presets-search/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Top match highlighted, matches marked",
+                "shape": "box",
+                "box": {
+                  "x": 19,
+                  "y": 508,
+                  "w": 437,
+                  "h": 79
+                }
+              }
+            ],
+            "full": "captures/before/presets-search/popover.png",
+            "img": "presets-search_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Top match highlighted, matches marked",
+                "shape": "box",
+                "box": {
+                  "x": 19,
+                  "y": 508,
+                  "w": 437,
+                  "h": 79
+                }
+              }
+            ],
+            "full": "captures/after/presets-search/popover.png",
+            "img": "presets-search_popover.after"
+          },
+          "diff": {
+            "img": "presets-search_popover.diff",
+            "full": "diffs/presets-search_popover.png",
+            "pct": 0.20838815789473686,
+            "changedPx": 2534,
+            "regions": [
+              {
+                "x": 24,
+                "y": 512,
+                "w": 248,
+                "h": 72
+              },
+              {
+                "x": 440,
+                "y": 520,
+                "w": 8,
+                "h": 16
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "presets-search/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Presets search · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 168
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Top match highlighted, matches marked",
+                "shape": "box",
+                "box": {
+                  "x": 19,
+                  "y": 70,
+                  "w": 437,
+                  "h": 79
+                }
+              }
+            ],
+            "full": "captures/before/presets-search/detail-1@popover.png",
+            "img": "presets-search_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 168
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Top match highlighted, matches marked",
+                "shape": "box",
+                "box": {
+                  "x": 19,
+                  "y": 70,
+                  "w": 437,
+                  "h": 79
+                }
+              }
+            ],
+            "full": "captures/after/presets-search/detail-1@popover.png",
+            "img": "presets-search_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "presets-search_detail-1@popover.diff",
+            "full": "diffs/presets-search_detail-1@popover.png",
+            "pct": 0.7520189362294626,
+            "changedPx": 5401,
+            "regions": [
+              {
+                "x": 160,
+                "y": 88,
+                "w": 104,
+                "h": 56
+              },
+              {
+                "x": 24,
+                "y": 72,
+                "w": 96,
+                "h": 32
+              },
+              {
+                "x": 440,
+                "y": 88,
+                "w": 8,
+                "h": 8
+              }
+            ],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 168
+            }
+          }
+        }
+      ],
+      "composite": "composites/10-presets-search.png"
+    },
+    {
+      "n": 11,
+      "id": "main",
+      "title": "The day (regression check)",
+      "note": "",
+      "path": "/",
+      "highlights": [
+        {
+          "n": 1,
+          "label": "Footer",
+          "selector": ".footer"
+        }
+      ],
+      "shots": [
+        {
+          "key": "main/popover",
+          "kind": "viewport",
+          "label": "Popover 475×640",
+          "short": "pop",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Footer",
+                "shape": "box",
+                "box": {
+                  "x": 0,
+                  "y": 602,
+                  "w": 475,
+                  "h": 38
+                }
+              }
+            ],
+            "full": "captures/before/main/popover.png",
+            "img": "main_popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 640
+            },
+            "dpr": 2,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Footer",
+                "shape": "box",
+                "box": {
+                  "x": 0,
+                  "y": 602,
+                  "w": 475,
+                  "h": 38
+                }
+              }
+            ],
+            "full": "captures/after/main/popover.png",
+            "img": "main_popover.after"
+          },
+          "diff": {
+            "img": "main_popover.diff",
+            "full": "diffs/main_popover.png",
+            "pct": 0,
+            "changedPx": 0,
+            "regions": [],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 640
+            }
+          }
+        },
+        {
+          "key": "main/detail-1@popover",
+          "kind": "detail",
+          "label": "🔍 Footer · pop",
+          "short": "pop.detail-1",
+          "viewport": "popover",
+          "before": {
+            "css": {
+              "w": 475,
+              "h": 46
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Footer",
+                "shape": "box",
+                "box": {
+                  "x": 0,
+                  "y": 8,
+                  "w": 475,
+                  "h": 38
+                }
+              }
+            ],
+            "full": "captures/before/main/detail-1@popover.png",
+            "img": "main_detail-1@popover.before"
+          },
+          "after": {
+            "css": {
+              "w": 475,
+              "h": 46
+            },
+            "dpr": 3,
+            "annotations": [
+              {
+                "n": 1,
+                "label": "Footer",
+                "shape": "box",
+                "box": {
+                  "x": 0,
+                  "y": 8,
+                  "w": 475,
+                  "h": 38
+                }
+              }
+            ],
+            "full": "captures/after/main/detail-1@popover.png",
+            "img": "main_detail-1@popover.after"
+          },
+          "diff": {
+            "img": "main_detail-1@popover.diff",
+            "full": "diffs/main_detail-1@popover.png",
+            "pct": 0,
+            "changedPx": 0,
+            "regions": [],
+            "sizeChanged": false,
+            "css": {
+              "w": 475,
+              "h": 46
+            }
+          }
+        }
+      ],
+      "composite": "composites/11-main.png"
+    }
+  ],
+  "meta": {
+    "reportId": "2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read",
+    "reportDir": "/home/awoo/code/zebu/zebu-desktop-picker-tab/.ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read",
+    "generatedAt": "2026-11-11T00:06:35.670Z",
+    "generatedAtLocal": "Nov 11, 2026, 01:06 GMT+1",
+    "agent": "Claude Fable 5",
+    "thread": "",
+    "before": {
+      "capturedAt": "2026-11-11T00:03:23.423Z",
+      "baseUrl": "http://127.0.0.1:5198",
+      "git": {
+        "repo": true,
+        "root": "/home/awoo/code/zebu/zebu-desktop-picker-tab",
+        "head": "ad96bd4cbaf617d2ec7c6f8a5f348169f53b6c4d",
+        "short": "ad96bd4cb",
+        "branch": "picker-tab-shortcuts",
+        "subject": "Release 0.2.4",
+        "commitDate": "2026-11-04T13:26:51+01:00",
+        "author": "Alan's Agent",
+        "dirty": true,
+        "dirtyFiles": [
+          "LAUDE.md",
+          "README.md",
+          "src/App.vue",
+          "src/ProjectPicker.vue",
+          "src/SearchSelect.vue",
+          "src/fuzzy.ts",
+          "src/locales/de.json",
+          "src/locales/en.json",
+          "src/locales/es.json",
+          "src/locales/fr.json",
+          "src/locales/it.json",
+          "src/locales/ja.json",
+          "src/locales/ko.json",
+          "src/locales/nl.json",
+          "src/locales/pl.json",
+          "src/locales/pt.json",
+          "src/locales/zh-CN.json",
+          "src/picker.ts",
+          "src/presets.ts",
+          "src/shortcuts.ts",
+          "src/style.css",
+          "src/tray.ts",
+          "tests/fuzzy.test.ts",
+          "tests/picker.test.ts",
+          "tests/presets.test.ts",
+          "tests/shortcuts.test.ts",
+          "tests/tray.test.ts",
+          "src/Hits.vue"
+        ],
+        "remote": "git@github.com:zebu-time-tracker/zebu-desktop.git"
+      },
+      "browser": "Chromium 156.0.8078.4"
+    },
+    "after": {
+      "capturedAt": "2026-11-11T00:05:22.671Z",
+      "baseUrl": "http://127.0.0.1:5199",
+      "git": {
+        "repo": true,
+        "root": "/home/awoo/code/zebu/zebu-desktop-picker-tab",
+        "head": "ad96bd4cbaf617d2ec7c6f8a5f348169f53b6c4d",
+        "short": "ad96bd4cb",
+        "branch": "picker-tab-shortcuts",
+        "subject": "Release 0.2.4",
+        "commitDate": "2026-11-04T13:26:51+01:00",
+        "author": "Alan's Agent",
+        "dirty": true,
+        "dirtyFiles": [
+          "LAUDE.md",
+          "README.md",
+          "src/App.vue",
+          "src/ProjectPicker.vue",
+          "src/SearchSelect.vue",
+          "src/fuzzy.ts",
+          "src/locales/de.json",
+          "src/locales/en.json",
+          "src/locales/es.json",
+          "src/locales/fr.json",
+          "src/locales/it.json",
+          "src/locales/ja.json",
+          "src/locales/ko.json",
+          "src/locales/nl.json",
+          "src/locales/pl.json",
+          "src/locales/pt.json",
+          "src/locales/zh-CN.json",
+          "src/picker.ts",
+          "src/presets.ts",
+          "src/shortcuts.ts",
+          "src/style.css",
+          "src/tray.ts",
+          "tests/fuzzy.test.ts",
+          "tests/picker.test.ts",
+          "tests/presets.test.ts",
+          "tests/shortcuts.test.ts",
+          "tests/tray.test.ts",
+          "src/Hits.vue"
+        ],
+        "remote": "git@github.com:zebu-time-tracker/zebu-desktop.git"
+      },
+      "browser": "Chromium 156.0.8078.4"
+    },
+    "head": {
+      "head": "1c6760415e430f144a496ed1ddbd639b7c98e37d",
+      "short": "1c6760415",
+      "branch": "picker-tab-shortcuts",
+      "dirty": false
+    },
+    "diffstat": "28 files changed, 788 insertions(+), 91 deletions(-)",
+    "filesChanged": [
+      "M\tCLAUDE.md",
+      "M\tREADME.md",
+      "M\tsrc/App.vue",
+      "A\tsrc/Hits.vue",
+      "M\tsrc/ProjectPicker.vue",
+      "M\tsrc/SearchSelect.vue",
+      "M\tsrc/fuzzy.ts",
+      "M\tsrc/locales/de.json",
+      "M\tsrc/locales/en.json",
+      "M\tsrc/locales/es.json",
+      "M\tsrc/locales/fr.json",
+      "M\tsrc/locales/it.json",
+      "M\tsrc/locales/ja.json",
+      "M\tsrc/locales/ko.json",
+      "M\tsrc/locales/nl.json",
+      "M\tsrc/locales/pl.json",
+      "M\tsrc/locales/pt.json",
+      "M\tsrc/locales/zh-CN.json",
+      "M\tsrc/picker.ts",
+      "M\tsrc/presets.ts",
+      "M\tsrc/shortcuts.ts",
+      "M\tsrc/style.css",
+      "M\tsrc/tray.ts",
+      "M\ttests/fuzzy.test.ts",
+      "M\ttests/picker.test.ts",
+      "M\ttests/presets.test.ts",
+      "M\ttests/shortcuts.test.ts",
+      "M\ttests/tray.test.ts"
+    ],
+    "commits": [
+      "1c67604 Tab picks in the search pickers, a sharper matcher, hotkeys bound on a Mac (#569)"
+    ],
+    "viewports": [
+      "popover 475×640@2x"
+    ]
+  },
+  "metaRows": [
+    [
+      "Generated",
+      "Nov 11, 2026, 01:06 GMT+1 (2026-11-11T00:06:35.670Z)"
+    ],
+    [
+      "Before",
+      "Nov 11, 2026, 01:03 GMT+1 · <code>ad96bd4cb + 28 uncommitted file(s) on picker-tab-shortcuts — “Release 0.2.4”</code> · <code>http://127.0.0.1:5198</code>"
+    ],
+    [
+      "After",
+      "Nov 11, 2026, 01:05 GMT+1 · <code>ad96bd4cb + 28 uncommitted file(s) on picker-tab-shortcuts — “Release 0.2.4”</code> · <code>http://127.0.0.1:5199</code>"
+    ],
+    [
+      "Commits since before",
+      "<code>1c67604 Tab picks in the search pickers, a sharper matcher, hotkeys bound on a Mac (#569)</code>"
+    ],
+    [
+      "Diff vs before",
+      "28 files changed, 788 insertions(+), 91 deletions(-)<br><code>M\tCLAUDE.md</code><br><code>M\tREADME.md</code><br><code>M\tsrc/App.vue</code><br><code>A\tsrc/Hits.vue</code><br><code>M\tsrc/ProjectPicker.vue</code><br><code>M\tsrc/SearchSelect.vue</code><br><code>M\tsrc/fuzzy.ts</code><br><code>M\tsrc/locales/de.json</code><br><code>M\tsrc/locales/en.json</code><br><code>M\tsrc/locales/es.json</code><br><code>M\tsrc/locales/fr.json</code><br><code>M\tsrc/locales/it.json</code><br><code>M\tsrc/locales/ja.json</code><br><code>M\tsrc/locales/ko.json</code><br><code>M\tsrc/locales/nl.json</code><br><code>M\tsrc/locales/pl.json</code><br><code>M\tsrc/locales/pt.json</code><br><code>M\tsrc/locales/zh-CN.json</code><br><code>M\tsrc/picker.ts</code><br><code>M\tsrc/presets.ts</code><br><code>M\tsrc/shortcuts.ts</code><br><code>M\tsrc/style.css</code><br><code>M\tsrc/tray.ts</code><br><code>M\ttests/fuzzy.test.ts</code><br><code>M\ttests/picker.test.ts</code><br><code>M\ttests/presets.test.ts</code><br><code>M\ttests/shortcuts.test.ts</code><br><code>M\ttests/tray.test.ts</code>"
+    ],
+    [
+      "Viewports",
+      "<code>popover 475×640@2x</code>"
+    ],
+    [
+      "Browser",
+      "Chromium 156.0.8078.4"
+    ],
+    [
+      "Agent",
+      "Claude Fable 5"
+    ],
+    [
+      "Report",
+      "<code>.ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read</code>"
+    ]
+  ],
+  "chatFoot": "ad96bd4cb → ad96bd4cb+dirty · Nov 11, 2026, 01:06 GMT+1 · .ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read/index.html"
+}

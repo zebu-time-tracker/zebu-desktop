@@ -1,0 +1,472 @@
+{
+  "title": "Tab picks in the pickers, sharper fuzzy search, shortcuts ready out of the box",
+  "request": "A user mentioned it was important to be able to start timers and toggle them with a keyboard shortcut easily with the desktop/Mac app - is this possible? It must be incredibly easy for the user to work with.\n\nAlso I noticed sometimes I’m typing in a field like project and expect the first result to select when hitting tab but it doesn’t - it should be a super efficient fast powerful fuzzy search where tabbing easily selects and moves to the next field. Please ensure the desktop app is as streamlined and polished as posssible",
+  "interpretation": "Global hotkeys already existed but every one shipped unbound behind Settings › Keyboard shortcuts, so nobody had a shortcut until they found that tab; on a Mac, start/stop, new timer and show/hide now come bound. In the project and task search, Tab left the field with its old value (typing \"des\", Tab, ⌘↵ started the timer on the previous project); Tab now takes the highlighted match and moves to the next field, exactly as Return does. The matcher was also tightened so loose queries stop listing unrelated projects, and rows mark the characters that matched.",
+  "changes": [
+    "Search pickers: Tab picks the highlighted row and moves on (project → task search → date); ⇧Tab in the task search reopens the project search",
+    "Tab with a query that matches nothing stays in the field; Tab through an untouched list changes nothing",
+    "Matcher: whole word > word start > initials (\"wr\") > inside a word > abbreviation (\"dsgn\"); scattered letters no longer match",
+    "Ties: a match in the project name before one in the client, then most recently tracked first",
+    "Accent-free typing also covers ø, ł, ß, æ (\"sondergaard\", \"lodz\"); word starts work in non-Latin scripts",
+    "Rows, client headings and preset rows mark the matched characters (tint, no weight change)",
+    "Presets search: highlight on the best match, ↑↓ walk it, Return starts it",
+    "Mac: ⌃⌥⌘S start/stop, ⌃⌥⌘N new timer, ⌃⌥⌘Z show/hide bound on first launch; rows already bound are kept, a cleared default stays cleared",
+    "Shortcuts tab: one line saying these work from any app; tray tooltip names the start/stop hotkey",
+    "Start/stop pressed where it cannot start anything (locked week, invoiced entry, failed request) shows the popover instead of doing nothing"
+  ],
+  "baseUrl": {
+    "before": "http://127.0.0.1:5198",
+    "after": "http://127.0.0.1:5199"
+  },
+  "viewports": [
+    "popover"
+  ],
+  "colorScheme": "light",
+  "hideSelectors": [],
+  "items": [
+    {
+      "id": "search-des",
+      "title": "Typing \"des\" in the project search",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "des"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".picker-list",
+          "label": "Matched letters are marked; best match first"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "Project search",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab-picks-project",
+      "title": "Tab after typing \"des\"",
+      "path": "/",
+      "note": "Before: the list closes and the project stays as it was. After: the top match is taken and the task search opens.",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "des"
+          ]
+        },
+        {
+          "press": "Tab"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".sheet .picker",
+          "label": "Project is the one typed for",
+          "all": true
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "After Tab",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tab-picks-task",
+      "title": "Then \"dev\", Tab: task set, date has focus",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "des"
+          ]
+        },
+        {
+          "press": "Tab"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "eval": "document.activeElement && document.activeElement.tagName === 'INPUT' && document.execCommand('insertText', false, 'dev')"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "press": "Tab"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".sheet .picker",
+          "label": "Project and task both set by Tab",
+          "all": true
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "After two Tabs",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ],
+      "video": [
+        "popover"
+      ]
+    },
+    {
+      "id": "search-initials",
+      "title": "Initials: \"wr\"",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "wr"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".picker-list",
+          "label": "Initials find the project"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "\"wr\"",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "search-loose",
+      "title": "Loose typing: \"dsn\"",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "dsn"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".picker-list",
+          "label": "Only real matches listed"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "\"dsn\"",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "search-client",
+      "title": "Client plus project: \"acme mob\"",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "acme mob"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".picker-list",
+          "label": "Client heading marked too"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "\"acme mob\"",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "search-dark",
+      "title": "Project search, dark",
+      "path": "/",
+      "colorScheme": "dark",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        },
+        {
+          "click": ".new-timer"
+        },
+        {
+          "waitFor": ".sheet .picker input"
+        },
+        {
+          "type": [
+            ".sheet .picker input",
+            "des"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".picker-list",
+          "label": "Match marks in dark"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".sheet",
+          "padding": 8,
+          "scale": 3,
+          "label": "Project search, dark",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shortcuts",
+      "title": "Settings › Keyboard shortcuts",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".footer-right button"
+        },
+        {
+          "click": ".footer-right button"
+        },
+        {
+          "click": "#settings-tab-shortcuts"
+        }
+      ],
+      "note": "Rendered in Chromium on Linux, which draws ⌃ as ^; the Mac shows the usual ⌃⌥⌘ glyphs.",
+      "highlights": [
+        {
+          "selector": "#settings-panel-shortcuts",
+          "label": "Bound from the first launch"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".settings",
+          "padding": 8,
+          "scale": 3,
+          "label": "Shortcuts tab",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shortcuts-dark",
+      "title": "Keyboard shortcuts, dark",
+      "path": "/",
+      "colorScheme": "dark",
+      "actions": [
+        {
+          "waitFor": ".footer-right button"
+        },
+        {
+          "click": ".footer-right button"
+        },
+        {
+          "click": "#settings-tab-shortcuts"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": "#settings-panel-shortcuts",
+          "label": "Bound from the first launch"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".settings",
+          "padding": 8,
+          "scale": 3,
+          "label": "Shortcuts tab, dark",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "presets-search",
+      "title": "Presets: type, then Return starts the top match",
+      "path": "/",
+      "note": "Before, Return in the search did nothing; a preset could only be started by clicking or tabbing to its row.",
+      "actions": [
+        {
+          "waitFor": ".footer-left button:nth-of-type(2)"
+        },
+        {
+          "click": ".footer-left button:nth-of-type(2)"
+        },
+        {
+          "type": [
+            ".preset-search",
+            "des"
+          ]
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".preset-rows",
+          "label": "Top match highlighted, matches marked"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".presets",
+          "padding": 8,
+          "scale": 3,
+          "label": "Presets search",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "main",
+      "title": "The day (regression check)",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".new-timer"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".footer",
+          "label": "Footer"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".footer",
+          "padding": 8,
+          "scale": 3,
+          "label": "Footer",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    }
+  ],
+  "customViewports": {
+    "popover": {
+      "width": 475,
+      "height": 640,
+      "dpr": 2,
+      "mobile": false,
+      "label": "Popover 475×640",
+      "short": "pop"
+    }
+  },
+  "freezeTime": "2026-11-11T10:00:00Z",
+  "timezone": "UTC",
+  "waitMs": 500,
+  "initScript": "// Plain-browser stand-in for the workspace API, so the popover renders without a server.\n(() => {\n    try {\n        localStorage.setItem('zebu.token', 'demo');\n        localStorage.setItem('zebu.workspace', 'https://studio.zebu.work');\n        localStorage.setItem('zebu.presets', JSON.stringify([\n            { id: 'a', name: 'Morning standup', project_id: 'p9', task_id: 't-admin', workspace: 'https://studio.zebu.work' },\n            { id: 'b', name: 'Design review', project_id: 'p3', task_id: 't-design', workspace: 'https://studio.zebu.work' },\n            { id: 'c', name: 'Acme app sprint', project_id: 'p4', task_id: 't-development', workspace: 'https://studio.zebu.work' },\n            { id: 'd', name: 'Waffle menu', project_id: 'p2', task_id: 't-design', workspace: 'https://studio.zebu.work' },\n        ]));\n    } catch {}\n    // The app as it runs on a Mac: ⌘ keycaps, and the hotkeys a Mac starts with.\n    try {\n        Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'MacIntel' });\n        Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined });\n    } catch {}\n    // Just enough of Tauri for the shell calls that have an answer to matter here;\n    // everything else rejects, as it does in a plain browser.\n    window.__invoked = [];\n    window.__TAURI_INTERNALS__ = {\n        transformCallback: () => 0,\n        invoke: async (cmd, args) => {\n            window.__invoked.push([cmd, args]);\n            if (cmd === 'set_shortcut' || cmd === 'set_tray_state' || cmd === 'open_popover') return null;\n            throw new Error('not running inside Tauri');\n        },\n    };\n    const tasks = (names) => names.map((n, i) => ({ id: `t-${n.toLowerCase().replace(/[^a-z]+/g, '-')}`, name: n }));\n    const std = tasks(['Design', 'Development', 'Project management', 'Meetings', 'Research']);\n    const projects = [\n        { id: 'p1', name: 'Website redesign', code: 'WEB', client: 'Acme Holdings', tasks: std },\n        { id: 'p2', name: 'Placemat & Menu Design', code: 'PMD', client: \"Bob's Waffles\", tasks: tasks(['Design', 'Illustration', 'Print production']) },\n        { id: 'p3', name: 'Design retainer', code: null, client: 'Globex', tasks: std },\n        { id: 'p4', name: 'Mobile app', code: 'APP', client: 'Acme Holdings', tasks: std },\n        { id: 'p5', name: 'Brand guidelines', code: 'BRD', client: 'Globex', tasks: tasks(['Design', 'Copywriting']) },\n        { id: 'p6', name: 'Annual report 2026', code: 'AR26', client: 'Initech', tasks: tasks(['Design', 'Copywriting', 'Data visualisation']) },\n        { id: 'p7', name: 'Developer documentation', code: 'DOCS', client: 'Initech', tasks: tasks(['Writing', 'Review']) },\n        { id: 'p8', name: 'Wine list redesign', code: 'WLR', client: \"Bob's Waffles\", tasks: tasks(['Design', 'Print production']) },\n        { id: 'p9', name: 'Internal', code: null, client: null, tasks: tasks(['Admin', 'Bookkeeping', 'Business development']) },\n        { id: 'p10', name: 'Dashboard rebuild', code: 'DSH', client: 'Umbrella Health', tasks: std },\n        { id: 'p11', name: 'Patient portal', code: 'PP', client: 'Umbrella Health', tasks: std },\n        { id: 'p12', name: 'Résumé site', code: null, client: 'Dana Søndergaard', tasks: [] },\n    ];\n    const entry = (id, p, task, minutes, notes, extra = {}) => ({\n        id, date: '2026-11-11', minutes, notes, project: projects.find((x) => x.id === p).name, project_id: p,\n        task, task_id: task ? `t-${task.toLowerCase()}` : null, is_billable: true, locked: false, timer_started_at: null,\n        updated_at: '2026-11-11T09:30:00Z', ...extra,\n    });\n    const opts = window.__mockOpts || {};\n    const entries = [\n        entry('e1', 'p1', 'Design', 95, 'Homepage hero explorations', { locked: !!opts.locked }),\n        entry('e2', 'p4', 'Meetings', 30, 'Sprint planning'),\n    ];\n    const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });\n    const real = window.fetch.bind(window);\n    window.fetch = async (input, init = {}) => {\n        const url = typeof input === 'string' ? input : input.url;\n        const at = url.indexOf('/api/');\n        if (at < 0 || !url.startsWith('https://studio.zebu.work')) return real(input, init);\n        const path = url.slice(at + 4).split('?')[0];\n        const method = (init.method || 'GET').toUpperCase();\n        if (path === '/me') return json({ name: 'Demo Person', email: 'demo@zebu.test', broadcast: null });\n        if (path === '/timesheet')\n            return json({\n                week_start: '2026-11-09', entries, running: null, active: entries[0], active_as_of: entries[0].updated_at,\n                server_time: new Date().toISOString(), projects, week_locked: !!opts.weekLocked,\n                project_stats: Object.fromEntries(projects.map((p) => [p.id, { total_minutes: 1240, uninvoiced_minutes: 480, budget_pct: null }])),\n            });\n        if (path === '/timer/pulse') return json({ token: 'v1', running: false, maintenance: null });\n        if (path === '/timer/idle') return json({ idle: null });\n        if (path === '/summary')\n            return json({ today: 125, yesterday: 410, this_week: 965, last_week: 2210, this_month: 4100, last_month: 9020, billable_pct_month: 82,\n                month_by_day: [], year_by_month: [], uninvoiced_minutes: 3000, uninvoiced_amounts: {}, uninvoiced_total: 0, base_currency: 'USD' });\n        if (method === 'POST' && path === '/timer/start') {\n            const body = JSON.parse(init.body || '{}');\n            if (opts.failStart) return json({ message: 'This entry has been invoiced and is locked.' }, 422);\n            const p = projects.find((x) => x.id === body.project_id) || projects[0];\n            const t = p.tasks.find((x) => x.id === body.task_id);\n            window.__started = body;\n            return json({ entry: { ...entry('e9', p.id, null, 0, body.notes ?? null), task: t ? t.name : null, task_id: t ? t.id : null, timer_started_at: new Date().toISOString() } });\n        }\n        return json({ ok: true });\n    };\n})();\n"
+}

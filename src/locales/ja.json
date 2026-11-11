@@ -133,6 +133,8 @@
         "language": "言語",
         "tabSettings": "設定",
         "tabShortcuts": "キーボードショートカット",
+        "shortcutsHint": "どのアプリからでも使えます。Zebu を隠していても動作します。",
+        "shortcutsTurnOn": "オンにする",
         "shortcutToggleTimer": "タイマーを開始・停止",
         "shortcutNewTimer": "新しいタイマーを開始",
         "shortcutTogglePopover": "Zebu を表示・非表示",

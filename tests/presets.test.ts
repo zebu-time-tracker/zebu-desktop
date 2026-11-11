@@ -4,6 +4,7 @@ import type { ProjectOption } from '../src/api.ts';
 import {
     defaultPresetName,
     filterPresets,
+    firstStartable,
     hasPreset,
     newPresetId,
     presetRows,
@@ -149,4 +150,15 @@ test('searching matches the name the user gave and what the row resolves to', ()
     assert.deepEqual(filterPresets(rows, 'nothing here'), []);
     // an empty search is not a filter
     assert.equal(filterPresets(rows, '  ').length, 2);
+});
+
+test('the highlight starts on the first preset that can be started', () => {
+    const rows = presetRows(
+        [preset({ id: 'gone', project_id: 'archived' }), preset({ id: 'p2', project_id: 'proj-1' }), preset({ id: 'p3', project_id: 'proj-1' })],
+        [project({ id: 'proj-1' })],
+    );
+    // Return on a preset whose project has gone would start nothing
+    assert.equal(firstStartable(rows), 1);
+    assert.equal(firstStartable(rows.slice(0, 1)), -1);
+    assert.equal(firstStartable([]), -1);
 });

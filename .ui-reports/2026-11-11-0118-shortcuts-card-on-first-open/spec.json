@@ -1,0 +1,260 @@
+{
+  "title": "Shortcuts card on first open",
+  "request": "Please look at the harvest default key bindings and perhaps have an onboarding to help new users set or learn the shortcuts. Please show me the flow and avoid extraneous text as much as possible it should be extremely clean, precise and simple",
+  "interpretation": "The three timer hotkeys were bound silently on a Mac, with keys of my own choosing. They now follow Harvest (⌥⌘N new timer, ⌥⌘T show/hide; Harvest has no start/stop key, so that one is ⌥⌘P) and are offered once on a single card the first time the popover opens: three rows, each one click to change, one button to turn them on.",
+  "changes": [
+    "Keys follow Harvest for Mac: ⌥⌘N new timer, ⌥⌘T show/hide; start/stop, which Harvest has no key for, is ⌥⌘P (was ⌃⌥⌘S / N / Z)",
+    "Nothing is bound silently any more: one card on first open offers the three, with one button, Turn on",
+    "Each key on the card is the recorder: click to change, ✕ to leave that row out",
+    "× or Escape binds nothing; Return is Turn on; the card never comes back",
+    "A combination another app holds is said on its row and the card stays",
+    "Rows already bound are shown as they are and left alone; no card when all three are bound, or off a Mac"
+  ],
+  "baseUrl": {
+    "before": "http://127.0.0.1:5198",
+    "after": "http://127.0.0.1:5199"
+  },
+  "viewports": [
+    "popover"
+  ],
+  "colorScheme": "light",
+  "hideSelectors": [],
+  "items": [
+    {
+      "id": "first-open",
+      "title": "First open",
+      "path": "/",
+      "note": "Before, the hotkeys were bound without a word. After, one card.",
+      "actions": [
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".shortcut-offer",
+          "label": "The card",
+          "phase": "after"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".shortcut-offer",
+          "padding": 10,
+          "scale": 3,
+          "label": "Card",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "first-open-dark",
+      "title": "First open, dark",
+      "path": "/",
+      "colorScheme": "dark",
+      "actions": [
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".shortcut-offer",
+          "label": "The card",
+          "phase": "after"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".shortcut-offer",
+          "padding": 10,
+          "scale": 3,
+          "label": "Card, dark",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "change",
+      "title": "Click a key to change it",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".shortcut-offer .pref-shortcut:nth-of-type(1) .shortcut-record"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".shortcut-offer .shortcut-record.recording",
+          "label": "Listening for a new combination",
+          "phase": "after"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".shortcut-offer",
+          "padding": 10,
+          "scale": 3,
+          "label": "Recording",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "taken",
+      "title": "A combination another app holds",
+      "path": "/",
+      "actions": [
+        {
+          "eval": "sessionStorage.setItem('mockTaken','Alt+Super+KeyT')"
+        },
+        {
+          "goto": "/"
+        },
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".shortcut-offer .btn-primary"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": ".shortcut-offer .shortcut-taken",
+          "label": "Said on the row; the card stays",
+          "phase": "after"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".shortcut-offer",
+          "padding": 10,
+          "scale": 3,
+          "label": "Refused row",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "turned-on",
+      "title": "After Turn on: Settings › Keyboard shortcuts",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".shortcut-offer .btn-primary"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".footer-right button"
+        },
+        {
+          "click": "#settings-tab-shortcuts"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": "#settings-panel-shortcuts",
+          "label": "⌥⌘P / N / T, as Harvest"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".settings",
+          "padding": 8,
+          "scale": 3,
+          "label": "Shortcuts tab",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dismissed",
+      "title": "After ×: nothing bound, the day as usual",
+      "path": "/",
+      "actions": [
+        {
+          "waitFor": ".footer"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".shortcut-offer .sheet-close"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "click": ".footer-right button"
+        },
+        {
+          "click": "#settings-tab-shortcuts"
+        }
+      ],
+      "highlights": [
+        {
+          "selector": "#settings-panel-shortcuts",
+          "label": "Rows left empty"
+        }
+      ],
+      "details": [
+        {
+          "selector": ".settings",
+          "padding": 8,
+          "scale": 3,
+          "label": "Shortcuts tab",
+          "viewports": [
+            "popover"
+          ]
+        }
+      ]
+    }
+  ],
+  "customViewports": {
+    "popover": {
+      "width": 475,
+      "height": 640,
+      "dpr": 2,
+      "mobile": false,
+      "label": "Popover 475×640",
+      "short": "pop"
+    }
+  },
+  "freezeTime": "2026-11-11T10:00:00Z",
+  "timezone": "UTC",
+  "waitMs": 500,
+  "initScript": "// Plain-browser stand-in for the workspace API, so the popover renders without a server.\n(() => {\n    try {\n        localStorage.setItem('zebu.token', 'demo');\n        localStorage.setItem('zebu.workspace', 'https://studio.zebu.work');\n        localStorage.setItem('zebu.presets', JSON.stringify([\n            { id: 'a', name: 'Morning standup', project_id: 'p9', task_id: 't-admin', workspace: 'https://studio.zebu.work' },\n            { id: 'b', name: 'Design review', project_id: 'p3', task_id: 't-design', workspace: 'https://studio.zebu.work' },\n            { id: 'c', name: 'Acme app sprint', project_id: 'p4', task_id: 't-development', workspace: 'https://studio.zebu.work' },\n            { id: 'd', name: 'Waffle menu', project_id: 'p2', task_id: 't-design', workspace: 'https://studio.zebu.work' },\n        ]));\n    } catch {}\n    // The app as it runs on a Mac: ⌘ keycaps, and the hotkeys a Mac starts with.\n    if (!(window.__mockOpts || {}).notMac) try {\n        Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'MacIntel' });\n        Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined });\n    } catch {}\n    // Just enough of Tauri for the shell calls that have an answer to matter here;\n    // everything else rejects, as it does in a plain browser.\n    window.__invoked = [];\n    window.__TAURI_INTERNALS__ = {\n        transformCallback: () => 0,\n        invoke: async (cmd, args) => {\n            window.__invoked.push([cmd, args]);\n            // one combination another app \"already has\", to show a refused row\n            if (cmd === 'set_shortcut' && args.accelerator && args.accelerator === sessionStorage.getItem('mockTaken')) throw 'taken';\n            if (cmd === 'set_shortcut' || cmd === 'set_tray_state' || cmd === 'open_popover') return null;\n            throw new Error('not running inside Tauri');\n        },\n    };\n    const tasks = (names) => names.map((n, i) => ({ id: `t-${n.toLowerCase().replace(/[^a-z]+/g, '-')}`, name: n }));\n    const std = tasks(['Design', 'Development', 'Project management', 'Meetings', 'Research']);\n    const projects = [\n        { id: 'p1', name: 'Website redesign', code: 'WEB', client: 'Acme Holdings', tasks: std },\n        { id: 'p2', name: 'Placemat & Menu Design', code: 'PMD', client: \"Bob's Waffles\", tasks: tasks(['Design', 'Illustration', 'Print production']) },\n        { id: 'p3', name: 'Design retainer', code: null, client: 'Globex', tasks: std },\n        { id: 'p4', name: 'Mobile app', code: 'APP', client: 'Acme Holdings', tasks: std },\n        { id: 'p5', name: 'Brand guidelines', code: 'BRD', client: 'Globex', tasks: tasks(['Design', 'Copywriting']) },\n        { id: 'p6', name: 'Annual report 2026', code: 'AR26', client: 'Initech', tasks: tasks(['Design', 'Copywriting', 'Data visualisation']) },\n        { id: 'p7', name: 'Developer documentation', code: 'DOCS', client: 'Initech', tasks: tasks(['Writing', 'Review']) },\n        { id: 'p8', name: 'Wine list redesign', code: 'WLR', client: \"Bob's Waffles\", tasks: tasks(['Design', 'Print production']) },\n        { id: 'p9', name: 'Internal', code: null, client: null, tasks: tasks(['Admin', 'Bookkeeping', 'Business development']) },\n        { id: 'p10', name: 'Dashboard rebuild', code: 'DSH', client: 'Umbrella Health', tasks: std },\n        { id: 'p11', name: 'Patient portal', code: 'PP', client: 'Umbrella Health', tasks: std },\n        { id: 'p12', name: 'Résumé site', code: null, client: 'Dana Søndergaard', tasks: [] },\n    ];\n    const entry = (id, p, task, minutes, notes, extra = {}) => ({\n        id, date: '2026-11-11', minutes, notes, project: projects.find((x) => x.id === p).name, project_id: p,\n        task, task_id: task ? `t-${task.toLowerCase()}` : null, is_billable: true, locked: false, timer_started_at: null,\n        updated_at: '2026-11-11T09:30:00Z', ...extra,\n    });\n    const opts = window.__mockOpts || {};\n    const entries = [\n        entry('e1', 'p1', 'Design', 95, 'Homepage hero explorations', { locked: !!opts.locked }),\n        entry('e2', 'p4', 'Meetings', 30, 'Sprint planning'),\n    ];\n    const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });\n    const real = window.fetch.bind(window);\n    window.fetch = async (input, init = {}) => {\n        const url = typeof input === 'string' ? input : input.url;\n        const at = url.indexOf('/api/');\n        if (at < 0 || !url.startsWith('https://studio.zebu.work')) return real(input, init);\n        const path = url.slice(at + 4).split('?')[0];\n        const method = (init.method || 'GET').toUpperCase();\n        if (path === '/me') return json({ name: 'Demo Person', email: 'demo@zebu.test', broadcast: null });\n        if (path === '/timesheet')\n            return json({\n                week_start: '2026-11-09', entries, running: null, active: entries[0], active_as_of: entries[0].updated_at,\n                server_time: new Date().toISOString(), projects, week_locked: !!opts.weekLocked,\n                project_stats: Object.fromEntries(projects.map((p) => [p.id, { total_minutes: 1240, uninvoiced_minutes: 480, budget_pct: null }])),\n            });\n        if (path === '/timer/pulse') return json({ token: 'v1', running: false, maintenance: null });\n        if (path === '/timer/idle') return json({ idle: null });\n        if (path === '/summary')\n            return json({ today: 125, yesterday: 410, this_week: 965, last_week: 2210, this_month: 4100, last_month: 9020, billable_pct_month: 82,\n                month_by_day: [], year_by_month: [], uninvoiced_minutes: 3000, uninvoiced_amounts: {}, uninvoiced_total: 0, base_currency: 'USD' });\n        if (method === 'POST' && path === '/timer/start') {\n            const body = JSON.parse(init.body || '{}');\n            if (opts.failStart) return json({ message: 'This entry has been invoiced and is locked.' }, 422);\n            const p = projects.find((x) => x.id === body.project_id) || projects[0];\n            const t = p.tasks.find((x) => x.id === body.task_id);\n            window.__started = body;\n            return json({ entry: { ...entry('e9', p.id, null, 0, body.notes ?? null), task: t ? t.name : null, task_id: t ? t.id : null, timer_started_at: new Date().toISOString() } });\n        }\n        return json({ ok: true });\n    };\n})();\n"
+}

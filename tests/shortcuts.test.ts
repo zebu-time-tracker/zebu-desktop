@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS } from '../src/shortcuts.ts';
+import {
+    accelerator,
+    assignShortcut,
+    defaultShortcuts,
+    defaultsToApply,
+    formatAccelerator,
+    noShortcuts,
+    offerChanges,
+    readShortcuts,
+    shortcutOffer,
+    SHORTCUT_ACTIONS,
+} from '../src/shortcuts.ts';
 
 /** A keydown as the recorder sees it; only the fields accelerator() reads. */
 const press = (code: string, mods: { meta?: boolean; ctrl?: boolean; alt?: boolean; shift?: boolean } = {}) =>
@@ -98,4 +109,70 @@ test('stored preferences are read back defensively', () => {
         ...noShortcuts(),
         toggleTimer: 'Super+KeyS',
     });
+});
+
+// The bindings a Mac is offered on first run (board #569).
+test('a Mac is offered the timer, a new timer and the popover, on Harvest\'s keys; other platforms nothing', () => {
+    const mac = defaultShortcuts(true);
+    assert.deepEqual(mac, { toggleTimer: 'Alt+Super+KeyP', newTimer: 'Alt+Super+KeyN', togglePopover: 'Alt+Super+KeyT' });
+    assert.deepEqual(Object.values(mac).map(formatAccelerator), ['⌥⌘P', '⌥⌘N', '⌥⌘T']);
+    assert.deepEqual(defaultShortcuts(false), {});
+});
+
+test('every default is a combination the recorder itself could have produced, and no two are the same', () => {
+    const accels = Object.values(defaultShortcuts(true));
+    for (const accel of accels) {
+        const keys = accel.split('+');
+        const event = press(keys[keys.length - 1], { ctrl: keys.includes('Control'), alt: keys.includes('Alt'), shift: keys.includes('Shift'), meta: keys.includes('Super') });
+        assert.equal(accelerator(event), accel);
+    }
+    assert.equal(new Set(accels).size, accels.length);
+});
+
+test('with nothing bound, every default is on the card, in row order', () => {
+    const offer = shortcutOffer(noShortcuts(), defaultShortcuts(true));
+    assert.deepEqual(offer?.actions, ['toggleTimer', 'newTimer', 'togglePopover']);
+    assert.deepEqual(offer?.draft, { ...noShortcuts(), toggleTimer: 'Alt+Super+KeyP', newTimer: 'Alt+Super+KeyN', togglePopover: 'Alt+Super+KeyT' });
+});
+
+test('a row the person bound shows their binding, and only the untouched rows are filled', () => {
+    const mine = { ...noShortcuts(), toggleTimer: 'Control+Alt+KeyS' };
+    const offer = shortcutOffer(mine, defaultShortcuts(true));
+    assert.equal(offer?.draft.toggleTimer, 'Control+Alt+KeyS');
+    assert.equal(offer?.draft.newTimer, 'Alt+Super+KeyN');
+    assert.deepEqual(
+        defaultsToApply(mine, defaultShortcuts(true)).map(([action]) => action),
+        ['newTimer', 'togglePopover'],
+    );
+});
+
+test('a default combination the person gave to another row is not taken from it', () => {
+    // ⌥⌘P already shows Insights here: the timer row is offered empty rather than stealing it
+    const mine = { ...noShortcuts(), toggleInsights: 'Alt+Super+KeyP' };
+    const offer = shortcutOffer(mine, defaultShortcuts(true));
+    assert.equal(offer?.draft.toggleTimer, '');
+    assert.equal(offer?.draft.toggleInsights, 'Alt+Super+KeyP');
+});
+
+test('nothing to offer means no card: no defaults here, or every row already bound', () => {
+    assert.equal(shortcutOffer(noShortcuts(), defaultShortcuts(false)), null);
+    const all = { ...noShortcuts(), toggleTimer: 'Alt+KeyA', newTimer: 'Alt+KeyB', togglePopover: 'Alt+KeyC' };
+    assert.equal(shortcutOffer(all, defaultShortcuts(true)), null);
+});
+
+test('"Turn on" binds only the rows where the card differs from what is live', () => {
+    const live = { ...noShortcuts(), toggleInsights: 'Alt+Super+KeyI' };
+    const offer = shortcutOffer(live, defaultShortcuts(true))!;
+    assert.deepEqual(offerChanges(live, offer.draft), [
+        ['toggleTimer', 'Alt+Super+KeyP'],
+        ['newTimer', 'Alt+Super+KeyN'],
+        ['togglePopover', 'Alt+Super+KeyT'],
+    ]);
+    // a row emptied on the card is simply not bound; one re-recorded there is bound as recorded
+    const edited = assignShortcut({ ...offer.draft, togglePopover: '' }, 'toggleTimer', 'Control+Alt+Super+KeyS');
+    assert.deepEqual(offerChanges(live, edited), [
+        ['toggleTimer', 'Control+Alt+Super+KeyS'],
+        ['newTimer', 'Alt+Super+KeyN'],
+    ]);
+    assert.deepEqual(offerChanges(live, live), []);
 });

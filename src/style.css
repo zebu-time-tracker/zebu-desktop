@@ -9,6 +9,7 @@
     --muted: #9a9a9a;
     --accent: #16a34a;
     --accent-soft: rgba(22, 163, 74, 0.18);
+    --hit: rgba(34, 197, 94, 0.3);
     --danger: #ef4444;
     --header-from: #15803d;
     --header-to: #16a34a;
@@ -26,6 +27,7 @@
     --text: #1a1a1a;
     --muted: #737373;
     --accent-soft: rgba(22, 163, 74, 0.12);
+    --hit: rgba(22, 163, 74, 0.22);
     }
 }
 
@@ -38,6 +40,7 @@
     --text: #1a1a1a;
     --muted: #737373;
     --accent-soft: rgba(22, 163, 74, 0.12);
+    --hit: rgba(22, 163, 74, 0.22);
 }
 
 * {
@@ -173,6 +176,10 @@ textarea:focus {
     margin: 0 0 1px; padding: 2px 8px 0; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
     line-height: 1.35; opacity: 0.5; overflow-wrap: anywhere;
 }
+/* The characters the search matched (Hits.vue): a tint behind them rather than
+   a heavier weight, so a row's text does not shift about as the query grows. */
+.hit { background: var(--hit); color: inherit; border-radius: 3px; box-shadow: 0 0 0 1px var(--hit); }
+.picker-list:focus { outline: none; }
 .picker-row.active { background: var(--bg-hover, rgba(127, 127, 127, 0.15)); }
 .picker-row.current { font-weight: 600; }
 /* the task picker's "no task" row, worded as the empty field it leaves */

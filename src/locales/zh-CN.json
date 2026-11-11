@@ -133,6 +133,8 @@
         "language": "语言",
         "tabSettings": "设置",
         "tabShortcuts": "键盘快捷键",
+        "shortcutsHint": "在任何应用中都可使用，即使 Zebu 已隐藏。",
+        "shortcutsTurnOn": "开启",
         "shortcutToggleTimer": "开始或停止计时",
         "shortcutNewTimer": "开始新的计时",
         "shortcutTogglePopover": "显示或隐藏 Zebu",

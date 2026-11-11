@@ -7,6 +7,8 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProjectPicker from './ProjectPicker.vue';
+import Hits from './Hits.vue';
+import { listKey, step } from './picker';
 import SearchSelect from './SearchSelect.vue';
 import { readActive, runningOf, supersedes, type ActiveAnswer } from './active';
 import { editDurationToSave, newTimerPrefill, isApplePlatform, isNewEntryShortcut, isSaveShortcut, newEntryShortcutKeys, saveShortcutKeys, taskForProject } from './entryForm';
@@ -24,6 +26,7 @@ import {
     defaultPresetName,
     filterPresets,
     hasPreset,
+    firstStartable,
     presetRows,
     presetsFor,
     PRESETS_KEY,
@@ -35,7 +38,21 @@ import {
     type PresetRow,
 } from './presets';
 import { clientOf, lastTimerIsOnlyEntry, lastTimerProject, relativeDay, resumeLabelKey, splitAround } from './lastTimer';
-import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS, type ShortcutAction, type Shortcuts } from './shortcuts';
+import {
+    accelerator,
+    assignShortcut,
+    defaultShortcuts,
+    formatAccelerator,
+    noShortcuts,
+    offerChanges,
+    readShortcuts,
+    shortcutOffer,
+    SHORTCUT_ACTIONS,
+    SHORTCUT_DEFAULTS_VERSION,
+    type ShortcutAction,
+    type ShortcutOffer,
+    type Shortcuts,
+} from './shortcuts';
 import { clockSkewMs, noteServerTime, serverNow } from './clock';
 import { trayEntry as describeTray } from './tray';
 import { checkForUpdates, dismissUpdate, installUpdate, maybeCheckForUpdates, updateBehind, updateCurrentVersion, updateProgress, updatePromptOpen, updateStatus, updateVersion } from './updater';
@@ -47,6 +64,9 @@ type View = 'connect' | 'main';
 
 const view = ref<View>(auth.token && auth.workspace ? 'main' : 'connect');
 
+/** A Mac, where ⌘ is the command key: which keycaps are shown, and which hotkeys come bound. */
+const appleKeys = isApplePlatform((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform);
+
 // ---- preferences -----------------------------------------------------------
 
 interface Prefs {
@@ -57,6 +77,8 @@ interface Prefs {
     idleMinutes: number;
     language: string; // 'system' or a locale code from SUPPORTED_LOCALES
     shortcuts: Shortcuts; // system-wide hotkeys, one accelerator per action ('' = unbound)
+    /** Which first-run offer of hotkeys this install has answered; 0 before any (src/shortcuts.ts). */
+    shortcutDefaults: number;
     /** Focus tracking (board #401): off until the user turns it on. Rust samples nothing while false. */
     focusEnabled: boolean;
     /** Apps never recorded, one per line — the password managers by default. */
@@ -72,6 +94,7 @@ const prefs = ref<Prefs>({
     idleMinutes: 10,
     language: 'system',
     shortcuts: noShortcuts(),
+    shortcutDefaults: 0,
     focusEnabled: false,
     focusExclude: DEFAULT_EXCLUDED.join('\n'),
     focusMinSeconds: 30,
@@ -454,8 +477,17 @@ const trayEntry = computed(() => activeEntry.value);
 // setInterval here left the menubar frozen until the icon was clicked). This
 // only hands over what is on the clock, whenever that changes; the tooltip is
 // rendered here so it follows the app's locale, with `{time}` left for Rust.
+//
+// With the start/stop hotkey bound, the tooltip names it on a second line: the
+// pill's button is where the mouse starts and stops, so that is where the
+// keyboard way gets noticed (board #569). On a Mac only — the Linux tray shows
+// the tooltip as a menu line, which cannot take a second one.
+const toggleHint = computed(() => {
+    const accel = prefs.value.shortcuts.toggleTimer;
+    return appleKeys && accel ? `${t('settings.shortcutToggleTimer')} (${formatAccelerator(accel)})` : '';
+});
 const updateTray = () => {
-    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t, clockSkewMs()) }).catch(() => {});
+    invoke('set_tray_state', { entry: describeTray(trayEntry.value, t, clockSkewMs(), toggleHint.value) }).catch(() => {});
 };
 
 onMounted(() => {
@@ -591,8 +623,8 @@ watch(activeEntry, (entry) => {
     updateTray();
 });
 
-// a language switch re-renders the tray tooltip right away
-watch(intlLocale, () => updateTray());
+// a language switch re-renders the tray tooltip right away, and so does rebinding the hotkey it names
+watch([intlLocale, toggleHint], () => updateTray());
 
 const confirmNewDay = ref(false);
 const newDayToday = ref(''); // "today" as of when the dialog opened: what {when} is counted from
@@ -917,8 +949,9 @@ const typedMinutes = computed(() => (form.value.duration.trim() ? parseDuration(
 const taskName = (task: { name: string }) => task.name;
 // The sheet reads top to bottom — project, task, date, duration, notes — and a
 // pick moves on to the next field (board #501): "＋, type, Return, type,
-// Return" starts a timer without the mouse. A project without tasks has no
-// task to ask for, so it goes straight to the date.
+// Return" starts a timer without the mouse, and Tab does what Return does
+// (board #569). A project without tasks has no task to ask for, so it goes
+// straight to the date. ⇧Tab in the task search goes back to the project's.
 const onProjectPicked = () => {
     form.value.task_id = taskForProject(formTasks.value, form.value.task_id);
     nextTick(() => (formTasks.value.length ? taskPicker.value?.open() : dateEl.value?.focus()));
@@ -928,7 +961,6 @@ let openedDuration = ''; // the prefill — only a changed duration rebases a li
 /** Said inside the sheet, where the person is looking, rather than on the list behind it. */
 const formError = ref('');
 // ⌘↵ / Ctrl+↵ saves the sheet from any field (board #398); the keycap in the button says so.
-const appleKeys = isApplePlatform((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform);
 const saveKeys = computed(() => saveShortcutKeys(appleKeys, t('form.ctrlKey')));
 const newEntryKeys = computed(() => newEntryShortcutKeys(appleKeys, t('form.ctrlKey')));
 const onSheetKeydown = (e: KeyboardEvent) => {
@@ -1048,22 +1080,41 @@ let trayPlayUnlisten: UnlistenFn | null = null;
 /** The presets hotkey's event; the list itself lives in the presets section below. */
 let presetsUnlisten: UnlistenFn | null = null;
 
+const showPopover = () => invoke('open_popover').catch(() => {});
+/** A start or stop that failed with the popover put away: its error is only readable in the window. */
+const showFailure = () => {
+    if (errorMessage.value) showPopover();
+};
+
 /**
- * The pill's play/pause button, opening nothing: the stop the running entry's
- * ■ performs, or — on a paused pill — the ▶ of the entry the pill shows.
+ * The pill's play/pause button, opening nothing when it works: the stop the
+ * running entry's ■ performs, or — on a paused pill — the ▶ of the entry the
+ * pill shows.
  */
 const onTrayToggle = () => {
-    // Rust's view of the pill can only be a beat behind this window's own (a
-    // timer stopped in the browser, say); doing nothing leaves the next click
-    // — after the refresh that corrects the pill — to get it right.
     if (running.value) {
-        stopTimer();
+        stopTimer().then(showFailure);
+        return;
+    }
+    // Nothing this press can start: the connect screen, or a week the server
+    // has locked. The press comes from the hotkey as often as from the pill,
+    // with another app in front, and a key that does nothing reads as a key
+    // that is broken — so the window comes up and shows why (board #569).
+    if (view.value !== 'main' || sheet.value?.week_locked) {
+        showPopover();
         return;
     }
     // the pill's ▶ acts on the entry the pill is showing — the same `active`
     const paused = activeEntry.value;
-    if (!paused || paused.locked || sheet.value?.week_locked || view.value !== 'main') return;
-    resumeEntry(paused.id, paused.project_id);
+    // No entry after all (Rust's view of the pill can be a beat behind this
+    // window's), or one that has been invoiced and cannot run again: the
+    // new-entry sheet, as on the "zzzz" pill.
+    if (!paused || paused.locked) {
+        showPopover();
+        openForm();
+        return;
+    }
+    resumeEntry(paused.id, paused.project_id).then(showFailure);
 };
 
 /** The idle pill ("zzzz"): nothing to resume, so land in the same new-entry sheet the ＋ button opens. */
@@ -1408,6 +1459,35 @@ const confirmingDelete = ref<string | null>(null);
 const presetList = computed(() => presetRows(presetsFor(presets.value, auth.workspace), sheet.value?.projects ?? []));
 const visiblePresets = computed(() => filterPresets(presetList.value, presetQuery.value));
 
+/**
+ * The row Return starts. The "show presets" hotkey lands in the search, so a
+ * saved timer is hotkey, a few letters, Return (board #569): the highlight
+ * sits on the best match that can be started, the arrows walk it, and it goes
+ * back to the best match whenever the search changes.
+ */
+const presetActive = ref(-1);
+watch([presetQuery, presetsOpen], () => (presetActive.value = firstStartable(visiblePresets.value)));
+// a row renamed or deleted under the highlight: keep it on a row that exists
+watch(
+    () => visiblePresets.value.length,
+    (count) => {
+        if (presetActive.value >= count) presetActive.value = firstStartable(visiblePresets.value);
+    },
+);
+const onPresetSearchKey = (e: KeyboardEvent) => {
+    const action = listKey(e);
+    if (action === 'next' || action === 'prev') {
+        e.preventDefault();
+        presetActive.value = step(presetActive.value, action === 'next' ? 1 : -1, visiblePresets.value.length);
+        nextTick(() => document.querySelector('.preset-row.active')?.scrollIntoView({ block: 'nearest' }));
+    } else if (action === 'pick') {
+        e.preventDefault();
+        const row = visiblePresets.value[presetActive.value];
+        if (row) startFromPreset(row);
+    }
+    // Escape is the window's (it closes the list), and Tab walks on to the rows' own buttons
+};
+
 const openPresets = () => {
     // a locked week has nothing to start, the same reason ＋ is not offered
     if (view.value !== 'main' || sheet.value?.week_locked) return;
@@ -1558,13 +1638,68 @@ watch(settingsOpen, (open) => {
 });
 watch(settingsTab, () => (recording.value = null));
 
-onMounted(() => {
+// ---- the first-run card ----------------------------------------------------
+//
+// The first time the popover opens on a Mac, one card offers the three hotkeys
+// that are the timer itself (src/shortcuts.ts has the keys and why). It is the
+// whole onboarding: the rows are the Settings tab's own recorders, so the card
+// teaches the keys and is also where they are changed; "Turn on" binds them
+// and × leaves every row empty. Either answer is final — the card never comes
+// back, and Settings › Keyboard shortcuts is where the rows live from then on.
+//
+// Nothing is registered until "Turn on": the card edits a draft. A combination
+// the system refuses says so on its row and the card stays, so the person can
+// record another or empty the row rather than end up with a key that is not
+// there.
+
+const offer = ref<ShortcutOffer | null>(null);
+/** The card waits its turn behind anything else that has the window: a sheet, the update prompt. */
+const offerShown = computed(() => !!offer.value && !formOpen.value && !updatePromptOpen.value && !confirmNewDay.value);
+/** Whether "Turn on" has anything to bind. */
+const offerHasWork = computed(() => !!offer.value && offer.value.actions.some((action) => offer.value?.draft[action]));
+
+const answerOffer = () => {
+    // a row refused on the card and then left: Settings should not open on its complaint
+    const cleared = Object.fromEntries((offer.value?.actions ?? []).filter((action) => prefs.value.shortcuts[action] === '').map((action) => [action, false]));
+    shortcutTaken.value = { ...shortcutTaken.value, ...cleared };
+    offer.value = null;
+    recording.value = null;
+    prefs.value.shortcutDefaults = SHORTCUT_DEFAULTS_VERSION;
+};
+
+/** Put the card up if this install has not answered it and there is something on it. */
+const considerOffer = () => {
+    if (view.value !== 'main' || offer.value || prefs.value.shortcutDefaults >= SHORTCUT_DEFAULTS_VERSION) return;
+    const next = shortcutOffer(prefs.value.shortcuts, defaultShortcuts(appleKeys));
+    // nothing to offer here (not a Mac, or every row already bound): that is an answer too
+    if (!next) prefs.value.shortcutDefaults = SHORTCUT_DEFAULTS_VERSION;
+    offer.value = next;
+};
+
+const setOfferRow = (action: ShortcutAction, accel: string) => {
+    if (!offer.value) return;
+    offer.value = { ...offer.value, draft: assignShortcut(offer.value.draft, action, accel) };
+    shortcutTaken.value = { ...shortcutTaken.value, [action]: false };
+};
+
+const turnOnOffer = async () => {
+    const card = offer.value;
+    if (!card) return;
+    recording.value = null;
+    for (const [action, accel] of offerChanges(prefs.value.shortcuts, card.draft)) await setShortcut(action, accel);
+    // a refused row keeps the card up, with the reason on the row
+    if (card.actions.some((action) => shortcutTaken.value[action])) return;
+    answerOffer();
+};
+
+watch(view, considerOffer);
+
+onMounted(async () => {
     // The system forgets our registrations when the app quits, so every launch
     // hands the saved bindings back; one the machine has since given to
     // another app comes back refused and says so in its row.
-    for (const action of SHORTCUT_ACTIONS) {
-        if (prefs.value.shortcuts[action]) applyShortcut(action, prefs.value.shortcuts[action]);
-    }
+    await Promise.all(SHORTCUT_ACTIONS.filter((action) => prefs.value.shortcuts[action]).map((action) => applyShortcut(action, prefs.value.shortcuts[action])));
+    considerOffer();
 });
 
 // ---- coming back to the popover -------------------------------------------
@@ -1645,7 +1780,9 @@ const onKeydown = (e: KeyboardEvent) => {
         const accel = accelerator(e);
         if (!accel) return; // a modifier still on its own, or a combination we can't bind: keep listening
         recording.value = null;
-        setShortcut(action, accel);
+        // the first-run card edits its draft; Settings binds at once
+        if (offer.value) setOfferRow(action, accel);
+        else setShortcut(action, accel);
         return;
     }
     // ⌘N / Ctrl+N does what the footer's ＋ does, from anywhere in the popover
@@ -1658,11 +1795,20 @@ const onKeydown = (e: KeyboardEvent) => {
         openForm();
         return;
     }
+    // Return is the first-run card's one button, as it is a dialog's default
+    // button; not while a control of the card has focus, whose own key it is.
+    if (e.key === 'Enter' && offerShown.value && offerHasWork.value && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
+        turnOnOffer();
+        return;
+    }
     if (e.key !== 'Escape') return;
     if (presetsOpen.value) closePresets();
     else if (settingsOpen.value) settingsOpen.value = false;
     // the sheet, even from inside its project search, which opens with it (board #532)
     else if (formOpen.value) formOpen.value = false;
+    // the first-run card: Escape is its ×
+    else if (offerShown.value) answerOffer();
     else return;
     e.preventDefault();
 };
@@ -1873,6 +2019,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
         </div>
 
+        <!-- first run: the three timer hotkeys, offered once (see `offer`) -->
+        <div v-if="offer && offerShown" class="sheet-overlay">
+            <div class="sheet shortcut-offer">
+                <button class="sheet-close" :title="t('common.close')" :aria-label="t('common.close')" @click="answerOffer">×</button>
+                <p class="sheet-title">{{ t('settings.tabShortcuts') }}</p>
+                <p class="muted shortcut-offer-hint">{{ t('settings.shortcutsHint') }}</p>
+                <div class="shortcut-offer-rows">
+                    <div v-for="action in offer.actions" :key="action" class="pref-shortcut">
+                        <div class="pref-row">
+                            <span class="pref-shortcut-label">{{ t(shortcutLabels[action]) }}</span>
+                            <span class="shortcut-field">
+                                <button
+                                    class="shortcut-record"
+                                    :class="{ recording: recording === action, set: !!offer.draft[action] }"
+                                    :title="t('settings.recordShortcut')"
+                                    @click="recording === action ? (recording = null) : startRecording(action)"
+                                >
+                                    {{ recording === action ? t('settings.recording') : offer.draft[action] ? formatAccelerator(offer.draft[action]) : t('settings.recordShortcut') }}
+                                </button>
+                                <button class="shortcut-clear" :class="{ empty: !offer.draft[action] }" :title="t('settings.clearShortcut')" @click="setOfferRow(action, '')">✕</button>
+                            </span>
+                        </div>
+                        <div v-if="shortcutTaken[action]" class="shortcut-taken">{{ t('settings.shortcutTaken') }}</div>
+                    </div>
+                </div>
+                <div class="sheet-actions">
+                    <button class="btn-primary" :disabled="!offerHasWork" @click="turnOnOffer">{{ t('settings.shortcutsTurnOn') }}</button>
+                </div>
+            </div>
+        </div>
+
         <!-- new entry sheet -->
         <div v-if="formOpen" class="sheet-overlay" @click.self="formOpen = false">
             <div class="sheet" @keydown="onSheetKeydown">
@@ -1906,6 +2083,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     :none-label="t('form.addTask')"
                     :disabled="!formTasks.length"
                     @picked="onTaskPicked"
+                    @back="projectPicker?.open()"
                 />
                 <!-- keep this project and task for next time; the ☆ in the footer is where it lands.
                      No Tab stop, so Tab walks the fields in order: task, date, duration, notes. -->
@@ -1967,9 +2145,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :placeholder="t('presets.search')"
                 autocomplete="off"
                 spellcheck="false"
+                @keydown="onPresetSearchKey"
             />
             <div class="preset-rows">
-                <div v-for="row in visiblePresets" :key="row.preset.id" class="preset-row" :class="{ missing: row.missing }">
+                <div
+                    v-for="(row, i) in visiblePresets"
+                    :key="row.preset.id"
+                    class="preset-row"
+                    :class="{ missing: row.missing, active: i === presetActive }"
+                    @mousemove="presetActive = i"
+                >
                     <template v-if="renamingPreset === row.preset.id">
                         <input
                             v-model="renameDraft"
@@ -1989,8 +2174,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             :title="row.missing ? t('presets.missing') : t('presets.start', { name: row.preset.name })"
                             @click="startFromPreset(row)"
                         >
-                            <span class="preset-name">{{ row.preset.name }}</span>
-                            <span class="preset-sub">{{ row.missing ? t('presets.missing') : row.subtitle }}</span>
+                            <span class="preset-name"><Hits :text="row.preset.name" :query="presetQuery" /></span>
+                            <span class="preset-sub"><template v-if="row.missing">{{ t('presets.missing') }}</template><Hits v-else :text="row.subtitle" :query="presetQuery" /></span>
                         </button>
                         <button v-if="confirmingDelete === row.preset.id" class="preset-confirm" @click="deletePreset(row)">
                             {{ t('presets.confirmDelete') }}
@@ -2125,6 +2310,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
             <!-- system-wide hotkeys; Rust registers them (src-tauri: set_shortcut) -->
             <div v-else id="settings-panel-shortcuts" class="pref-panel pref-shortcuts" role="tabpanel" aria-labelledby="settings-tab-shortcuts">
+                <!-- what makes these different from ⌘N and ⌘↵, which only work in this window -->
+                <p class="pref-note muted shortcuts-hint">{{ t('settings.shortcutsHint') }}</p>
                 <div v-for="action in SHORTCUT_ACTIONS" :key="action" class="pref-shortcut">
                     <div class="pref-row">
                         <span class="pref-shortcut-label">{{ t(shortcutLabels[action]) }}</span>
@@ -2923,6 +3110,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 .pref-shortcuts {
     gap: 3px;
 }
+.shortcuts-hint {
+    margin-bottom: 4px;
+}
+/* The first-run card: the Settings tab's rows on a sheet of their own, with
+   more air between them — three rows are the whole card, not a list to scan. */
+.shortcut-offer {
+    position: relative;
+    padding: 18px;
+}
+/* title, hint and row labels share one left edge */
+.shortcut-offer .sheet-title {
+    text-align: left;
+}
+.shortcut-offer-hint {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: -6px;
+}
+.shortcut-offer-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 6px 0 2px;
+}
+.shortcut-offer .pref-row {
+    font-size: 13px;
+    padding: 0;
+}
+.shortcut-offer .shortcut-taken {
+    padding: 2px 0 0;
+}
 /* the presets popout's title */
 .pref-group {
     font-size: 10px;
@@ -2951,10 +3169,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     position: relative;
     flex: none;
 }
+/* One height whatever it holds: the placeholder is 11px and a combination
+   13px, and with three rows bound from the start (board #569) the list read
+   as two sizes of row, and a row jumped when it was recorded or cleared. */
 .shortcut-record {
     display: block;
     width: 116px;
-    padding: 3px 8px;
+    height: 24px;
+    padding: 0 8px;
+    line-height: 22px;
     font-size: 11px;
     text-align: center;
     white-space: nowrap;
@@ -3106,7 +3329,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     gap: 1px;
     border-radius: 8px;
 }
-.preset-row:hover {
+/* one highlight, moved by the pointer and by the arrows alike: the row Return starts */
+.preset-row.active {
     background: var(--accent-soft);
 }
 .preset-start {
