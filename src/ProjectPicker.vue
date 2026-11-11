@@ -5,6 +5,7 @@
 // long client name can never crowd the project out of the narrow popover.
 import { ref } from 'vue';
 import type { ProjectOption } from './api';
+import Hits from './Hits.vue';
 import SearchSelect from './SearchSelect.vue';
 
 defineProps<{
@@ -51,9 +52,10 @@ const client = (p: ProjectOption) => p.client ?? '';
             <span class="picker-title">{{ option.name }}</span>
             <span v-if="option.client" class="picker-client">({{ option.client }})</span>
         </template>
-        <template #row="{ option }">
-            <span v-if="option.code" class="picker-code">{{ option.code }}:</span>
-            <span class="picker-title">{{ option.name }}</span>
+        <!-- the row's two pieces each mark what the search matched; the client is the heading above -->
+        <template #row="{ option, query }">
+            <span v-if="option.code" class="picker-code"><Hits :text="option.code" :query="query" />:</span>
+            <span class="picker-title"><Hits :text="option.name" :query="query" /></span>
         </template>
     </SearchSelect>
 </template>

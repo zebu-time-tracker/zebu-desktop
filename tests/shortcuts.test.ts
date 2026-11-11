@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { accelerator, assignShortcut, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS } from '../src/shortcuts.ts';
+import { accelerator, assignShortcut, defaultShortcuts, defaultsToApply, formatAccelerator, noShortcuts, readShortcuts, SHORTCUT_ACTIONS } from '../src/shortcuts.ts';
 
 /** A keydown as the recorder sees it; only the fields accelerator() reads. */
 const press = (code: string, mods: { meta?: boolean; ctrl?: boolean; alt?: boolean; shift?: boolean } = {}) =>
@@ -98,4 +98,51 @@ test('stored preferences are read back defensively', () => {
         ...noShortcuts(),
         toggleTimer: 'Super+KeyS',
     });
+});
+
+// The bindings a Mac starts with (board #569).
+test('a Mac starts with the timer, a new timer and the popover bound; other platforms with nothing', () => {
+    const mac = defaultShortcuts(true);
+    assert.deepEqual(mac, { toggleTimer: 'Control+Alt+Super+KeyS', newTimer: 'Control+Alt+Super+KeyN', togglePopover: 'Control+Alt+Super+KeyZ' });
+    assert.deepEqual(Object.values(mac).map(formatAccelerator), ['⌃⌥⌘S', '⌃⌥⌘N', '⌃⌥⌘Z']);
+    assert.deepEqual(defaultShortcuts(false), {});
+});
+
+test('every default is a combination the recorder itself could have produced, and no two are the same', () => {
+    const accels = Object.values(defaultShortcuts(true));
+    for (const accel of accels) {
+        const keys = accel.split('+');
+        const event = press(keys[keys.length - 1], { ctrl: keys.includes('Control'), alt: keys.includes('Alt'), shift: keys.includes('Shift'), meta: keys.includes('Super') });
+        assert.equal(accelerator(event), accel);
+    }
+    assert.equal(new Set(accels).size, accels.length);
+});
+
+test('with nothing bound, every default is handed out, in row order', () => {
+    assert.deepEqual(defaultsToApply(noShortcuts(), defaultShortcuts(true)), [
+        ['toggleTimer', 'Control+Alt+Super+KeyS'],
+        ['newTimer', 'Control+Alt+Super+KeyN'],
+        ['togglePopover', 'Control+Alt+Super+KeyZ'],
+    ]);
+});
+
+test('a row the person bound keeps their binding', () => {
+    const mine = { ...noShortcuts(), toggleTimer: 'Alt+Super+KeyT' };
+    assert.deepEqual(
+        defaultsToApply(mine, defaultShortcuts(true)).map(([action]) => action),
+        ['newTimer', 'togglePopover'],
+    );
+});
+
+test('a default combination the person gave to another row is not taken from it', () => {
+    // ⌃⌥⌘S already shows Insights here: the timer row stays empty rather than stealing it
+    const mine = { ...noShortcuts(), toggleInsights: 'Control+Alt+Super+KeyS' };
+    assert.deepEqual(
+        defaultsToApply(mine, defaultShortcuts(true)).map(([action]) => action),
+        ['newTimer', 'togglePopover'],
+    );
+});
+
+test('no defaults means nothing to hand out', () => {
+    assert.deepEqual(defaultsToApply(noShortcuts(), defaultShortcuts(false)), []);
 });

@@ -133,6 +133,7 @@
         "language": "Język",
         "tabSettings": "Ustawienia",
         "tabShortcuts": "Skróty klawiszowe",
+        "shortcutsHint": "Działają w każdej aplikacji, także gdy Zebu jest ukryte.",
         "shortcutToggleTimer": "Uruchom lub zatrzymaj stoper",
         "shortcutNewTimer": "Uruchom nowy stoper",
         "shortcutTogglePopover": "Pokaż lub ukryj Zebu",

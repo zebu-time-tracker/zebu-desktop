@@ -133,6 +133,7 @@
         "language": "Sprache",
         "tabSettings": "Einstellungen",
         "tabShortcuts": "Tastaturkurzbefehle",
+        "shortcutsHint": "Funktionieren in jeder App, auch wenn Zebu ausgeblendet ist.",
         "shortcutToggleTimer": "Timer starten oder stoppen",
         "shortcutNewTimer": "Neuen Timer starten",
         "shortcutTogglePopover": "Zebu ein- oder ausblenden",

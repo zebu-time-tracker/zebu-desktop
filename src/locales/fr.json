@@ -133,6 +133,7 @@
         "language": "Langue",
         "tabSettings": "Réglages",
         "tabShortcuts": "Raccourcis clavier",
+        "shortcutsHint": "Fonctionnent depuis n’importe quelle app, même quand Zebu est masqué.",
         "shortcutToggleTimer": "Démarrer ou arrêter le minuteur",
         "shortcutNewTimer": "Démarrer un nouveau minuteur",
         "shortcutTogglePopover": "Afficher ou masquer Zebu",

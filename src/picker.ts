@@ -37,7 +37,7 @@ export function groupBy<T>(items: T[], keyOf: (item: T) => string, start = 0): G
 
 // ---- the highlighted row ---------------------------------------------------
 //
-// The highlight is the row Return picks, so only the person may move it: the
+// The highlight is the row Return and Tab pick, so only the person may move it: the
 // arrow keys, the pointer actually moving, or the query they type. Board #501:
 // it used to be an index reset to the top whenever the list changed, and the
 // list changes on its own — every timesheet refetch (opening the popover,
@@ -48,9 +48,9 @@ export function groupBy<T>(items: T[], keyOf: (item: T) => string, start = 0): G
 // moved the highlight to wherever the pointer happened to be.
 
 /** What a key does to an open list; null leaves the key to the input. */
-export type ListKey = 'next' | 'prev' | 'pick' | 'close';
+export type ListKey = 'next' | 'prev' | 'pick' | 'tab' | 'back' | 'close';
 
-export type ListKeyPress = Pick<KeyboardEvent, 'key' | 'isComposing' | 'keyCode'>;
+export type ListKeyPress = Pick<KeyboardEvent, 'key' | 'isComposing' | 'keyCode'> & Partial<Pick<KeyboardEvent, 'shiftKey' | 'altKey' | 'ctrlKey' | 'metaKey'>>;
 
 export const listKey = (e: ListKeyPress): ListKey | null => {
     // An input method is composing: its Return confirms the characters and its
@@ -60,7 +60,56 @@ export const listKey = (e: ListKeyPress): ListKey | null => {
     if (e.key === 'ArrowUp') return 'prev';
     if (e.key === 'Enter') return 'pick';
     if (e.key === 'Escape') return 'close';
+    // Tab on its own moves on and ⇧Tab goes back; with any other modifier it is the system's
+    if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) return e.shiftKey ? 'back' : 'tab';
     return null;
+};
+
+/**
+ * What Tab does in an open list (board #569).
+ *
+ * Someone who typed "des" and pressed Tab has said which project they mean:
+ * Tab takes the highlighted row and moves on, exactly as Return does. It used
+ * to leave the field with the old value still in it, which on a new timer is
+ * the last project worked on — the timer then started against the wrong one.
+ *
+ *   - `pick`: take the highlighted row and move to the next field.
+ *   - `stay`: something was typed and nothing matches. Moving on would keep
+ *     the old value behind a query that reads as a new one, so Tab holds still
+ *     beside the "no match" line.
+ *   - `leave`: the list was only passed through. Nothing was typed or walked,
+ *     so Tab changes nothing and goes on to the next field; a field that is
+ *     still empty stays empty rather than taking whatever happens to be first.
+ */
+export type TabOutcome = 'pick' | 'stay' | 'leave';
+
+export interface TabPress {
+    /** The highlighted row's id; undefined when no row is. */
+    id: string | undefined;
+    /** The id currently chosen. */
+    selected: string;
+    /** What is typed in the search. */
+    query: string;
+    /** Whether the arrows moved the highlight since the list opened. */
+    walked: boolean;
+}
+
+export const tabOutcome = ({ id, selected, query, walked }: TabPress): TabOutcome => {
+    const typed = query.trim() !== '';
+    if (id === undefined) return typed ? 'stay' : 'leave';
+    // an untouched list still "picks" the row it opened on when that is the
+    // current choice: nothing changes, and the sheet moves on as after any pick
+    return typed || walked || id === selected ? 'pick' : 'leave';
+};
+
+/**
+ * The element Tab would reach after `from`, out of `stops` in document order.
+ * A picker that is not followed up by its sheet (the settings' rule rows) uses
+ * it so a Tab pick still ends on the next field, not back on the picker.
+ */
+export const nextStop = <E>(stops: readonly E[], from: E | null | undefined): E | null => {
+    const at = from == null ? -1 : stops.indexOf(from);
+    return at < 0 ? null : (stops[at + 1] ?? null);
 };
 
 /** One row up or down, stopping at the ends; -1 when there are no rows. */

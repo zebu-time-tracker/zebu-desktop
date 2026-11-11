@@ -39,6 +39,41 @@ export const readShortcuts = (stored: unknown): Shortcuts => {
     return shortcuts;
 };
 
+// ---- the bindings a Mac starts with ---------------------------------------
+//
+// A hotkey nobody has recorded is a hotkey nobody uses: the five rows shipped
+// empty, behind Settings › Keyboard shortcuts, so starting or stopping a timer
+// from the keyboard took finding that tab first (board #569). The three that
+// are the timer itself now come bound.
+//
+// ⌃⌥⌘ with a letter is the one corner macOS and other apps leave alone: ⌥⌘T is
+// Finder's toolbar, ⌃⌥ with a letter is where the window managers live, and
+// anything with fewer modifiers belongs to whichever app is in front. S starts
+// and stops, N is the popover's own ⌘N, Z is Zebu.
+//
+// Only on a Mac. Elsewhere Ctrl+Alt is AltGr, which with Shift is how Polish
+// types Ś, Ń and Ż, and the Windows key's combinations are the system's to
+// hand out; those platforms keep the empty rows until a set is chosen for them.
+
+/** Bumped when the defaults change, so a new one can be handed to people who already have the old. */
+export const SHORTCUT_DEFAULTS_VERSION = 1;
+
+export const defaultShortcuts = (apple: boolean): Partial<Shortcuts> =>
+    apple ? { toggleTimer: 'Control+Alt+Super+KeyS', newTimer: 'Control+Alt+Super+KeyN', togglePopover: 'Control+Alt+Super+KeyZ' } : {};
+
+/**
+ * The defaults still to hand out, in row order. A row the person bound is
+ * theirs, and so is a combination they gave to another row: a default never
+ * replaces a choice, it only fills a row nobody has touched.
+ */
+export const defaultsToApply = (shortcuts: Shortcuts, defaults: Partial<Shortcuts>): [ShortcutAction, string][] => {
+    const taken = new Set(Object.values(shortcuts).filter(Boolean));
+    return SHORTCUT_ACTIONS.flatMap((action): [ShortcutAction, string][] => {
+        const accel = defaults[action];
+        return accel && !shortcuts[action] && !taken.has(accel) ? [[action, accel]] : [];
+    });
+};
+
 // Keys global-hotkey's parser understands, by shape: letters, digits, the
 // function row and the numeric keypad.
 const KEY_CODE = /^(?:Key[A-Z]|Digit[0-9]|F(?:[1-9]|1[0-9]|2[0-4])|Numpad[0-9])$/;

@@ -115,7 +115,23 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
 - Global hotkeys are registered in Rust (`set_shortcut`, `ShortcutAction`) and
   each one ends in the call a click already makes; the frontend only owns the
   bindings (`src/shortcuts.ts`). Adding an action means a name in both lists
-  and a slot in `SHORTCUTS`.
+  and a slot in `SHORTCUTS`. On a Mac three come bound (board #569:
+  `defaultShortcuts`, ⌃⌥⌘S/N/Z), handed out once per install
+  (`prefs.shortcutDefaults`) and only into rows nobody has touched, so a
+  default never replaces a choice and one that was cleared stays cleared.
+  Changing the set means bumping `SHORTCUT_DEFAULTS_VERSION`. A press that
+  cannot start anything (locked week, invoiced entry, a failed request)
+  shows the popover rather than doing nothing: the hotkey is pressed with
+  another app in front, where silence reads as broken.
+- **In a search picker, Tab is Return** (board #569; `tabOutcome` in
+  `src/picker.ts`): it takes the highlighted row and moves to the next field.
+  The exceptions are a list nobody typed in or walked (Tab passes through
+  and changes nothing) and a query with no match (Tab stays put, so the old
+  value is not kept behind a query that reads as a new one). The matcher
+  (`src/fuzzy.ts`) grades each query word — whole word, word start, initials,
+  inside a word, abbreviation — and refuses letters scattered across
+  unrelated words; `Hits.vue` marks what matched. The presets list uses the
+  same matcher and the same keys.
 - Focus tracking (board #401) is opt-in and local: Rust's `spawn_focus_watcher`
   (`src-tauri/src/focus.rs`) samples nothing until `set_focus_tracking` turns
   it on, and writes spans only to `focus.jsonl` in the app data dir, pruned

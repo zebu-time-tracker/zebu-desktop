@@ -130,3 +130,10 @@ export const presetRows = (presets: Preset[], projects: ProjectOption[]): Preset
  * the user gave it, and the client/project/task it resolves to.
  */
 export const filterPresets = (rows: PresetRow[], query: string): PresetRow[] => fuzzyFilter(rows, query, (r) => `${r.preset.name} ${r.subtitle}`);
+
+/**
+ * Where the list's highlight starts, and returns to when the search changes:
+ * the best match that can be started, since that is the row Return starts
+ * (board #569). -1 when no row can be.
+ */
+export const firstStartable = (rows: PresetRow[]): number => rows.findIndex((row) => !row.missing);
