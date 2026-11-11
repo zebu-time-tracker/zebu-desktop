@@ -105,9 +105,11 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   is as tall as a menubar) and takes the rect back to points; the popover is
   set with a `LogicalPosition`, and `on_pill_click` takes its scale from the
   same answer. A click's rect is only reused while the displays are the ones
-  it was clicked on (`clicked_rect`). The idle prompt and Insights still
-  place themselves in pixels: correct while they share a display's scale with
-  the popover, and the next thing to move to points.
+  it was clicked on (`clicked_rect`). The idle prompt and Insights follow the
+  same rule through *screen units* — points on a Mac, physical pixels
+  elsewhere (`window_frame`, `work_area`, `move_to`) — so placing a window
+  never mixes two displays' scales. Do not add a `set_position` with a
+  `PhysicalPosition` of your own.
 - The window's height is `fit_popover`'s decision, from the frontend's
   measurements: the chrome, the day's rows, and a *floor* an open popout sets
   so the settings panel is not made to scroll inside a window sized for the
