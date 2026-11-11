@@ -95,6 +95,19 @@ publishes `latest.json` for the in-app updater. See `docs/release.md`.
   `PILL_WIDTH`, the button's edge at `tray_icon::BUTTON_END`) and branches on
   `TRAY_STATE`; App.vue owns what the two events do, the same split as
   `idle-choice`.
+- **On a Mac the popover is placed in points, never in "physical pixels"**
+  (GitHub issue 59; `anchor_under_menubar_icon`). There a pixel coordinate is
+  points times a scale, and everyone picks their own: the tray uses the scale
+  of the display the icon is on, a window's position the scale of the display
+  that window was last on. With a Retina laptop beside an ordinary monitor
+  the two differ and the popover lands half a screen from the icon.
+  `tray_in_points` finds the icon's display (by place, then by which reading
+  is as tall as a menubar) and takes the rect back to points; the popover is
+  set with a `LogicalPosition`, and `on_pill_click` takes its scale from the
+  same answer. A click's rect is only reused while the displays are the ones
+  it was clicked on (`clicked_rect`). The idle prompt and Insights still
+  place themselves in pixels: correct while they share a display's scale with
+  the popover, and the next thing to move to points.
 - The window's height is `fit_popover`'s decision, from the frontend's
   measurements: the chrome, the day's rows, and a *floor* an open popout sets
   so the settings panel is not made to scroll inside a window sized for the
