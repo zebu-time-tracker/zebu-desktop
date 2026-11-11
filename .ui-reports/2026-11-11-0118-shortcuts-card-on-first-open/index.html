@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" class="standalone">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI report — Shortcuts card on first open</title>
+<style>
+:root{
+  --u-fg:var(--foreground,#e9e9ec);
+  --u-sub:var(--muted-foreground,#9b9ca5);
+  --u-card:var(--card,#16171b);
+  --u-muted:var(--muted,#1e1f25);
+  --u-border:var(--border,#2d2e36);
+  --u-primary:var(--primary,#7aa7ff);
+  --u-primary-fg:var(--primary-foreground,#0b0c10);
+  --u-radius:var(--radius,10px);
+  --u-mono:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);
+  --u-before:#f0a020; --u-after:#22b86a; --u-hl:#ff3b30; --u-auto:#ff2fb4;
+}
+html.standalone{
+  --foreground:#e9e9ec; --muted-foreground:#9b9ca5; --card:#16171b; --muted:#1c1d23; --border:#2d2e36;
+  --primary:#7aa7ff; --primary-foreground:#0b0c10; --radius:10px;
+  --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  html.standalone{ --foreground:#16171a; --muted-foreground:#5d5f69; --card:#ffffff; --muted:#eef0f3; --border:#d9dbe1; --primary:#2f6bff; --primary-foreground:#fff; }
+}
+html.standalone body{ background:var(--background,#0e0f12); color:var(--u-fg); font-family:var(--font-sans); margin:0; padding:28px clamp(12px,3vw,40px) 60px; }
+@media (prefers-color-scheme: light){ html.standalone body{ background:#f6f7f9; } }
+html.standalone #app{ max-width:1680px; margin:0 auto; }
+*{ box-sizing:border-box; }
+body{ -webkit-text-size-adjust:100%; }
+#app{ color:var(--u-fg); font-size:14px; line-height:1.45; }
+h1{ font-size:22px; line-height:1.25; margin:2px 0 0; letter-spacing:-.01em; }
+h2{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--u-sub); margin:0 0 8px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.num{ display:inline-grid; place-items:center; width:20px; height:20px; border-radius:50%; background:var(--u-primary); color:var(--u-primary-fg); font-size:11px; letter-spacing:0; }
+.eyebrow{ font-size:12px; color:var(--u-sub); font-family:var(--u-mono); }
+.hd{ margin-bottom:18px; }
+.sum{ display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); margin-bottom:22px; }
+.blk{ background:var(--u-card); border:1px solid var(--u-border); border-radius:var(--u-radius); padding:16px; }
+blockquote{ margin:0; padding-left:12px; border-left:3px solid var(--u-primary); white-space:pre-wrap; }
+.blk p{ margin:0; }
+.blk ol{ margin:0; padding-left:20px; } .blk li{ margin:2px 0; }
+.viewer h2{ margin-top:4px; }
+.pills{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; }
+.pill{ appearance:none; border:1px solid var(--u-border); background:transparent; color:var(--u-fg); font:inherit; font-size:13px; padding:5px 11px; border-radius:999px; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+.pill.sm{ font-size:12px; padding:4px 9px; }
+.pill:hover{ border-color:var(--u-sub); }
+.pill[aria-pressed="true"]{ background:var(--u-fg); color:var(--u-card); border-color:var(--u-fg); }
+.pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--u-auto); }
+.pill .dot.none{ background:transparent; border:1px solid var(--u-sub); }
+.pill:disabled{ opacity:.35; cursor:default; }
+#note{ color:var(--u-sub); margin:0 0 10px; }
+#note:empty{ display:none; }
+.bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin:4px 0 10px; }
+.seg{ display:inline-flex; border:1px solid var(--u-border); border-radius:999px; padding:2px; gap:2px; flex-wrap:wrap; }
+.seg .pill{ border:0; padding:4px 11px; }
+.tgls{ display:flex; gap:6px; flex-wrap:wrap; }
+.tg[aria-pressed="true"]{ background:transparent; color:var(--u-fg); border-color:var(--u-hl); box-shadow:inset 0 0 0 1px var(--u-hl); }
+#t-auto[aria-pressed="true"]{ border-color:var(--u-auto); box-shadow:inset 0 0 0 1px var(--u-auto); }
+#stage{ position:relative; background:var(--u-muted); border-radius:var(--u-radius); padding:16px; overflow:auto; display:flex; -webkit-overflow-scrolling:touch; }
+#stage > .wrap{ margin:auto; display:flex; gap:14px; }
+#stage > .wrap.col{ flex-direction:column; }
+.pane{ display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.frame{ position:relative; flex:none; overflow:hidden; cursor:pointer; touch-action:pan-x pan-y pinch-zoom; box-shadow:0 0 0 1px rgba(127,127,127,.35), 0 6px 24px rgba(0,0,0,.25); border-radius:2px; background:#fff; }
+.frame{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+.frame .pic, .frame video{ display:block; position:absolute; left:0; top:0; background-size:100% 100%; background-repeat:no-repeat; }
+.pill.flip{ border-color:var(--u-primary); color:var(--u-primary); font-weight:600; padding:5px 14px; }
+.pill.flip:active{ transform:scale(.96); }
+.frame svg.ov{ position:absolute; left:0; top:0; pointer-events:none; overflow:visible; }
+.tag{ font:600 10px/1 var(--u-mono); letter-spacing:.1em; padding:4px 7px; border-radius:4px; color:#111; }
+.tag.before{ background:var(--u-before); } .tag.after{ background:var(--u-after); } .tag.diff{ background:var(--u-auto); color:#fff; }
+.tagrow{ display:flex; justify-content:space-between; }
+.handle{ position:absolute; top:0; bottom:0; width:2px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.5); z-index:4; pointer-events:none; }
+.handle::after{ content:"⟷"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; color:#111; border-radius:50%; width:30px; height:30px; display:grid; place-items:center; font-size:15px; box-shadow:0 1px 6px rgba(0,0,0,.4); }
+.empty{ display:grid; place-items:center; color:#666; font-size:13px; background:repeating-linear-gradient(45deg,#f2f2f2 0 10px,#e9e9e9 10px 20px); text-align:center; padding:10px; }
+#cap{ display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:8px 2px 0; font-size:12px; color:var(--u-sub); font-family:var(--u-mono); }
+#cap b{ color:var(--u-fg); font-weight:600; }
+#cap a{ color:var(--u-primary); }
+#legend{ list-style:none; padding:0; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; }
+#legend li{ display:flex; gap:7px; align-items:center; }
+.frame .pic{ pointer-events:none; }
+#legend li.off{ opacity:.45; }
+#legend .b{ display:inline-grid; place-items:center; min-width:18px; height:18px; border-radius:9px; background:var(--u-hl); color:#fff; font:700 11px/1 var(--font-sans); padding:0 5px; }
+.meta{ margin-top:26px; }
+.meta table{ border-collapse:collapse; width:100%; font-size:13px; background:var(--u-card); border:1px solid var(--u-border); border-radius:var(--u-radius); overflow:hidden; }
+.meta td{ padding:7px 12px; border-top:1px solid var(--u-border); vertical-align:top; }
+.meta tr:first-child td{ border-top:0; }
+.meta td:first-child{ color:var(--u-sub); white-space:nowrap; width:1%; }
+.meta code{ font-family:var(--u-mono); font-size:12px; }
+.keys{ color:var(--u-sub); font-size:12px; margin-top:10px; }
+.keys kbd{ font-family:var(--u-mono); font-size:11px; border:1px solid var(--u-border); border-bottom-width:2px; border-radius:4px; padding:0 4px; }
+.foot{ margin-top:8px; font:12px/1.4 var(--u-mono); color:var(--u-sub); overflow-wrap:anywhere; }
+html.chat .standalone-only{ display:none !important; }
+html.standalone .chat-only{ display:none !important; }
+@keyframes pulse{ 0%,100%{ stroke-opacity:1 } 50%{ stroke-opacity:.45 } }
+svg.ov .ring{ animation:pulse 1.6s ease-in-out 3; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hd standalone-only">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+  </header>
+  <section class="sum standalone-only">
+    <div class="blk"><h2><span class="num">1</span>Original request</h2><blockquote id="req"></blockquote></div>
+    <div class="blk"><h2><span class="num">2</span>Interpretation</h2><p id="interp"></p></div>
+    <div class="blk"><h2><span class="num">3</span>Changes made</h2><ol id="changes"></ol></div>
+  </section>
+  <section class="viewer">
+    <h2 class="standalone-only"><span class="num">4</span><span class="num">5</span>Before / after</h2>
+    <nav class="pills" id="items" aria-label="Items"></nav>
+    <p id="note"></p>
+    <nav class="pills" id="shots" aria-label="Viewports"></nav>
+    <div class="bar">
+      <div class="seg" id="modes" role="group" aria-label="Compare mode">
+        <button class="pill" data-m="before">Before</button>
+        <button class="pill" data-m="after">After</button>
+        <button class="pill" data-m="side">Side by side</button>
+        <button class="pill" data-m="slider">Slider</button>
+        <button class="pill" data-m="diff">Diff</button>
+      </div>
+      <div class="tgls">
+        <button class="pill flip" id="t-flip" title="Flip before/after (Space)">⇄ Flip</button>
+        <button class="pill sm tg" id="t-ann" title="Highlights (H)">◎ Highlights</button>
+        <button class="pill sm tg" id="t-auto" title="Auto-detected changed zones (Z)">⬚ Changed zones</button>
+        <button class="pill sm tg" id="t-blink" title="Blink before/after (K)">⟳ Blink</button>
+        <button class="pill sm" id="t-zoom" title="Zoom (F)">Fit</button>
+      </div>
+    </div>
+    <div id="stage"></div>
+    <div id="cap"></div>
+    <ol id="legend"></ol>
+    <div class="keys standalone-only"><kbd>Space</kbd>/tap flip · <kbd>B</kbd><kbd>A</kbd><kbd>S</kbd><kbd>L</kbd><kbd>D</kbd> modes · <kbd>H</kbd> highlights · <kbd>Z</kbd> zones · <kbd>K</kbd> blink · <kbd>F</kbd> zoom · <kbd>←</kbd><kbd>→</kbd> viewport · <kbd>↑</kbd><kbd>↓</kbd> item</div>
+  </section>
+  <section class="meta standalone-only"><h2><span class="num">6</span>Metadata</h2><table id="meta"></table></section>
+  <div class="foot chat-only" id="foot"></div>
+</div>
+<div id="pool" hidden>
+<img data-k="first-open_popover.before" src="captures/before/first-open/popover.png" alt="" loading="lazy">
+<img data-k="first-open_popover.after" src="captures/after/first-open/popover.png" alt="" loading="lazy">
+<img data-k="first-open_popover.diff" src="diffs/first-open_popover.png" alt="" loading="lazy">
+<img data-k="first-open_detail-1@popover.after" src="captures/after/first-open/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="first-open-dark_popover.before" src="captures/before/first-open-dark/popover.png" alt="" loading="lazy">
+<img data-k="first-open-dark_popover.after" src="captures/after/first-open-dark/popover.png" alt="" loading="lazy">
+<img data-k="first-open-dark_popover.diff" src="diffs/first-open-dark_popover.png" alt="" loading="lazy">
+<img data-k="first-open-dark_detail-1@popover.after" src="captures/after/first-open-dark/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="change_popover.before" src="captures/before/change/popover.png" alt="" loading="lazy">
+<img data-k="change_popover.after" src="captures/after/change/popover.png" alt="" loading="lazy">
+<img data-k="change_popover.diff" src="diffs/change_popover.png" alt="" loading="lazy">
+<img data-k="change_detail-1@popover.after" src="captures/after/change/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="taken_popover.before" src="captures/before/taken/popover.png" alt="" loading="lazy">
+<img data-k="taken_popover.after" src="captures/after/taken/popover.png" alt="" loading="lazy">
+<img data-k="taken_popover.diff" src="diffs/taken_popover.png" alt="" loading="lazy">
+<img data-k="taken_detail-1@popover.after" src="captures/after/taken/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="turned-on_popover.before" src="captures/before/turned-on/popover.png" alt="" loading="lazy">
+<img data-k="turned-on_popover.after" src="captures/after/turned-on/popover.png" alt="" loading="lazy">
+<img data-k="turned-on_popover.diff" src="diffs/turned-on_popover.png" alt="" loading="lazy">
+<img data-k="turned-on_detail-1@popover.before" src="captures/before/turned-on/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="turned-on_detail-1@popover.after" src="captures/after/turned-on/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="turned-on_detail-1@popover.diff" src="diffs/turned-on_detail-1@popover.png" alt="" loading="lazy">
+<img data-k="dismissed_popover.before" src="captures/before/dismissed/popover.png" alt="" loading="lazy">
+<img data-k="dismissed_popover.after" src="captures/after/dismissed/popover.png" alt="" loading="lazy">
+<img data-k="dismissed_popover.diff" src="diffs/dismissed_popover.png" alt="" loading="lazy">
+<img data-k="dismissed_detail-1@popover.before" src="captures/before/dismissed/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="dismissed_detail-1@popover.after" src="captures/after/dismissed/detail-1@popover.png" alt="" loading="lazy">
+<img data-k="dismissed_detail-1@popover.diff" src="diffs/dismissed_detail-1@popover.png" alt="" loading="lazy">
+</div>
+<script type="application/json" id="uir-data">{"title":"Shortcuts card on first open","request":"Please look at the harvest default key bindings and perhaps have an onboarding to help new users set or learn the shortcuts. Please show me the flow and avoid extraneous text as much as possible it should be extremely clean, precise and simple","interpretation":"The three timer hotkeys were bound silently on a Mac, with keys of my own choosing. They now follow Harvest (⌥⌘N new timer, ⌥⌘T show/hide; Harvest has no start/stop key, so that one is ⌥⌘P) and are offered once on a single card the first time the popover opens: three rows, each one click to change, one button to turn them on.","changes":["Keys follow Harvest for Mac: ⌥⌘N new timer, ⌥⌘T show/hide; start/stop, which Harvest has no key for, is ⌥⌘P (was ⌃⌥⌘S / N / Z)","Nothing is bound silently any more: one card on first open offers the three, with one button, Turn on","Each key on the card is the recorder: click to change, ✕ to leave that row out","× or Escape binds nothing; Return is Turn on; the card never comes back","A combination another app holds is said on its row and the card stays","Rows already bound are shown as they are and left alone; no card when all three are bound, or off a Mac"],"items":[{"n":1,"id":"first-open","title":"First open","note":"Before, the hotkeys were bound without a word. After, one card.","path":"/","highlights":[{"n":1,"label":"The card","selector":".shortcut-offer"}],"shots":[{"key":"first-open/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[],"full":"captures/before/first-open/popover.png","img":"first-open_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"The card","shape":"box","box":{"x":16,"y":207.59,"w":443,"h":224.8}}],"full":"captures/after/first-open/popover.png","img":"first-open_popover.after"},"diff":{"img":"first-open_popover.diff","full":"diffs/first-open_popover.png","pct":70.21,"changedPx":853784,"regions":[{"x":0,"y":0,"w":475,"h":640}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"first-open/detail-1@popover","kind":"detail","label":"🔍 Card · pop","short":"pop.detail-1","viewport":"popover","after":{"css":{"w":463,"h":245},"dpr":3,"annotations":[{"n":1,"label":"The card","shape":"box","box":{"x":10,"y":10.59,"w":443,"h":224.8}}],"full":"captures/after/first-open/detail-1@popover.png","img":"first-open_detail-1@popover.after"}}],"composite":"composites/1-first-open.png"},{"n":2,"id":"first-open-dark","title":"First open, dark","note":"","path":"/","highlights":[{"n":1,"label":"The card","selector":".shortcut-offer"}],"shots":[{"key":"first-open-dark/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[],"full":"captures/before/first-open-dark/popover.png","img":"first-open-dark_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"The card","shape":"box","box":{"x":16,"y":207.59,"w":443,"h":224.8}}],"full":"captures/after/first-open-dark/popover.png","img":"first-open-dark_popover.after"},"diff":{"img":"first-open-dark_popover.diff","full":"diffs/first-open-dark_popover.png","pct":11.07,"changedPx":134597,"regions":[{"x":0,"y":144,"w":475,"h":288},{"x":0,"y":0,"w":475,"h":128},{"x":24,"y":608,"w":144,"h":24},{"x":448,"y":616,"w":8,"h":16}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"first-open-dark/detail-1@popover","kind":"detail","label":"🔍 Card, dark · pop","short":"pop.detail-1","viewport":"popover","after":{"css":{"w":463,"h":245},"dpr":3,"annotations":[{"n":1,"label":"The card","shape":"box","box":{"x":10,"y":10.59,"w":443,"h":224.8}}],"full":"captures/after/first-open-dark/detail-1@popover.png","img":"first-open-dark_detail-1@popover.after"}}],"composite":"composites/2-first-open-dark.png"},{"n":3,"id":"change","title":"Click a key to change it","note":"","path":"/","highlights":[{"n":1,"label":"Listening for a new combination","selector":".shortcut-offer .shortcut-record.recording"}],"shots":[{"key":"change/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[],"full":"captures/before/change/popover.png","img":"change_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"Listening for a new combination","shape":"box","box":{"x":324,"y":278.39,"w":116,"h":24}}],"full":"captures/after/change/popover.png","img":"change_popover.after"},"diff":{"img":"change_popover.diff","full":"diffs/change_popover.png","pct":70.35,"changedPx":855513,"regions":[{"x":0,"y":0,"w":475,"h":640}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"change/detail-1@popover","kind":"detail","label":"🔍 Recording · pop","short":"pop.detail-1","viewport":"popover","after":{"css":{"w":463,"h":245},"dpr":3,"annotations":[{"n":1,"label":"Listening for a new combination","shape":"box","box":{"x":318,"y":81.39,"w":116,"h":24}}],"full":"captures/after/change/detail-1@popover.png","img":"change_detail-1@popover.after"}}],"composite":"composites/3-change.png"},{"n":4,"id":"taken","title":"A combination another app holds","note":"","path":"/","highlights":[{"n":1,"label":"Said on the row; the card stays","selector":".shortcut-offer .shortcut-taken"}],"shots":[{"key":"taken/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[],"full":"captures/before/taken/popover.png","img":"taken_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"Said on the row; the card stays","shape":"box","box":{"x":35,"y":358.89,"w":405,"h":15}}],"full":"captures/after/taken/popover.png","img":"taken_popover.after"},"diff":{"img":"taken_popover.diff","full":"diffs/taken_popover.png","pct":68.02,"changedPx":827117,"regions":[{"x":0,"y":0,"w":475,"h":640}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"taken/detail-1@popover","kind":"detail","label":"🔍 Refused row · pop","short":"pop.detail-1","viewport":"popover","after":{"css":{"w":463,"h":260},"dpr":3,"annotations":[{"n":1,"label":"Said on the row; the card stays","shape":"box","box":{"x":29,"y":168.89,"w":405,"h":15}}],"full":"captures/after/taken/detail-1@popover.png","img":"taken_detail-1@popover.after"}}],"composite":"composites/4-taken.png"},{"n":5,"id":"turned-on","title":"After Turn on: Settings › Keyboard shortcuts","note":"","path":"/","highlights":[{"n":1,"label":"⌥⌘P / N / T, as Harvest","selector":"#settings-panel-shortcuts"}],"shots":[{"key":"turned-on/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"⌥⌘P / N / T, as Harvest","shape":"box","box":{"x":21,"y":388.61,"w":433,"h":164.39}}],"full":"captures/before/turned-on/popover.png","img":"turned-on_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"⌥⌘P / N / T, as Harvest","shape":"box","box":{"x":21,"y":388.61,"w":433,"h":164.39}}],"full":"captures/after/turned-on/popover.png","img":"turned-on_popover.after"},"diff":{"img":"turned-on_popover.diff","full":"diffs/turned-on_popover.png","pct":0.34,"changedPx":4132,"regions":[{"x":24,"y":416,"w":120,"h":128},{"x":360,"y":304,"w":96,"h":72},{"x":368,"y":416,"w":56,"h":72},{"x":64,"y":352,"w":48,"h":24}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"turned-on/detail-1@popover","kind":"detail","label":"🔍 Shortcuts tab · pop","short":"pop.detail-1","viewport":"popover","before":{"css":{"w":475,"h":323},"dpr":3,"annotations":[{"n":1,"label":"⌥⌘P / N / T, as Harvest","shape":"box","box":{"x":21,"y":105.61,"w":433,"h":164.39}}],"full":"captures/before/turned-on/detail-1@popover.png","img":"turned-on_detail-1@popover.before"},"after":{"css":{"w":475,"h":323},"dpr":3,"annotations":[{"n":1,"label":"⌥⌘P / N / T, as Harvest","shape":"box","box":{"x":21,"y":105.61,"w":433,"h":164.39}}],"full":"captures/after/turned-on/detail-1@popover.png","img":"turned-on_detail-1@popover.after"},"diff":{"img":"turned-on_detail-1@popover.diff","full":"diffs/turned-on_detail-1@popover.png","pct":0.84,"changedPx":11651,"regions":[{"x":16,"y":128,"w":128,"h":136},{"x":360,"y":16,"w":96,"h":72},{"x":368,"y":128,"w":56,"h":80},{"x":64,"y":72,"w":48,"h":16}],"sizeChanged":false,"css":{"w":475,"h":323}}}],"composite":"composites/5-turned-on.png"},{"n":6,"id":"dismissed","title":"After ×: nothing bound, the day as usual","note":"","path":"/","highlights":[{"n":1,"label":"Rows left empty","selector":"#settings-panel-shortcuts"}],"shots":[{"key":"dismissed/popover","kind":"viewport","label":"Popover 475×640","short":"pop","viewport":"popover","before":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"Rows left empty","shape":"box","box":{"x":21,"y":388.61,"w":433,"h":164.39}}],"full":"captures/before/dismissed/popover.png","img":"dismissed_popover.before"},"after":{"css":{"w":475,"h":640},"dpr":2,"annotations":[{"n":1,"label":"Rows left empty","shape":"box","box":{"x":21,"y":388.61,"w":433,"h":164.39}}],"full":"captures/after/dismissed/popover.png","img":"dismissed_popover.after"},"diff":{"img":"dismissed_popover.diff","full":"diffs/dismissed_popover.png","pct":0.49,"changedPx":5949,"regions":[{"x":24,"y":416,"w":120,"h":128},{"x":360,"y":304,"w":96,"h":72},{"x":352,"y":416,"w":96,"h":72},{"x":64,"y":352,"w":48,"h":24}],"sizeChanged":false,"css":{"w":475,"h":640}}},{"key":"dismissed/detail-1@popover","kind":"detail","label":"🔍 Shortcuts tab · pop","short":"pop.detail-1","viewport":"popover","before":{"css":{"w":475,"h":323},"dpr":3,"annotations":[{"n":1,"label":"Rows left empty","shape":"box","box":{"x":21,"y":105.61,"w":433,"h":164.39}}],"full":"captures/before/dismissed/detail-1@popover.png","img":"dismissed_detail-1@popover.before"},"after":{"css":{"w":475,"h":323},"dpr":3,"annotations":[{"n":1,"label":"Rows left empty","shape":"box","box":{"x":21,"y":105.61,"w":433,"h":164.39}}],"full":"captures/after/dismissed/detail-1@popover.png","img":"dismissed_detail-1@popover.after"},"diff":{"img":"dismissed_detail-1@popover.diff","full":"diffs/dismissed_detail-1@popover.png","pct":1.12,"changedPx":15446,"regions":[{"x":16,"y":128,"w":128,"h":136},{"x":352,"y":128,"w":96,"h":80},{"x":360,"y":16,"w":96,"h":72},{"x":64,"y":72,"w":48,"h":16}],"sizeChanged":false,"css":{"w":475,"h":323}}}],"composite":"composites/6-dismissed.png"}],"meta":{"reportId":"2026-11-11-0118-shortcuts-card-on-first-open","reportDir":"/home/awoo/code/zebu/zebu-desktop-picker-tab/.ui-reports/2026-11-11-0118-shortcuts-card-on-first-open","generatedAt":"2026-11-11T00:28:22.222Z","generatedAtLocal":"Nov 11, 2026, 01:28 GMT+1","agent":"Claude Fable 5","thread":"","before":{"capturedAt":"2026-11-11T00:25:48.288Z","baseUrl":"http://127.0.0.1:5198","git":{"repo":true,"root":"/home/awoo/code/zebu/zebu-desktop-picker-tab","head":"88533312af4755288476dbf7d73c48d6d7927d11","short":"88533312a","branch":"picker-tab-shortcuts","subject":"docs(ui-report): keep the keyboard check script beside the report (#569)","commitDate":"2026-11-11T01:09:09+01:00","author":"Alan's Agent","dirty":true,"dirtyFiles":["ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read/verify/mock.js","CLAUDE.md","README.md","src/App.vue","src/locales/de.json","src/locales/en.json","src/locales/es.json","src/locales/fr.json","src/locales/it.json","src/locales/ja.json","src/locales/ko.json","src/locales/nl.json","src/locales/pl.json","src/locales/pt.json","src/locales/zh-CN.json","src/shortcuts.ts","tests/shortcuts.test.ts"],"remote":"git@github.com:zebu-time-tracker/zebu-desktop.git"},"browser":"Chromium 156.0.8078.4"},"after":{"capturedAt":"2026-11-11T00:27:47.612Z","baseUrl":"http://127.0.0.1:5199","git":{"repo":true,"root":"/home/awoo/code/zebu/zebu-desktop-picker-tab","head":"88533312af4755288476dbf7d73c48d6d7927d11","short":"88533312a","branch":"picker-tab-shortcuts","subject":"docs(ui-report): keep the keyboard check script beside the report (#569)","commitDate":"2026-11-11T01:09:09+01:00","author":"Alan's Agent","dirty":true,"dirtyFiles":["ui-reports/2026-11-11-0045-tab-picks-in-the-pickers-sharper-fuzzy-search-shortcuts-read/verify/mock.js","CLAUDE.md","README.md","src/App.vue","src/locales/de.json","src/locales/en.json","src/locales/es.json","src/locales/fr.json","src/locales/it.json","src/locales/ja.json","src/locales/ko.json","src/locales/nl.json","src/locales/pl.json","src/locales/pt.json","src/locales/zh-CN.json","src/shortcuts.ts","tests/shortcuts.test.ts"],"remote":"git@github.com:zebu-time-tracker/zebu-desktop.git"},"browser":"Chromium 156.0.8078.4"},"head":{"head":"7e0e73abd6b577aac73a254e0c260058b114d484","short":"7e0e73abd","branch":"picker-tab-shortcuts","dirty":false},"diffstat":"16 files changed, 244 insertions(+), 61 deletions(-)","filesChanged":["M\tCLAUDE.md","M\tREADME.md","M\tsrc/App.vue","M\tsrc/locales/de.json","M\tsrc/locales/en.json","M\tsrc/locales/es.json","M\tsrc/locales/fr.json","M\tsrc/locales/it.json","M\tsrc/locales/ja.json","M\tsrc/locales/ko.json","M\tsrc/locales/nl.json","M\tsrc/locales/pl.json","M\tsrc/locales/pt.json","M\tsrc/locales/zh-CN.json","M\tsrc/shortcuts.ts","M\ttests/shortcuts.test.ts"],"commits":["7e0e73a Hotkeys are offered on a first-run card, on Harvest's keys (#569)"],"viewports":["popover 475×640@2x"]},"metaRows":[["Generated","Nov 11, 2026, 01:28 GMT+1 (2026-11-11T00:28:22.222Z)"],["Before","Nov 11, 2026, 01:25 GMT+1 · \u003ccode>88533312a + 17 uncommitted file(s) on picker-tab-shortcuts — “docs(ui-report): keep the keyboard check script beside the report (#569)”\u003c/code> · \u003ccode>http://127.0.0.1:5198\u003c/code>"],["After","Nov 11, 2026, 01:27 GMT+1 · \u003ccode>88533312a + 17 uncommitted file(s) on picker-tab-shortcuts — “docs(ui-report): keep the keyboard check script beside the report (#569)”\u003c/code> · \u003ccode>http://127.0.0.1:5199\u003c/code>"],["Commits since before","\u003ccode>7e0e73a Hotkeys are offered on a first-run card, on Harvest's keys (#569)\u003c/code>"],["Diff vs before","16 files changed, 244 insertions(+), 61 deletions(-)\u003cbr>\u003ccode>M\tCLAUDE.md\u003c/code>\u003cbr>\u003ccode>M\tREADME.md\u003c/code>\u003cbr>\u003ccode>M\tsrc/App.vue\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/de.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/en.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/es.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/fr.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/it.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/ja.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/ko.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/nl.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/pl.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/pt.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/locales/zh-CN.json\u003c/code>\u003cbr>\u003ccode>M\tsrc/shortcuts.ts\u003c/code>\u003cbr>\u003ccode>M\ttests/shortcuts.test.ts\u003c/code>"],["Viewports","\u003ccode>popover 475×640@2x\u003c/code>"],["Browser","Chromium 156.0.8078.4"],["Agent","Claude Fable 5"],["Report","\u003ccode>.ui-reports/2026-11-11-0118-shortcuts-card-on-first-open\u003c/code>"]],"chatFoot":"88533312a → 88533312a+dirty · Nov 11, 2026, 01:28 GMT+1 · .ui-reports/2026-11-11-0118-shortcuts-card-on-first-open/index.html"}</script>
+<script>
+(() => {
+  const R = JSON.parse(document.getElementById('uir-data').textContent);
+  const CHAT = document.documentElement.classList.contains('chat');
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const pool = {};
+  document.querySelectorAll('#pool [data-k]').forEach((el) => { pool[el.dataset.k] = el.getAttribute('src'); });
+  const src = (k) => (k && pool[k]) || null;
+
+  const st = { i: 0, s: 0, mode: 'side', ann: true, auto: false, blink: false, zoom: 0, slider: 50 };
+  const ZOOMS = ['Fit', '100%', '200%'];
+  if (!CHAT && location.hash) {
+    const h = new URLSearchParams(location.hash.slice(1));
+    st.i = Math.min(+h.get('i') || 0, R.items.length - 1);
+    st.s = +h.get('s') || 0;
+    if (h.get('m')) st.mode = h.get('m');
+  }
+
+  // ---- static sections ----
+  const put = (sel, prop, v) => { const el = $(sel); if (el) el[prop] = v; };
+  put('#title', 'textContent', R.title);
+  put('#eyebrow', 'textContent', ['UI change report', R.meta?.generatedAtLocal, R.meta?.after?.git?.short && `@ ${R.meta.after.git.short}${R.meta.after.git.dirty ? '+dirty' : ''}`].filter(Boolean).join(' · '));
+  put('#req', 'textContent', R.request || '—');
+  put('#interp', 'textContent', R.interpretation || '—');
+  put('#changes', 'innerHTML', (R.changes || []).map((c) => `<li>${esc(c)}</li>`).join('') || '<li>—</li>');
+  put('#meta', 'innerHTML', (R.metaRows || []).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join(''));
+  put('#foot', 'innerHTML', esc(R.chatFoot || ''));
+
+  const item = () => R.items[st.i];
+  const shot = () => item().shots[Math.min(st.s, item().shots.length - 1)];
+
+  // ---- nav ----
+  function renderNav() {
+    $('#items').innerHTML = R.items.map((it, i) => `<button class="pill" data-i="${i}" aria-pressed="${i === st.i}"><b>${it.n}</b> ${esc(it.title)}</button>`).join('');
+    $('#items').style.display = R.items.length > 1 ? '' : 'none';
+    $('#note').textContent = item().note || '';
+    $('#shots').innerHTML = item().shots.map((s, i) => {
+      const dot = s.kind === 'video' ? '' : `<span class="dot ${s.diff && s.diff.pct > 0.01 ? '' : 'none'}" title="${s.diff ? s.diff.pct.toFixed(2) + '% pixels changed' : 'no diff'}"></span>`;
+      return `<button class="pill sm" data-s="${i}" aria-pressed="${i === st.s}">${dot}${esc(s.label)}</button>`;
+    }).join('');
+    const s = shot();
+    const video = s.kind === 'video';
+    document.querySelectorAll('#modes [data-m]').forEach((b) => {
+      b.setAttribute('aria-pressed', b.dataset.m === st.mode);
+      b.disabled = video && (b.dataset.m === 'slider' || b.dataset.m === 'diff') || (!s.diff && b.dataset.m === 'diff');
+    });
+    $('#t-ann').setAttribute('aria-pressed', st.ann);
+    $('#t-auto').setAttribute('aria-pressed', st.auto);
+    $('#t-blink').setAttribute('aria-pressed', st.blink);
+    $('#t-flip').disabled = video;
+    $('#t-flip').textContent = st.mode === 'before' ? '⇄ Show after' : st.mode === 'after' ? '⇄ Show before' : '⇄ Flip';
+    $('#t-zoom').textContent = '⌕ ' + ZOOMS[st.zoom];
+  }
+
+  // ---- overlay ----
+  function overlay(anns, regions, cw, ch, k) {
+    const s = 1 / k;
+    let g = '';
+    if (st.auto && regions) for (const r of regions) {
+      g += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="rgba(255,47,180,.10)" stroke="#ff2fb4" stroke-width="${2 * s}" stroke-dasharray="${7 * s} ${4 * s}"><title>auto-detected change</title></rect>`;
+    }
+    if (st.ann && anns) for (const a of anns) {
+      const b = a.box, p = 6 * s;
+      const x = b.x - p, y = b.y - p, w = b.w + 2 * p, h = b.h + 2 * p;
+      const halo = `stroke="#fff" stroke-opacity=".9" stroke-width="${6 * s}" fill="none"`;
+      const line = `class="ring" stroke="#ff3b30" stroke-width="${3 * s}" fill="none"`;
+      let bx = x, by = y;
+      if (a.shape === 'circle') {
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2, rx = b.w / 2 * 1.2 + 10 * s, ry = b.h / 2 * 1.2 + 10 * s;
+        g += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${halo}/><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${line}/>`;
+        bx = cx - rx * 0.72; by = cy - ry * 0.72;
+      } else if (a.shape === 'arrow') {
+        // pick the diagonal whose tail stays furthest inside the image
+        const L = 70 * s;
+        let best = null;
+        for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          const tx = dx < 0 ? x : x + w, ty = dy < 0 ? y : y + h;
+          const sx = tx + dx * L, sy = ty + dy * L * 0.75;
+          const score = Math.min(sx, cw - sx, sy, ch - sy);
+          if (!best || score > best.score) best = { tx, ty, sx, sy, score };
+        }
+        let { tx, ty, sx, sy } = best;
+        if (best.score < 0) { // box fills the image: point down at its top edge from inside
+          tx = Math.min(Math.max(x + w / 2, L), cw - L); ty = Math.max(y, 0) + 4 * s; sx = tx; sy = ty + L;
+        }
+        const ang = Math.atan2(ty - sy, tx - sx), hl = 14 * s, hw = 8 * s;
+        const hx1 = tx - hl * Math.cos(ang) + hw * Math.sin(ang), hy1 = ty - hl * Math.sin(ang) - hw * Math.cos(ang);
+        const hx2 = tx - hl * Math.cos(ang) - hw * Math.sin(ang), hy2 = ty - hl * Math.sin(ang) + hw * Math.cos(ang);
+        const lx = tx - hl * 0.8 * Math.cos(ang), ly = ty - hl * 0.8 * Math.sin(ang);
+        g += `<line x1="${sx}" y1="${sy}" x2="${lx}" y2="${ly}" ${halo} stroke-linecap="round"/><line x1="${sx}" y1="${sy}" x2="${lx}" y2="${ly}" ${line} stroke-linecap="round"/>`;
+        g += `<polygon points="${tx},${ty} ${hx1},${hy1} ${hx2},${hy2}" fill="#ff3b30" stroke="#fff" stroke-width="${1.5 * s}"/>`;
+        g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${4 * s}" fill="none" stroke="#ff3b30" stroke-opacity=".55" stroke-width="${1.5 * s}" stroke-dasharray="${4 * s} ${3 * s}"/>`;
+        bx = sx; by = sy;
+      } else {
+        g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${6 * s}" ${halo}/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${6 * s}" ${line}/>`;
+      }
+      const r = 11 * s;
+      const cx = Math.min(Math.max(bx, r + 2 * s), cw - r - 2 * s), cy = Math.min(Math.max(by, r + 2 * s), ch - r - 2 * s);
+      g += `<g><title>${esc(a.label || (item().highlights.find((h) => h.n === a.n) || {}).label || '')}</title><circle cx="${cx}" cy="${cy}" r="${r}" fill="#ff3b30" stroke="#fff" stroke-width="${2 * s}"/>` +
+        `<text x="${cx}" y="${cy}" dy=".35em" text-anchor="middle" font-size="${12 * s}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff">${a.n}</text></g>`;
+    }
+    return `<svg class="ov" viewBox="0 0 ${cw} ${ch}" width="${cw * k}" height="${ch * k}">${g}</svg>`;
+  }
+
+  // ---- stage ----
+  const stage = $('#stage');
+  function avail() {
+    const cs = getComputedStyle(stage);
+    const aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = (CHAT ? 540 : Math.max(380, Math.min(1400, window.innerHeight - 170))) - 22;
+    return { aw: Math.max(120, aw), ah };
+  }
+  function scaleFor(cw, ch, aw, ah, dpr) {
+    if (st.zoom === 1) return 1;
+    if (st.zoom === 2) return 2;
+    let k = ch / cw > 2.6 ? aw / cw : Math.min(aw / cw, ah / ch);
+    return Math.min(k, Math.max(dpr || 1, 1));
+  }
+  const dimsOf = (p) => p ? p.css : null;
+  // Screenshots are drawn as CSS backgrounds, not <img>, so host apps (chat clients, iOS) can't hijack taps on them with zoom/lightbox/callouts.
+  const pic = (k, w, h, attrs = '', extra = '') =>
+    `<div class="pic" ${attrs} role="img" style="width:${w}px;height:${h}px;background-image:url('${String(src(k) || '').replace(/'/g, '%27')}');${extra}"></div>`;
+
+  function frame(phase, s, k, boxW, boxH, opts = {}) {
+    const p = s[phase];
+    const tag = opts.tag ? `<span class="tag ${opts.tagClass || phase}">${opts.tag}</span>` : '';
+    if (!p || (!p.img && !p.video)) {
+      return `${tag}<div class="frame empty" style="width:${boxW}px;height:${boxH}px">No ${phase} capture<br>(missing at this viewport/phase)</div>`;
+    }
+    const d = dimsOf(p);
+    const media = p.video
+      ? `<video src="${esc(p.video)}" style="width:${d.w * k}px;height:${d.h * k}px" controls loop muted playsinline autoplay></video>`
+      : pic(p.img, d.w * k, d.h * k);
+    const ov = p.video ? '' : overlay(p.annotations, opts.regions, d.w, d.h, k);
+    return `${tag}<div class="frame" data-phase="${phase}" style="width:${boxW}px;height:${boxH}px">${media}${ov}</div>`;
+  }
+
+  let blinkTimer = null;
+  function render() {
+    renderNav();
+    const s = shot();
+    const { aw, ah } = avail();
+    const b = dimsOf(s.before), a = dimsOf(s.after);
+    const cw = Math.max(b?.w || 0, a?.w || 0) || 400, ch = Math.max(b?.h || 0, a?.h || 0) || 300;
+    const dpr = Math.max(s.before?.dpr || 1, s.after?.dpr || 1);
+    let html = '';
+    const regions = s.diff?.regions;
+    if (st.mode === 'side') {
+      const kRow = scaleFor(cw, ch, (aw - 14) / 2, ah, dpr);
+      const kCol = scaleFor(cw, ch, aw, (ah - 14) / 2, dpr);
+      const col = !st.zoom && ch / cw <= 2.6 && kCol > kRow * 1.08;
+      const k = col ? kCol : kRow;
+      html = `<div class="wrap ${col ? 'col' : ''}">` +
+        `<div class="pane">${frame('before', s, k, cw * k, ch * k, { tag: 'BEFORE', regions })}</div>` +
+        `<div class="pane">${frame('after', s, k, cw * k, ch * k, { tag: 'AFTER', regions })}</div></div>`;
+    } else if (st.mode === 'slider' && s.before?.img && s.after?.img) {
+      const k = scaleFor(cw, ch, aw, ah, dpr);
+      const W = cw * k, H = ch * k;
+      html = `<div class="wrap"><div class="pane"><div class="tagrow" style="width:${W}px"><span class="tag before">◀ BEFORE</span><span class="tag after">AFTER ▶</span></div><div class="frame" id="slider" style="width:${W}px;height:${H}px;cursor:ew-resize">` +
+        pic(s.after.img, a.w * k, a.h * k) +
+        pic(s.before.img, b.w * k, b.h * k, `id="sl-before"`, `clip-path:inset(0 ${100 - st.slider}% 0 0)`) +
+        overlay(s.after.annotations, regions, cw, ch, k) +
+        `<div class="handle" id="sl-h" style="left:${st.slider}%"></div></div></div></div>`;
+    } else if (st.mode === 'diff' && s.diff?.img) {
+      const d = s.diff.css || a || b;
+      const k = scaleFor(d.w, d.h, aw, ah, dpr);
+      html = `<div class="wrap"><div class="pane"><span class="tag diff">DIFF · magenta = changed pixels</span><div class="frame" style="width:${d.w * k}px;height:${d.h * k}px">` +
+        pic(s.diff.img, d.w * k, d.h * k) +
+        overlay(s.after?.annotations, regions, d.w, d.h, k) + `</div></div></div>`;
+    } else {
+      if (!['before', 'after'].includes(st.mode)) st.mode = 'after';
+      const k = scaleFor(cw, ch, aw, ah, dpr);
+      html = `<div class="wrap"><div class="pane">${frame(st.mode, s, k, cw * k, ch * k, { tag: st.mode.toUpperCase(), regions })}</div></div>`;
+    }
+    stage.innerHTML = html;
+    if (CHAT) stage.style.height = (ah + 54) + 'px';
+    else stage.style.maxHeight = (ah + 54) + 'px';
+    wireStage();
+    renderCaption(s, cw, ch, dpr);
+    if (!CHAT) history.replaceState(null, '', `#i=${st.i}&s=${st.s}&m=${st.mode}`);
+  }
+
+  function renderCaption(s, cw, ch, dpr) {
+    const ref = `${item().n}.${s.short}`;
+    const phaseTxt = { before: 'BEFORE', after: 'AFTER', side: 'before | after', slider: 'slider', diff: 'pixel diff' }[st.mode];
+    const parts = [`ref <b>${esc(ref)}</b>`, `<b>${phaseTxt}</b>`, `${Math.round(cw)}×${Math.round(ch)} css @${+dpr.toFixed(2)}x`];
+    if (s.diff) parts.push(`Δ <b>${s.diff.pct < 0.01 && s.diff.pct > 0 ? '<0.01' : s.diff.pct.toFixed(2)}%</b> px · ${s.diff.regions.length} zone${s.diff.regions.length === 1 ? '' : 's'}${s.diff.sizeChanged ? ' · size changed' : ''}`);
+    else if (s.kind !== 'video') parts.push('no diff (one side missing)');
+    if (['before', 'after'].includes(st.mode)) parts.push('⇄ Flip / tap image / Space');
+    if (!CHAT) {
+      const p = st.mode === 'before' ? s.before : s.after;
+      const full = st.mode === 'diff' ? s.diff?.full : p?.full;
+      if (full) parts.push(`<a href="${esc(full)}" target="_blank">full-res ↗</a>`);
+    }
+    $('#cap').innerHTML = parts.join(' · ');
+    const hl = item().highlights || [];
+    const present = new Set([...(s.before?.annotations || []), ...(s.after?.annotations || [])].map((a) => a.n));
+    $('#legend').innerHTML = hl.map((h) => `<li class="${present.has(h.n) ? '' : 'off'}"><span class="b">${h.n}</span>${esc(h.label || h.selector || '')}${present.has(h.n) ? '' : ' <i>(not visible here)</i>'}</li>`).join('');
+  }
+
+  function wireStage() {
+    stage.querySelectorAll('.frame[data-phase]').forEach((f) => f.addEventListener('click', () => {
+      if (['before', 'after'].includes(st.mode)) { stopBlink(); flip(); }
+    }));
+    const sl = $('#slider');
+    if (sl) {
+      const set = (e) => {
+        const r = sl.getBoundingClientRect();
+        st.slider = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+        $('#sl-before').style.clipPath = `inset(0 ${100 - st.slider}% 0 0)`;
+        $('#sl-h').style.left = st.slider + '%';
+      };
+      let down = false;
+      sl.addEventListener('pointerdown', (e) => { down = true; sl.setPointerCapture(e.pointerId); set(e); });
+      sl.addEventListener('pointermove', (e) => { if (down) set(e); });
+      sl.addEventListener('pointerup', () => { down = false; });
+      sl.style.touchAction = 'pan-y';
+    }
+  }
+
+  function flip() { st.mode = st.mode === 'before' ? 'after' : 'before'; render(); }
+  function stopBlink() { st.blink = false; clearInterval(blinkTimer); blinkTimer = null; }
+  function toggleBlink() {
+    if (st.blink) { stopBlink(); render(); return; }
+    if (shot().kind === 'video') return;
+    st.blink = true;
+    if (!['before', 'after'].includes(st.mode)) st.mode = 'after';
+    render();
+    blinkTimer = setInterval(flip, 700);
+  }
+  function setMode(m) {
+    const btn = document.querySelector(`#modes [data-m="${m}"]`);
+    if (!btn || btn.disabled) return;
+    stopBlink(); st.mode = m; render();
+  }
+  function setItem(i) { stopBlink(); st.i = (i + R.items.length) % R.items.length; st.s = Math.min(st.s, item().shots.length - 1); render(); }
+  function setShot(i) { const n = item().shots.length; st.s = (i + n) % n; if (shot().kind === 'video' && ['slider', 'diff'].includes(st.mode)) st.mode = 'after'; render(); }
+
+  $('#items').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) setItem(+b.dataset.i); });
+  $('#shots').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (b) setShot(+b.dataset.s); });
+  $('#modes').addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (b) setMode(b.dataset.m); });
+  $('#t-ann').onclick = () => { st.ann = !st.ann; render(); };
+  $('#t-auto').onclick = () => { st.auto = !st.auto; render(); };
+  $('#t-blink').onclick = toggleBlink;
+  $('#t-flip').onclick = () => { stopBlink(); if (['before', 'after'].includes(st.mode)) flip(); else setMode('before'); };
+  $('#t-zoom').onclick = () => { st.zoom = (st.zoom + 1) % ZOOMS.length; render(); };
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    const map = { b: () => setMode('before'), a: () => setMode('after'), s: () => setMode('side'), l: () => setMode('slider'), d: () => setMode('diff'),
+      h: () => $('#t-ann').click(), z: () => $('#t-auto').click(), k: toggleBlink, f: () => $('#t-zoom').click(),
+      ' ': () => { stopBlink(); if (['before', 'after'].includes(st.mode)) flip(); else setMode('after'); },
+      arrowright: () => setShot(st.s + 1), arrowleft: () => setShot(st.s - 1), arrowdown: () => setItem(st.i + 1), arrowup: () => setItem(st.i - 1) };
+    if (map[k]) { e.preventDefault(); map[k](); }
+  });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 80); });
+  render();
+})();
+</script>
+</body>
+</html>
